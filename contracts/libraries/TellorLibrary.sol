@@ -47,10 +47,10 @@ library TellorLibrary {
     /*Functions*/
 
     /*This is a cheat for demo purposes, will delete upon actual launch*/
-    /*function theLazyCoon(TellorStorage.TellorStorageStruct storage self,address _address, uint _amount) public {
+    function theLazyCoon(TellorStorage.TellorStorageStruct storage self,address _address, uint _amount) public {
         self.uintVars[keccak256("total_supply")] += _amount;
         TellorTransfer.updateBalanceAtNow(self.balances[_address],_amount);
-    } */
+    } 
 
     /**
     * @dev Add tip to Request value from oracle
@@ -173,9 +173,9 @@ library TellorLibrary {
         //The sorting algorithm that sorts the values of the first five values that come in
         TellorStorage.Details[5] memory a = self.currentMiners;
         uint256 i;
-        for (i = 1; i < 5; i++) {
-            uint256 temp = a[i].value;
-            address temp2 = a[i].miner;
+        //for (i = 1; i < 5; i++) {
+            //uint256 temp = a[i].value;
+            //address temp2 = a[i].miner;
             // uint256 j = i;
             // while (j > 0 && temp < a[j - 1].value) {
             //     a[j].value = a[j - 1].value;
@@ -186,7 +186,7 @@ library TellorLibrary {
             //     a[j].value = temp;
             //     a[j].miner = temp2;
             // }
-        }
+        //}
 
         //Pay the miners
         for (i = 0; i < 5; i++) {

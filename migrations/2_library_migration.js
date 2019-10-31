@@ -1,7 +1,7 @@
 /****Uncomment the body below to run this with Truffle migrate for truffle testing*/
 var TellorTransfer = artifacts.require("./libraries/TellorTransfer.sol");
-var TellorDispute = artifacts.require("./libraries/TellorDispute.sol");
-var TellorStake = artifacts.require("./libraries/TellorStake.sol");
+//var TellorDispute = artifacts.require("./libraries/TellorDispute.sol");
+//var TellorStake = artifacts.require("./libraries/TellorStake.sol");
 var TellorLibrary = artifacts.require("./libraries/TellorLibrary.sol");
 var TellorGettersLibrary = artifacts.require("./libraries/TellorGettersLibrary.sol");
 var Tellor = artifacts.require("./Tellor.sol");
@@ -36,14 +36,14 @@ module.exports = async function (deployer) {
   //sleep_s(30);
 
   // deploy dispute
-  await deployer.link(TellorTransfer,TellorDispute);
-  await deployer.deploy(TellorDispute);
+/*  await deployer.link(TellorTransfer,TellorDispute);
+  await deployer.deploy(TellorDispute);*/
   //sleep_s(30);
 
   // deploy stake
-  await deployer.link(TellorTransfer,TellorStake);
+/*  await deployer.link(TellorTransfer,TellorStake);
   await deployer.link(TellorDispute,TellorStake);
-  await deployer.deploy(TellorStake);
+  await deployer.deploy(TellorStake);*/
   //sleep_s(30);
 
   // deploy getters lib
@@ -51,16 +51,16 @@ module.exports = async function (deployer) {
   //sleep_s(30);
 
   // deploy lib
-  await deployer.link(TellorDispute, TellorLibrary);
+//  await deployer.link(TellorDispute, TellorLibrary);
   await deployer.link(TellorTransfer, TellorLibrary);
-  await deployer.link(TellorStake, TellorLibrary);
+//  await deployer.link(TellorStake, TellorLibrary);
   await deployer.deploy(TellorLibrary);
   //sleep_s(60);
 
   // deploy tellor
   await deployer.link(TellorTransfer,Tellor);
-  await deployer.link(TellorDispute,Tellor);
-  await deployer.link(TellorStake,Tellor);
+//  await deployer.link(TellorDispute,Tellor);
+//  await deployer.link(TellorStake,Tellor);
   await deployer.link(TellorLibrary,Tellor);
   await deployer.deploy(Tellor);
   //sleep_s(60);
@@ -68,7 +68,7 @@ module.exports = async function (deployer) {
   // deploy tellor master
   await deployer.link(TellorTransfer,TellorMaster);
   await deployer.link(TellorGettersLibrary,TellorMaster);
-  await deployer.link(TellorStake,TellorMaster);
+//  await deployer.link(TellorStake,TellorMaster);
   await deployer.deploy(Tellor).then(async function() {
     await deployer.deploy(TellorMaster, Tellor.address)
   });

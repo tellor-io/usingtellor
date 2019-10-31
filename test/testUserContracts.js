@@ -1,6 +1,7 @@
 /** 
 * This tests the oracle functions, including mining.
 */
+/*
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.WebsocketProvider('ws://localhost:8545'));
 const BN = require('bn.js');  
@@ -44,9 +45,9 @@ contract('UserContract Tests', function(accounts) {
   let userContract;
   let newOracle;
 
-    beforeEach('Setup contract for each test', async function () {
+   beforeEach('Setup contract for each test', async function () {
         //oracleBase = await OldTellor.new();
-oracleBase = await Tellor.new();
+        oracleBase = await Tellor.new();
         oracle = await TellorMaster.new(web3.utils.toChecksumAddress(oracleBase.address));
                 master = await new web3.eth.Contract(masterAbi,oracle.address);
         oa = (web3.utils.toChecksumAddress(oracle.address))
@@ -59,7 +60,7 @@ oracleBase = await Tellor.new();
         newOracle = await Tellor.new();
         await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:7000000,data:master.methods.changeTellorContract(newOracle.address).encodeABI()})
     });
-    /*it("Test Base Derivative Contract - Optimistic Up Move", async function(){
+    it("Test Base Derivative Contract - Optimistic Up Move", async function(){
       await reader.testContract(7 * 86400)
       var startTime = await reader.startDateTime.call();
       assert(startTime > 0, "Start time should be positive")
@@ -247,7 +248,7 @@ oracleBase = await Tellor.new();
       assert(apiOnQ == 2,"ApiID on Q should be 2");
       await reader.requestData(api2,"ETH-USD",1000,0);
     })
-    */
+
     it("Test 3 request ID avearge for Optimistic disputed Value", async function(){
       reader = await Reader.new(userContract.address,10,86400*3,[1,2,3],86400)
       await reader.setUserContract(userContract.address);
@@ -299,4 +300,4 @@ oracleBase = await Tellor.new();
       //await helper.expectThrow(reader.addTipWithEther(1,{value:web3.utils.toWei(".14",'ether'),from:accounts[3]}));
       await reader.addTipWithEther(1,{value:web3.utils.toWei(".15",'ether'),from:accounts[3]})
     })
-});
+});*/
