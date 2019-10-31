@@ -1,8 +1,8 @@
 pragma solidity ^0.5.0;
 
 import "./UsingTellor.sol";
-import "../TellorMaster.sol";
-import "../Tellor.sol";
+// import "../contracts/testContracts/TellorMaster.sol";
+// import "../contracts/testContracts/Tellor.sol";
 /**
 * @title UsingTellor
 * This contracts creates for easy integration to the Tellor Tellor System

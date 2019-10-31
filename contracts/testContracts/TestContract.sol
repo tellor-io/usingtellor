@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "./Optimistic.sol";
+import "../Optimistic.sol";
 /**
 * @title Reader
 * This contracts is a pretend contract using Tellor that compares two time values

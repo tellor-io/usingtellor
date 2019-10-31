@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 
-import "../TellorMaster.sol";
-import "../Tellor.sol";
+import "../contracts/testContracts/TellorMaster.sol";
+import "../contracts/testContracts/Tellor.sol";
 
 /**
 * @title UserContract
