@@ -44,18 +44,18 @@ library TellorTransfer {
     }
 
 
-    // /**
-    // * @dev This function approves a _spender an _amount of tokens to use
-    // * @param _spender address
-    // * @param _amount amount the spender is being approved for
-    // * @return true if spender appproved successfully
-    // */
-    // function approve(TellorStorage.TellorStorageStruct storage self, address _spender, uint _amount) public returns (bool) {
-    //     require(_spender != address(0));
-    //     self.allowed[msg.sender][_spender] = _amount;
-    //     emit Approval(msg.sender, _spender, _amount);
-    //     return true;
-    // }
+    /**
+    * @dev This function approves a _spender an _amount of tokens to use
+    * @param _spender address
+    * @param _amount amount the spender is being approved for
+    * @return true if spender appproved successfully
+    */
+    function approve(TellorStorage.TellorStorageStruct storage self, address _spender, uint _amount) public returns (bool) {
+        require(_spender != address(0));
+        self.allowed[msg.sender][_spender] = _amount;
+        emit Approval(msg.sender, _spender, _amount);
+        return true;
+    }
 
 
     // /**

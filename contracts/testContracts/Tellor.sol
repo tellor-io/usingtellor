@@ -146,15 +146,15 @@ contract Tellor {
     //     tellor.withdrawStake();
     // }
 
-    // /**
-    // * @dev This function approves a _spender an _amount of tokens to use
-    // * @param _spender address
-    // * @param _amount amount the spender is being approved for
-    // * @return true if spender appproved successfully
-    // */
-    // function approve(address _spender, uint256 _amount) external returns (bool) {
-    //     return tellor.approve(_spender, _amount);
-    // }
+    /**
+    * @dev This function approves a _spender an _amount of tokens to use
+    * @param _spender address
+    * @param _amount amount the spender is being approved for
+    * @return true if spender appproved successfully
+    */
+    function approve(address _spender, uint256 _amount) external returns (bool) {
+        return tellor.approve(_spender, _amount);
+    }
 
     /**
     * @dev Allows for a transfer of tokens to _to

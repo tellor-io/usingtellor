@@ -333,13 +333,13 @@ contract TellorGetters{
     // }
 
 
-    // *
-    // * @dev Getter function for next requestId on queue/request with highest payout at time the function is called
-    // * @return onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string
-    
-    // function getVariablesOnDeck() external view returns(uint, uint,string memory){    
-    //     return tellor.getVariablesOnDeck();
-    // }
+    /**
+    * @dev Getter function for next requestId on queue/request with highest payout at time the function is called
+    * @return onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string
+    */
+    function getVariablesOnDeck() external view returns(uint, uint,string memory){    
+        return tellor.getVariablesOnDeck();
+    }
 
     
     // /**

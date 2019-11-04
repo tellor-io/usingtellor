@@ -125,20 +125,11 @@ contract('UserContract Tests', function(accounts) {
       assert(await testContract.disputePeriod.call() == 86400*3, "dispute Period should be correct");
       assert(await testContract.granularity.call() == 86400);
       //No MINING
-      //launch and mine one on Tellor
-      //set up the contracts to handle getting the value
-      //console.log('START MINING RIG!!');
-      //logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-      //let res = web3.eth.abi.decodeParameters(['uint256','uint256'],logMineWatcher.data);
-      //assert(res['0'] - 0 > 0, "value should be positive");
-
-
       //instead of mining, test submitminingsolution
-    for(var i = 1;i <=5 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 100).encodeABI()})
+    for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         console.log(i)
          }
-      
-
       let mydata = oracle2.methods.approve(testContract.address,10).encodeABI()
       let x = await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:mydata})
       assert(await oracle.getNewValueCountbyRequestId(1) == 1, "should have a newValue count")
@@ -151,112 +142,135 @@ contract('UserContract Tests', function(accounts) {
       assert(await testContract.contractEnded.call(), "Contract should be ended")
     });
 
-    //     it("Test Base Derivative Contract - Disputed Down Move", async function(){
-    //   await testContract.setContractDetails(7 * 86400)
-    //   let startTime = await testContract.startDateTime.call();
-    //   var endTime = await testContract.endDateTime.call();
-    //   await testContract.setValue(startTime, 50000000);
-    //   await helper.advanceTime(86400 * 10);
-    //   await testContract.setValue(await testContract.endDateTime.call(), 500);
-    //   //launch and mine one on Tellor
-    //   //set up the contracts to handle getting the value
-    //   logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-    //   res = web3.eth.abi.decodeParameters(['uint256','uint256'],logMineWatcher.data);
-    //   await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-    //   logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-    //   assert(res[0] > 0, "value should be positive");
-    //   await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
-    //   await testContract.disputeOptimisticValue(endTime,{from:accounts[2],value:10})
-    //   assert(await testContract.isDisputed((await testContract.endDateTime.call()) * 1) == true, "isDisputed should work");
-    //   await helper.advanceTime(86400 * 10);
-    //   await testContract.getTellorValues(await testContract.endDateTime.call());
-    //   await testContract.settleContracts();
-    //   assert(await testContract.longWins.call() == false)
-    //   assert(await testContract.contractEnded.call(), "Contract should be ended")
-    //   await testContract.getAnyDataAfter(1,startTime*1 + 1)
-    //   var mynum = await testContract.getAnyDataAfter.call(1,startTime*1 + 1) 
-    //   assert(mynum['2'] == res[0], "get any data should work");
-    //   assert(await testContract.getNumberOfDisputedValues() == 1);
-    //   assert(await testContract.getDisputedValueByIndex(0) - await testContract.endDateTime.call() == 0, "Disputed value should be endtime");
-    //   mynum = await testContract.getDisputedValues()
-    //   assert(mynum['0'] - await testContract.endDateTime.call() == 0, "getDisputedValues should work")
-    // });
-    // it("Test Disputed Start and End Timestamps and someone wins", async function(){
-    //  logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-    //   await testContract.setContractDetails(7 * 86400)
-    //   var startTime = await testContract.startDateTime.call();
-    //   await testContract.setValue(startTime, 500000000);
-    //   await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-    //   await promisifyLogWatch(oa,'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-    //   await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
-    //   await testContract.disputeOptimisticValue(startTime,{from:accounts[2],value:10})
-    //   await testContract.getTellorValues(startTime);
-    //   await helper.advanceTime(86400 * 10);
-    //   await testContract.setValue(await testContract.endDateTime.call(), 500);
-    //   //launch and mine one on Tellor
-    //   //set up the contracts to handle getting the value
-    //   await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-    //   logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-    //   res = web3.eth.abi.decodeParameters(['uint256','uint256'],logMineWatcher.data);
-    //   assert(res[0] > 0, "value should be positive");
-    //   await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
-    //   var myend = 1* (await testContract.endDateTime.call());
-    //   await testContract.disputeOptimisticValue(myend,{from:accounts[2],value:10})
-    //   await helper.advanceTime(86400 * 10);
-    //   await testContract.getTellorValues(await testContract.endDateTime.call());
-    //   await testContract.settleContracts();
-    //   assert(await testContract.longWins.call() == false, "long should not win")
-    //   assert(await testContract.contractEnded.call(), "Contract should be ended")
-    //   var mynum = await testContract.getAnyDataAfter.call(1,startTime*1 + 86400*9)
-    //   assert(mynum['2']-res[0] == 0,"getAnyDataAfter should work");
-    //   assert(await testContract.getNumberOfDisputedValues() == 2, "there should be two disputed value");
-    //   assert(await testContract.isDisputed(myend) == true, "value should be disputed");
-    //   assert(await testContract.getDisputedValueByIndex(1) == 1 * (await testContract.endDateTime.call()), "getDisputedValueByIndex should work");
-    //   mynum = await testContract.getDisputedValues();
-    //   assert(mynum['0'] - startTime ==0, "getDisputedValues should work")
-    //   assert(mynum['1'] - myend == 0)
-    // })
+     it("Test Base Derivative Contract - Disputed Down Move", async function(){
+      await testContract.setContractDetails(7 * 86400)
+      let startTime = await testContract.startDateTime.call();
+      var endTime = await testContract.endDateTime.call();
+      await testContract.setValue(startTime, 50000000);
+      await helper.advanceTime(86400 * 10);
+      await testContract.setValue(await testContract.endDateTime.call(), 500);
 
-    // it("Test No Tributes in User Contract w/Solution", async function(){
-    //   await testContract.setContractDetails(7 * 86400)
-    //   var startTime = await testContract.startDateTime.call();
-    //   await testContract.setValue(startTime, 1000);
-    //   await helper.advanceTime(86400 * 10);
-    //   await testContract.setValue(await testContract.endDateTime.call(), 2000);
-    //   //launch and mine one on Tellor
-    //   //set up the contracts to handle getting the value
-    //   await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-    //   await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-    //   await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
-    //   await testContract.disputeOptimisticValue(await testContract.endDateTime.call(),{from:accounts[2],value:10})
-    //   await userContract.setPrice(web3.utils.toWei("1","ether"));
-    //   assert(await userContract.tributePrice.call() == web3.utils.toWei("1","ether"), "Tribute Price should be correct");
-    //    await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.transfer(userContract.address,web3.utils.toWei("1","ether")).encodeABI()})
-    //   await testContract.addTipWithEther(1,{value:web3.utils.toWei("1","ether"),from:accounts[3]})
-    //   logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-    //   await helper.advanceTime(86400 * 8);
-    //   await testContract.getTellorValues(await testContract.endDateTime.call());
-    //   await testContract.settleContracts();
-    //   await testContract.setContractDetails(7 * 86400)
-    //   assert(await testContract.longWins.call() == true, "long should win")
-    //   assert(await testContract.contractEnded.call(), "contract should be ended")
-    //   var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[0]), 'ether');
-    //   await userContract.withdrawEther();
-    //   var bal2 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[0]), 'ether');
-    //   assert(bal2 - bal1 -1 < .01, "balance should change correctly");
+      //launch and mine one on Tellor
+      //set up the contracts to handle getting the value
 
-    // })
-/*
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         console.log(i)
+         }
+
+      res = await testContract.getAnyDataAfter(1,startTime*1 + 1)
+      console.log("new price", res[1])
+
+      await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
+      await testContract.disputeOptimisticValue(endTime,{from:accounts[2],value:10})
+      assert(await testContract.isDisputed((await testContract.endDateTime.call()) * 1) == true, "isDisputed should work");
+      await helper.advanceTime(86400 * 10);
+      await testContract.getTellorValues(await testContract.endDateTime.call());
+      await testContract.settleContracts();
+      assert(await testContract.longWins.call() == false)
+      assert(await testContract.contractEnded.call(), "Contract should be ended")
+      
+      var mynum = await testContract.getAnyDataAfter.call(1,startTime*1 + 1) 
+      console.log("mynum", web3.utils.hexToNumberString(mynum[1]))
+      assert(web3.utils.hexToNumberString(mynum[1]) == 1200, "get any data should work");
+      assert(await testContract.getNumberOfDisputedValues() == 1);
+      assert(await testContract.getDisputedValueByIndex(0) - await testContract.endDateTime.call() == 0, "Disputed value should be endtime");
+      mynum = await testContract.getDisputedValues()
+      assert(web3.utils.hexToNumberString(mynum[0]) - await testContract.endDateTime.call() == 0, "getDisputedValues should work")
+    });
+
+    it("Test Disputed Start and End Timestamps and someone wins", async function(){
+      await testContract.setContractDetails(7 * 86400)
+      console.log(1)
+      var startTime = await testContract.startDateTime.call();
+      console.log("startime", web3.utils.hexToNumberString(startTime))
+      await testContract.setValue(startTime, 500000000);
+      console.log(3)
+      await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
+console.log(4)
+      await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
+  console.log(5) 
+      await testContract.disputeOptimisticValue(startTime,{from:accounts[2],value:10})
+      await testContract.getTellorValues(startTime);
+      await helper.advanceTime(86400 * 10);
+      await testContract.setValue(await testContract.endDateTime.call(), 500);
+      endDate= await testContract.endDateTime.call()
+      console.log(web3.utils.hexToNumberString(endDate))
+      //launch and mine one on Tellor
+      //set up the contracts to handle getting the value
+      await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
+      
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         }
+
+      await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
+      var myend = 1* (await testContract.endDateTime.call());
+      await testContract.disputeOptimisticValue(web3.utils.hexToNumberString(myend),{from:accounts[2],value:10})
+      await helper.advanceTime(86400 * 10);
+      await testContract.getTellorValues(await testContract.endDateTime.call());
+      await testContract.settleContracts();
+      assert(await testContract.longWins.call() == false, "long should not win")
+      assert(await testContract.contractEnded.call(), "Contract should be ended")
+      var mynum = await testContract.getAnyDataAfter.call(1,startTime*1 + 86400*9)
+      assert(web3.utils.hexToNumberString(mynum[1]) == 1200,"getAnyDataAfter should work");
+      assert(await testContract.getNumberOfDisputedValues() == 2, "there should be two disputed value");
+      assert(await testContract.isDisputed(web3.utils.hexToNumberString(myend)) == true, "value should be disputed");
+      assert(await testContract.getDisputedValueByIndex(1) == 1 * (await testContract.endDateTime.call()), "getDisputedValueByIndex should work");
+      mynum = await testContract.getDisputedValues();
+      console.log("mynum disputed values", web3.utils.hexToNumberString(mynum[0]))
+      console.log("mynum disputed values", web3.utils.hexToNumberString(mynum[1]))
+      assert(web3.utils.hexToNumberString(mynum[0]) - startTime == 0, "disputed value timestamp")
+      assert(web3.utils.hexToNumberString(mynum[1]) - myend == 0, "disputed value timestamp")
+    })
+
+    it("Test No Tributes in User Contract w/Solution", async function(){
+      await testContract.setContractDetails(7 * 86400)
+      var startTime = await testContract.startDateTime.call();
+      await testContract.setValue(startTime, 1000);
+      await helper.advanceTime(86400 * 10);
+      await testContract.setValue(await testContract.endDateTime.call(), 2000);
+
+      //launch and mine one on Tellor
+      //set up the contracts to handle getting the value
+  
+      await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
+      await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
+      await testContract.disputeOptimisticValue(await testContract.endDateTime.call(),{from:accounts[2],value:10})
+      await userContract.setPrice(web3.utils.toWei("1","ether"));
+      assert(await userContract.tributePrice.call() == web3.utils.toWei("1","ether"), "Tribute Price should be correct");
+      
+      await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.transfer(userContract.address,web3.utils.toWei("1","ether")).encodeABI()})
+      await testContract.addTipWithEther(1,{value:web3.utils.toWei("1","ether"),from:accounts[3]})
+      
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 3000).encodeABI()})
+         
+         }
+
+      await helper.advanceTime(86400 * 8);
+      await testContract.getTellorValues(await testContract.endDateTime.call());
+      await testContract.settleContracts();
+      await testContract.setContractDetails(7 * 86400)
+      assert(await testContract.longWins.call() == true, "long should win")
+      assert(await testContract.contractEnded.call(), "contract should be ended")
+      var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[0]), 'ether');
+      await userContract.withdrawEther();
+      var bal2 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[0]), 'ether');
+      assert(bal2 - bal1 -1 < .01, "balance should change correctly");
+
+    })
+
     it("Lots of Stuff", async function(){
-      logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-      res = web3.eth.abi.decodeParameters(['uint256','uint256'],logMineWatcher.data);
-      assert(res[0] > 0, "value should be positive");
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 2000).encodeABI()})
+         }
       await userContract.setPrice(web3.utils.toWei("1","ether"));
        await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.transfer(userContract.address,web3.utils.toWei("1","ether")).encodeABI()})
       await userContract.requestDataWithEther(api2,"ETH-USD",1000,web3.utils.toWei("1","ether"),{from:accounts[1], value:web3.utils.toWei('1','ether')});
-      logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-      res = web3.eth.abi.decodeParameters(['uint256','uint256'],logMineWatcher.data);
-      assert(res[0] > 0, "value should be positive");
+      for(var j = 0;j <=4 ;j++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[j],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",2, 3000).encodeABI()})
+         }
       await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.transfer(userContract.address,web3.utils.toWei("5","ether")).encodeABI()})
       await userContract.addTipWithEther(1,{value:web3.utils.toWei("5","ether"),from:accounts[2]});
       await web3.eth.sendTransaction({to: oa,from:accounts[1],gas:4000000,data:oracle2.methods.approve(testContract.address,web3.utils.toWei("5","ether")).encodeABI()})
@@ -267,25 +281,51 @@ contract('UserContract Tests', function(accounts) {
       await testContract.requestData(api2,"ETH-USD",1000,0);
     })
 
+
     it("Test 3 request ID avearge for Optimistic disputed Value", async function(){
-      testContract = await testContract.new(userContract.address,10,86400*3,[1,2,3],86400)
+      testContract = await TestContract.new(userContract.address,10,86400*3,[1,2,3],86400)
+      console.log(1)
       await testContract.setUserContract(userContract.address);
+      console.log(2)
       await testContract.setContractDetails(7 * 86400)
+      console.log(3)
       var startTime = await testContract.startDateTime.call();
+      console.log(4)
       var endTime = await testContract.endDateTime.call();
+      console.log(5)
       await testContract.setValue(startTime, 1000);
+      console.log(6)
       await helper.advanceTime(86400 * 10);
+      console.log(7)
       await testContract.setValue(await testContract.endDateTime.call(), 500);
-      await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
+      console.log(8)
+
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 2000).encodeABI()})
+         console.log(i)
+         }
+      console.log(9)
       await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api2,"BTC/USD2",100,0).encodeABI()})
-            await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
+      console.log(10)
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",2, 2000).encodeABI()})
+         console.log(i)
+         }
+         console.log(11)
       await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api3,"BTC/USD3",1000000,1).encodeABI()})
-            await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
+       console.log(12)
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",3, 2000).encodeABI()})
+         console.log(i)
+         }
+console.log(13)
       await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.requestData(api3,"BTC/USD3",1000000,10).encodeABI()})
-      //set up the contracts to handle getting the value
-      logMineWatcher = await promisifyLogWatch(oa, 'NewValue(uint256,uint256,uint256,uint256,bytes32)');//or Event Mine?
-      res = web3.eth.abi.decodeParameters(['uint256','uint256'],logMineWatcher.data);
-      assert(res[0] > 0, "value should be positive");
+      console.log(14)
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",3, 2000).encodeABI()})
+         console.log(i)
+         }
+      console.log(15)
       await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
       assert(await oracle.getNewValueCountbyRequestId(3) == 2, "new value count should be correct")
       await testContract.disputeOptimisticValue(endTime,{from:accounts[2],value:10})
@@ -306,6 +346,6 @@ contract('UserContract Tests', function(accounts) {
       assert(rIds['2'] == 3)
       console.log(await testContract.endValue.call() ,res[1] )
       assert(await testContract.endValue.call() > res[1] * 1, 'value should be an average')
-       });*/
+       });
 
 });

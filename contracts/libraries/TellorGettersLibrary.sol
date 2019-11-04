@@ -330,15 +330,15 @@ library TellorGettersLibrary{
     // }
 
 
-    // /**
-    // * @dev Getter function for next requestId on queue/request with highest payout at time the function is called
-    // * @return onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string
-    // */
-    // function getVariablesOnDeck(TellorStorage.TellorStorageStruct storage self) internal view returns(uint, uint,string memory){ 
-    //     uint newRequestId = getTopRequestID(self);
-    //     return (newRequestId,self.requestDetails[newRequestId].apiUintVars[keccak256("totalTip")],self.requestDetails[newRequestId].queryString);
-    // }
-
+ 
+   /**
+    * @dev Getter function for next requestId on queue/request with highest payout at time the function is called
+    * @return onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string
+    */
+    function getVariablesOnDeck(TellorStorage.TellorStorageStruct storage self) internal view returns(uint, uint,string memory){ 
+        uint newRequestId = getTopRequestID(self);
+        return (newRequestId,self.requestDetails[newRequestId].apiUintVars[keccak256("totalTip")],self.requestDetails[newRequestId].queryString);
+    }
 
     /**
     * @dev Getter function for the request with highest payout. This function is used within the getVariablesOnDeck function
