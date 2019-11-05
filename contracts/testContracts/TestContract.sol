@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "./Optimistic.sol";
+import "../Optimistic.sol";
 /**
 * @title Reader
 * This contracts is a pretend contract using Tellor that compares two time values
@@ -33,7 +33,7 @@ contract TestContract is Optimistic {
     * @dev creates a start(now) and end time(now + duration specified) for testing a contract start and end period
     * @param _duration in seconds
     */
-    function testContract(uint256 _duration) external {
+    function setContractDetails(uint256 _duration) external {
         startDateTime = now - (now % granularity);
         endDateTime = now - (now % granularity) + _duration;
     }
