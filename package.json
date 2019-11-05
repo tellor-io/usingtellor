@@ -1,6 +1,6 @@
 {
-  "name": "tellorcore",
-  "version": "1.0.0",
+  "name": "usingtellor",
+  "version": "0.0.1",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
@@ -29,9 +29,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tellor-io/TellorCore/issues"
+    "url": "https://github.com/tellor-io/usingtellor"
   },
   "author": "Tellor",
   "license": "MIT",
-  "homepage": "https://github.com/tellor-io/TellorCore"
+  "homepage": "https://github.com/tellor-io/usingtellor"
 }

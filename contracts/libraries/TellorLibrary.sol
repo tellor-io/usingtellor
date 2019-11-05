@@ -138,7 +138,7 @@ library TellorLibrary {
     /**
     * @dev This fucntion is called by submitMiningSolution and adjusts the difficulty, sorts and stores the first
     * 5 values received, pays the miners, the dev share and assigns a new challenge
-    * @param _nonce or solution for the PoW  for the requestId====ALWAYS 1 for testing
+    * @param _nonce or solution for the PoW  for the requestId====ALWAYS "nonce" for testing
     * @param _requestId for the current request being mined
     */
     function newBlock(TellorStorage.TellorStorageStruct storage self, string memory _nonce, uint256 _requestId) internal {
@@ -266,7 +266,7 @@ library TellorLibrary {
 
     /**
     * @dev Proof of work is called by the miner when they submit the solution (proof of work and value)
-    * @param _nonce uint submitted by miner====ALWAYS 1 for testing
+    * @param _nonce uint submitted by miner====ALWAYS "nonce"  for testing
     * @param _requestId the apiId being mined
     * @param _value of api query
     */

@@ -128,7 +128,7 @@ contract('UserContract Tests', function(accounts) {
       //instead of mining, test submitminingsolution
     for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-         console.log(i)
+         //console.log(i)
          }
       let mydata = oracle2.methods.approve(testContract.address,10).encodeABI()
       let x = await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:mydata})
@@ -155,11 +155,11 @@ contract('UserContract Tests', function(accounts) {
 
       for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-         console.log(i)
+         //console.log(i)
          }
 
       res = await testContract.getAnyDataAfter(1,startTime*1 + 1)
-      console.log("new price", res[1])
+      //console.log("new price", res[1])
 
       await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
       await testContract.disputeOptimisticValue(endTime,{from:accounts[2],value:10})
@@ -171,7 +171,7 @@ contract('UserContract Tests', function(accounts) {
       assert(await testContract.contractEnded.call(), "Contract should be ended")
       
       var mynum = await testContract.getAnyDataAfter.call(1,startTime*1 + 1) 
-      console.log("mynum", web3.utils.hexToNumberString(mynum[1]))
+      //console.log("mynum", web3.utils.hexToNumberString(mynum[1]))
       assert(web3.utils.hexToNumberString(mynum[1]) == 1200, "get any data should work");
       assert(await testContract.getNumberOfDisputedValues() == 1);
       assert(await testContract.getDisputedValueByIndex(0) - await testContract.endDateTime.call() == 0, "Disputed value should be endtime");
@@ -181,21 +181,17 @@ contract('UserContract Tests', function(accounts) {
 
     it("Test Disputed Start and End Timestamps and someone wins", async function(){
       await testContract.setContractDetails(7 * 86400)
-      console.log(1)
       var startTime = await testContract.startDateTime.call();
-      console.log("startime", web3.utils.hexToNumberString(startTime))
+      //console.log("startime", web3.utils.hexToNumberString(startTime))
       await testContract.setValue(startTime, 500000000);
-      console.log(3)
       await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-console.log(4)
       await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
-  console.log(5) 
       await testContract.disputeOptimisticValue(startTime,{from:accounts[2],value:10})
       await testContract.getTellorValues(startTime);
       await helper.advanceTime(86400 * 10);
       await testContract.setValue(await testContract.endDateTime.call(), 500);
       endDate= await testContract.endDateTime.call()
-      console.log(web3.utils.hexToNumberString(endDate))
+      //console.log(web3.utils.hexToNumberString(endDate))
       //launch and mine one on Tellor
       //set up the contracts to handle getting the value
       await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
@@ -218,8 +214,8 @@ console.log(4)
       assert(await testContract.isDisputed(web3.utils.hexToNumberString(myend)) == true, "value should be disputed");
       assert(await testContract.getDisputedValueByIndex(1) == 1 * (await testContract.endDateTime.call()), "getDisputedValueByIndex should work");
       mynum = await testContract.getDisputedValues();
-      console.log("mynum disputed values", web3.utils.hexToNumberString(mynum[0]))
-      console.log("mynum disputed values", web3.utils.hexToNumberString(mynum[1]))
+      //console.log("mynum disputed values", web3.utils.hexToNumberString(mynum[0]))
+      //console.log("mynum disputed values", web3.utils.hexToNumberString(mynum[1]))
       assert(web3.utils.hexToNumberString(mynum[0]) - startTime == 0, "disputed value timestamp")
       assert(web3.utils.hexToNumberString(mynum[1]) - myend == 0, "disputed value timestamp")
     })
@@ -284,48 +280,50 @@ console.log(4)
 
     it("Test 3 request ID avearge for Optimistic disputed Value", async function(){
       testContract = await TestContract.new(userContract.address,10,86400*3,[1,2,3],86400)
-      console.log(1)
       await testContract.setUserContract(userContract.address);
-      console.log(2)
       await testContract.setContractDetails(7 * 86400)
-      console.log(3)
       var startTime = await testContract.startDateTime.call();
-      console.log(4)
       var endTime = await testContract.endDateTime.call();
-      console.log(5)
       await testContract.setValue(startTime, 1000);
-      console.log(6)
       await helper.advanceTime(86400 * 10);
-      console.log(7)
       await testContract.setValue(await testContract.endDateTime.call(), 500);
-      console.log(8)
 
       for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 2000).encodeABI()})
-         console.log(i)
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 10000).encodeABI()})
          }
-      console.log(9)
+      var price = await testContract.getAnyDataAfter(1,endTime)
+      var p1 = web3.utils.hexToNumberString(price[1])
+      console.log("price1", web3.utils.hexToNumberString(price[1]))
+
       await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api2,"BTC/USD2",100,0).encodeABI()})
-      console.log(10)
+
       for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",2, 2000).encodeABI()})
-         console.log(i)
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",2, 11000).encodeABI()})
+         //console.log(i)
          }
-         console.log(11)
+      var price2 = await testContract.getAnyDataAfter(2,endTime)
+      var p2 = web3.utils.hexToNumberString(price2[1])
+      console.log("price2", web3.utils.hexToNumberString(price2[1]))
+
       await web3.eth.sendTransaction({to: oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api3,"BTC/USD3",1000000,1).encodeABI()})
-       console.log(12)
+
       for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",3, 2000).encodeABI()})
-         console.log(i)
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",3, 12100).encodeABI()})
+
          }
-console.log(13)
+      var price3 = await testContract.getAnyDataAfter(3,endTime)
+      var p3 = web3.utils.hexToNumberString(price3[1])
+      console.log("price3", web3.utils.hexToNumberString(price3[1]))
+
       await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.requestData(api3,"BTC/USD3",1000000,10).encodeABI()})
-      console.log(14)
+
       for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",3, 2000).encodeABI()})
-         console.log(i)
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",3, 13310).encodeABI()})
          }
-      console.log(15)
+      var price4 = await testContract.getAnyDataAfter(3,endTime)
+      var p4 = web3.utils.hexToNumberString(price4[1])
+      console.log("price4", web3.utils.hexToNumberString(price4[1]))
+
       await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
       assert(await oracle.getNewValueCountbyRequestId(3) == 2, "new value count should be correct")
       await testContract.disputeOptimisticValue(endTime,{from:accounts[2],value:10})
@@ -344,8 +342,11 @@ console.log(13)
       assert(rIds['0'] == 1, "included Id's should be correct")
       assert(rIds['1'] == 2)
       assert(rIds['2'] == 3)
-      console.log(await testContract.endValue.call() ,res[1] )
-      assert(await testContract.endValue.call() > res[1] * 1, 'value should be an average')
+      var endVal = await testContract.endValue.call()
+      avg = (p1*1+p2*1+p4*1)/3
+      console.log(web3.utils.hexToNumberString(endVal),avg)
+
+      assert(await testContract.endValue.call() < avg, 'value should be an average')
        });
 
 });
