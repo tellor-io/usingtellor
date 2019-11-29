@@ -1,6 +1,6 @@
 {
   "name": "usingtellor",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
