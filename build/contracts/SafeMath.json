@@ -1,15 +1,15 @@
 {
   "contractName": "SafeMath",
   "abi": [],
-  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/company/code/usingtellor/contracts/libraries/SafeMath.sol\":\"SafeMath\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/company/code/usingtellor/contracts/libraries/SafeMath.sol\":{\"keccak256\":\"0x8a70742b1e1ac65d3688b2cec1e38196b2de488a18fe4ba66d241414f9728927\",\"urls\":[\"bzzr://da7ee50784484474f0092241847f2d717450ed12bbaeb4040f47628afee80cfb\"]}},\"version\":1}",
-  "bytecode": "0x604c6023600b82828239805160001a607314601657fe5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600080fdfea165627a7a72305820fab00a64858fba5a2ab77dddcf3abf7601f64784c2b901c5f1a538afd60b31ef0029",
-  "deployedBytecode": "0x73000000000000000000000000000000000000000030146080604052600080fdfea165627a7a72305820fab00a64858fba5a2ab77dddcf3abf7601f64784c2b901c5f1a538afd60b31ef0029",
+  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/SafeMath.sol\":\"SafeMath\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/SafeMath.sol\":{\"keccak256\":\"0x8a70742b1e1ac65d3688b2cec1e38196b2de488a18fe4ba66d241414f9728927\",\"urls\":[\"bzzr://da7ee50784484474f0092241847f2d717450ed12bbaeb4040f47628afee80cfb\"]}},\"version\":1}",
+  "bytecode": "0x604c6023600b82828239805160001a607314601657fe5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600080fdfea165627a7a72305820683f3d05b6570dd948fc6e7bf700fd7a816d49c94bf560833f29983a4a2b55170029",
+  "deployedBytecode": "0x73000000000000000000000000000000000000000030146080604052600080fdfea165627a7a72305820683f3d05b6570dd948fc6e7bf700fd7a816d49c94bf560833f29983a4a2b55170029",
   "sourceMap": "129:1312:5:-;;132:2:-1;166:7;155:9;146:7;137:37;255:7;249:14;246:1;241:23;235:4;232:33;222:2;;269:9;222:2;293:9;290:1;283:20;323:4;314:7;306:22;347:7;338;331:24",
   "deployedSourceMap": "129:1312:5:-;;;;;;;;",
   "source": "pragma solidity ^0.5.0;\r\n\r\n//Slightly modified SafeMath library - includes a min and max function, removes useless div function\r\nlibrary SafeMath {\r\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\r\n        uint256 c = a + b;\r\n        assert(c >= a);\r\n        return c;\r\n    }\r\n\r\n    function add(int256 a, int256 b) internal pure returns (int256 c) {\r\n        if (b > 0) {\r\n            c = a + b;\r\n            assert(c >= a);\r\n        } else {\r\n            c = a + b;\r\n            assert(c <= a);\r\n        }\r\n    }\r\n\r\n    function max(uint256 a, uint256 b) internal pure returns (uint256) {\r\n        return a > b ? a : b;\r\n    }\r\n\r\n    function max(int256 a, int256 b) internal pure returns (uint256) {\r\n        return a > b ? uint256(a) : uint256(b);\r\n    }\r\n\r\n    function min(uint256 a, uint256 b) internal pure returns (uint256) {\r\n        return a < b ? a : b;\r\n    }\r\n\r\n    function mul(uint256 a, uint256 b) internal pure returns (uint256) {\r\n        uint256 c = a * b;\r\n        assert(a == 0 || c / a == b);\r\n        return c;\r\n    }\r\n\r\n    function sub(uint256 a, uint256 b) internal pure returns (uint256) {\r\n        assert(b <= a);\r\n        return a - b;\r\n    }\r\n\r\n    function sub(int256 a, int256 b) internal pure returns (int256 c) {\r\n        if (b > 0) {\r\n            c = a - b;\r\n            assert(c <= a);\r\n        } else {\r\n            c = a - b;\r\n            assert(c >= a);\r\n        }\r\n\r\n    }\r\n}\r\n",
-  "sourcePath": "C:\\company\\code\\usingtellor\\contracts\\libraries\\SafeMath.sol",
+  "sourcePath": "C:\\users\\lloya\\documents\\dda\\1tellor\\tellor\\projects\\tellornpm\\usingtellor\\contracts\\libraries\\SafeMath.sol",
   "ast": {
-    "absolutePath": "/C/company/code/usingtellor/contracts/libraries/SafeMath.sol",
+    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/SafeMath.sol",
     "exportedSymbols": {
       "SafeMath": [
         1581
@@ -2707,7 +2707,7 @@
     "src": "0:1443:5"
   },
   "legacyAST": {
-    "absolutePath": "/C/company/code/usingtellor/contracts/libraries/SafeMath.sol",
+    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/SafeMath.sol",
     "exportedSymbols": {
       "SafeMath": [
         1581
@@ -5409,8 +5409,8 @@
     "version": "0.5.8+commit.23d335f2.Emscripten.clang"
   },
   "networks": {},
-  "schemaVersion": "3.0.16",
-  "updatedAt": "2019-11-29T17:58:06.789Z",
+  "schemaVersion": "3.0.11",
+  "updatedAt": "2019-12-02T14:09:36.846Z",
   "devdoc": {
     "methods": {}
   },
