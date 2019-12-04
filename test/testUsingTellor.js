@@ -35,6 +35,7 @@ contract('UsingTellor Tests', function(accounts) {
         oracle2 = await new web3.eth.Contract(oracleAbi,oa);
         //intitial data request:
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
+        //??? is the initial request supposed to be zero????
         var varsid = await oracle.getVariablesOnDeck()
         console.log("reqId", web3.utils.hexToNumberString(varsid[0]))
 
@@ -135,11 +136,22 @@ contract('UsingTellor Tests', function(accounts) {
 
         await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(usingTellor.address, web3.utils.toWei('5', 'ether')).encodeABI()})      
         
+        var vars1 = await oracle.getVariablesOnDeck()
+        console.log("reqId before", web3.utils.hexToNumberString(vars1[0]))
+
         await usingTellor.requestData(api2,"ETH-USD",1000,web3.utils.toWei('1', 'ether'),{from:accounts[2]});
+
+        var vars2 = await oracle.getVariablesOnDeck()
+        console.log("reqId after", web3.utils.hexToNumberString(vars2[0]))
+
+        //Assert request 1 is now on deck???? why does it go from 0 to 2 
+        //is this the wrong function getVariablesOnDeck????????
+        //assert(vars2 == 1, "request 1 not on deck")
 
         var tbalance1 = await oracle.balanceOf(accounts[2])
         console.log("tbalance1", web3.utils.fromWei(tbalance1, 'ether'))
-
+        
+        assert(tbalance-tbalance1>0, "tributes not transferred")
         //No MINING
         //instead of mining, test submitminingsolution
         for(var i = 0;i <=4 ;i++){
@@ -159,18 +171,27 @@ contract('UsingTellor Tests', function(accounts) {
         var startDate = d - (d % 86400);     
         console.log('startDate',web3.utils.hexToNumberString(startDate));
         await helper.advanceTime(86400 * 2);
-        var tbalance = await oracle.balanceOf(accounts[2])
-        console.log("tbalance", web3.utils.fromWei(tbalance, 'ether'))
+
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.approve(usingTellor.address, web3.utils.toWei('10', 'ether')).encodeABI()})      
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.theLazyCoon(userContract.address,web3.utils.toWei('10000', 'ether')).encodeABI()})
   
+        var vars1 = await oracle.getVariablesOnDeck()
+        console.log("reqId", web3.utils.hexToNumberString(vars1[0]))
+
         var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
         console.log("bal1",bal1)
         await usingTellor.requestDataWithEther(api2,"ETH-USD",1000,web3.utils.toWei("2","ether"),{from:accounts[2], value:web3.utils.toWei('2','ether')});
+        
+        var vars2 = await oracle.getVariablesOnDeck()
+        console.log("reqId", web3.utils.hexToNumberString(vars2[0]))
+
+        //Assert request 1 is now on deck???? why does it go from 0 to 2 
+        //is this the wrong function getVariablesOnDeck????????
+        //assert(vars2 == 1, "request 1 not on deck")
+
         var bal2 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
         console.log("bal2",bal2)
-        var tbalance1 = await oracle.balanceOf(accounts[2])
-        console.log("tbalance1", web3.utils.fromWei(tbalance1, 'ether'))
+        assert(bal1>bal2, "ether was not transferred")
         
         //No MINING
         //instead of mining, test submitminingsolution
@@ -185,7 +206,7 @@ contract('UsingTellor Tests', function(accounts) {
         assert(vars[1] == 1200, "Get last value should work")
     })
 
-    it("Test requestData", async function(){
+    it("Test AddTip", async function(){
     	var d = new Date()/1000;
     	console.log("d", d)
         var startDate = d - (d % 86400);     
@@ -193,15 +214,24 @@ contract('UsingTellor Tests', function(accounts) {
         await helper.advanceTime(86400 * 2);
         var tbalance = await oracle.balanceOf(accounts[2])
         console.log("tbalance", web3.utils.fromWei(tbalance, 'ether'))
-        console.log('usingtellor', usingTellor.address)
 
         await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(usingTellor.address, web3.utils.toWei('5', 'ether')).encodeABI()})      
-        
+        var vars1 = await oracle.getVariablesOnDeck()
+        console.log("reqId", web3.utils.hexToNumberString(vars1[0]))
+
         await usingTellor.addTip(1,web3.utils.toWei('1', 'ether'),{from:accounts[2]});
+
+        var vars2 = await oracle.getVariablesOnDeck()
+        console.log("reqId", web3.utils.hexToNumberString(vars2[0]))
+
+
+        //it's supposed to be 2 does the one on the before each not count....
+        //is this the wrong function getVariablesOnDeck????????
+        //assert(vars2 == 2, "request 1 not on deck")
 
         var tbalance1 = await oracle.balanceOf(accounts[2])
         console.log("tbalance1", web3.utils.fromWei(tbalance1, 'ether'))
-
+        assert(tbalance*1 > tbalance1*1, "Tributes not transferred")
         //No MINING
         //instead of mining, test submitminingsolution
         for(var i = 0;i <=4 ;i++){
@@ -222,33 +252,39 @@ contract('UsingTellor Tests', function(accounts) {
         console.log('startDate',web3.utils.hexToNumberString(startDate));
         await helper.advanceTime(86400 * 2);
 
-        var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
-        console.log("bal1",bal1)
-
-
         await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(usingTellor.address, web3.utils.toWei('5', 'ether')).encodeABI()})      
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.theLazyCoon(userContract.address,web3.utils.toWei('10000', 'ether')).encodeABI()})
   
-
+        
         await usingTellor.requestData(api2,"ETH-USD",1000,web3.utils.toWei('1', 'ether'),{from:accounts[2]});
-        //RequestId, Totaltips, and API
+        //this should be reqId =2
+        //getvariablesondeck returns RequestId, Totaltips, and API
         var vars1 = await oracle.getVariablesOnDeck()
-        //var vars1 = await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:master.methods.getVariablesOnDeck().encodeABI()})
         console.log("reqId", web3.utils.hexToNumberString(vars1[0]))
+
         await usingTellor.requestData(api,"BTC/USD",1000,web3.utils.toWei('2', 'ether'),{from:accounts[2]});
+        //this should be reqId = 1
 
         var vars2 = await oracle.getVariablesOnDeck()
-        //var vars2 = await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:master.methods.getVariablesOnDeck().encodeABI()})
         console.log("reqId", web3.utils.hexToNumberString(vars2[0]))
-        await usingTellor.addTipWithEther(1,{from:accounts[2], value:web3.utils.toWei('2','ether')});
+
+        var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
+        console.log("bal1",bal1)
+        
+        await usingTellor.addTipWithEther(2,{from:accounts[2], value:web3.utils.toWei('2','ether')});
+        //this should be reqId = 2
 
         var bal2 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
-        console.log("bal1",bal2)
+        console.log("bal2",bal2)
+
+        assert(bal1 > bal2, "eth transferred")
 
         var vars3 = await oracle.getVariablesOnDeck()
-        //var vars3 = await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:master.methods.getVariablesOnDeck().encodeABI()})
         console.log("reqId", web3.utils.hexToNumberString(vars3[0]))
 
+        //it's supposed to be 2 does the one on the before each not count....
+        //is this the wrong function getVariablesOnDeck????????
+        //assert(vars2 == 2, "request 1 not on deck")
 
         //No MINING
         //instead of mining, test submitminingsolution
@@ -265,8 +301,7 @@ contract('UsingTellor Tests', function(accounts) {
 
 
 /*
-addTip(uint256 _requestId, uint256 _tip)
-addTipWithEther(uint256 _requestId)
+
 setUserContract(address _userContract) 
 transferOwnership(address payable _newOwner)*/
 
