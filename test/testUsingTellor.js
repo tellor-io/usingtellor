@@ -33,277 +33,148 @@ contract('UsingTellor Tests', function(accounts) {
         master = await new web3.eth.Contract(masterAbi,oracle.address);
         oa = (web3.utils.toChecksumAddress(oracle.address))
         oracle2 = await new web3.eth.Contract(oracleAbi,oa);
-        //intitial data request:
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-        //??? is the initial request supposed to be zero????
         var varsid = await oracle.getVariablesOnDeck()
-        console.log("reqId", web3.utils.hexToNumberString(varsid[0]))
-
-        userContract = await UserContract.new(oa);//deploy userContract
-        //deploy user contract or your contract:
+        userContract = await UserContract.new(oa);
         usingTellor = await UsingTellor.new(userContract.address)
-        //set the userContract on the testContract or your contract:
         await usingTellor.setUserContract(userContract.address);
-        //This function gives Tellor tributes to acct 2--however this function does not 
-        //exist in the production/mainnet Tellor contract, it's a shortcut to avoid the
-        //mining functions for testing reads
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.theLazyCoon(accounts[2],web3.utils.toWei('10000', 'ether')).encodeABI()})
         newOracle = await Tellor.new();
         await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:master.methods.changeTellorContract(newOracle.address).encodeABI()})
         await userContract.setPrice(web3.utils.toWei("1","ether"))
     })
 
-    // it("Test getCurrentValue", async function(){
-    //     //No MINING
-    //     //instead of mining, test submitminingsolution
-    //     for(var i = 0;i <=4 ;i++){
-    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-    //      //console.log(i)
-    //      }
-    //     let vars = await usingTellor.getCurrentValue.call(1)
-    //     assert(vars[0] == true, "ifRetreive is not true")
-    //     assert(vars[1] == 1200, "Get last value should work")
-    // })
+    it("Test getCurrentValue", async function(){
+        for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         }
+        let vars = await usingTellor.getCurrentValue.call(1)
+        assert(vars[0] == true, "ifRetreive is not true")
+        assert(vars[1] == 1200, "Get last value should work")
+    })
 
-    // it("Test getFirstVerifiedDataAfter", async function(){
-    // 	var d = new Date()/1000;
-    // 	console.log("d", d)
-    //     var startDate = d - (d % 86400);     
-    //     console.log('startDate',web3.utils.hexToNumberString(startDate));
-    //     //No MINING
-    //     //instead of mining, test submitminingsolution
-    //     for(var i = 0;i <=4 ;i++){
-    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-    //      console.log(i)
-    //      }
-    //     await helper.advanceTime(86400 * 2);
-    //     let vars = await usingTellor.getFirstVerifiedDataAfter.call(1,startDate);
-    //     console.log("_timestampRetrieved", web3.utils.hexToNumberString(vars[2]))
-    //     assert(vars[0] == true, "ifRetreive is not true")
-    //     assert(vars[1] == 1200, "Get last value should work")
-    //     assert(vars[2] > startDate, "retreive time as greater than startDate")
-    // })
+    it("Test getFirstVerifiedDataAfter", async function(){
+    	var d = new Date()/1000;
+        var startDate = d - (d % 86400);     
+        for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         }
+        await helper.advanceTime(86400 * 2);
+        let vars = await usingTellor.getFirstVerifiedDataAfter.call(1,startDate);
+        assert(vars[0] == true, "ifRetreive is not true")
+        assert(vars[1] == 1200, "Get last value should work")
+        assert(vars[2] > startDate, "retreive time as greater than startDate")
+    })
 
-    // it("Test getAnyDataAfter", async function(){
-    // 	var d = new Date()/1000;
-    // 	console.log("d", d)
-    //     var startDate = d - (d % 86400);     
-    //     console.log('startDate',web3.utils.hexToNumberString(startDate));
-    //     await helper.advanceTime(86400 * 2);
-    //     //No MINING
-    //     //instead of mining, test submitminingsolution
-    //     for(var i = 0;i <=4 ;i++){
-    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-    //      console.log(i)
-    //      }
-    //     //await helper.advanceTime(86400 * 2);
-    //     let vars = await usingTellor.getAnyDataAfter.call(1,startDate);
-    //     console.log("_timestampRetrieved", web3.utils.hexToNumberString(vars[2]))
-    //     assert(vars[0] == true, "ifRetreive is not true")
-    //     assert(vars[1] == 1200, "Get last value should work")
-    //     assert(vars[2] > startDate, "retreive time as greater than startDate")
-    // })
+    it("Test getAnyDataAfter", async function(){
+    	var d = new Date()/1000;
+        var startDate = d - (d % 86400);     
+        await helper.advanceTime(86400 * 2);
+        for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         }
+        let vars = await usingTellor.getAnyDataAfter.call(1,startDate);
+        assert(vars[0] == true, "ifRetreive is not true")
+        assert(vars[1] == 1200, "Get last value should work")
+        assert(vars[2] > startDate, "retreive time as greater than startDate")
+    })
 
-    // it("Test getAnyDataAfter", async function(){
-    // 	var d = new Date()/1000;
-    // 	console.log("d", d)
-    //     var startDate = d - (d % 86400);     
-    //     console.log('startDate',web3.utils.hexToNumberString(startDate));
-    //     await helper.advanceTime(86400 * 2);
-    //     //No MINING
-    //     //instead of mining, test submitminingsolution
-    //     for(var i = 0;i <=4 ;i++){
-    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-    //      console.log(i)
-    //      }
-    //     //await helper.advanceTime(86400 * 2);
-    //     let vars = await usingTellor.getAnyDataAfter.call(1,startDate);
-    //     console.log("_timestampRetrieved", web3.utils.hexToNumberString(vars[2]))
-    //     assert(vars[0] == true, "ifRetreive is not true")
-    //     assert(vars[1] == 1200, "Get last value should work")
-    //     assert(vars[2] > startDate, "retreive time as greater than startDate")
-    // })
+    it("Test getAnyDataAfter", async function(){
+    	var d = new Date()/1000;
+        var startDate = d - (d % 86400);     
+        await helper.advanceTime(86400 * 2);
+        for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         }
+        let vars = await usingTellor.getAnyDataAfter.call(1,startDate);
+        assert(vars[0] == true, "ifRetreive is not true")
+        assert(vars[1] == 1200, "Get last value should work")
+        assert(vars[2] > startDate, "retreive time as greater than startDate")
+    })
 
     it("Test requestData", async function(){
     	var d = new Date()/1000;
-    	console.log("d", d)
         var startDate = d - (d % 86400);     
-        console.log('startDate',web3.utils.hexToNumberString(startDate));
         await helper.advanceTime(86400 * 2);
         var tbalance = await oracle.balanceOf(accounts[2])
-        console.log("tbalance", web3.utils.fromWei(tbalance, 'ether'))
-        console.log('usingtellor', usingTellor.address)
-
         await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(usingTellor.address, web3.utils.toWei('5', 'ether')).encodeABI()})      
-        
         var vars1 = await oracle.getVariablesOnDeck()
-        console.log("reqId before", web3.utils.hexToNumberString(vars1[0]))
-
+        await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
         await usingTellor.requestData(api2,"ETH-USD",1000,web3.utils.toWei('1', 'ether'),{from:accounts[2]});
-
         var vars2 = await oracle.getVariablesOnDeck()
-        console.log("reqId after", web3.utils.hexToNumberString(vars2[0]))
-
-        //Assert request 1 is now on deck???? why does it go from 0 to 2 
-        //is this the wrong function getVariablesOnDeck????????
-        //assert(vars2 == 1, "request 1 not on deck")
-
+        assert(vars2[0]== 2, "request 2 not on deck")
         var tbalance1 = await oracle.balanceOf(accounts[2])
-        console.log("tbalance1", web3.utils.fromWei(tbalance1, 'ether'))
-        
         assert(tbalance-tbalance1>0, "tributes not transferred")
-        //No MINING
-        //instead of mining, test submitminingsolution
         for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-         console.log(i)
          }
-        //await helper.advanceTime(86400 * 2);
         let vars = await usingTellor.getCurrentValue.call(1)
-        console.log("_timestampRetrieved", web3.utils.hexToNumberString(vars[2]))
         assert(vars[0] == true, "ifRetreive is not true")
         assert(vars[1] == 1200, "Get last value should work")
     })
 
     it("Test requestDataWithEther", async function(){
     	var d = new Date()/1000;
-    	console.log("d", d)
         var startDate = d - (d % 86400);     
-        console.log('startDate',web3.utils.hexToNumberString(startDate));
         await helper.advanceTime(86400 * 2);
-
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.approve(usingTellor.address, web3.utils.toWei('10', 'ether')).encodeABI()})      
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.theLazyCoon(userContract.address,web3.utils.toWei('10000', 'ether')).encodeABI()})
-  
         var vars1 = await oracle.getVariablesOnDeck()
-        console.log("reqId", web3.utils.hexToNumberString(vars1[0]))
-
         var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
-        console.log("bal1",bal1)
+        await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
         await usingTellor.requestDataWithEther(api2,"ETH-USD",1000,web3.utils.toWei("2","ether"),{from:accounts[2], value:web3.utils.toWei('2','ether')});
-        
         var vars2 = await oracle.getVariablesOnDeck()
-        console.log("reqId", web3.utils.hexToNumberString(vars2[0]))
-
-        //Assert request 1 is now on deck???? why does it go from 0 to 2 
-        //is this the wrong function getVariablesOnDeck????????
-        //assert(vars2 == 1, "request 1 not on deck")
-
+        assert(vars2[0] == 2, "request 2 not on deck")
         var bal2 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
-        console.log("bal2",bal2)
         assert(bal1>bal2, "ether was not transferred")
-        
-        //No MINING
-        //instead of mining, test submitminingsolution
         for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-         console.log(i)
          }
-        //await helper.advanceTime(86400 * 2);
         let vars = await usingTellor.getCurrentValue.call(1)
-        console.log("_timestampRetrieved", web3.utils.hexToNumberString(vars[2]))
         assert(vars[0] == true, "ifRetreive is not true")
         assert(vars[1] == 1200, "Get last value should work")
     })
-
     it("Test AddTip", async function(){
     	var d = new Date()/1000;
-    	console.log("d", d)
         var startDate = d - (d % 86400);     
-        console.log('startDate',web3.utils.hexToNumberString(startDate));
         await helper.advanceTime(86400 * 2);
         var tbalance = await oracle.balanceOf(accounts[2])
-        console.log("tbalance", web3.utils.fromWei(tbalance, 'ether'))
-
         await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(usingTellor.address, web3.utils.toWei('5', 'ether')).encodeABI()})      
         var vars1 = await oracle.getVariablesOnDeck()
-        console.log("reqId", web3.utils.hexToNumberString(vars1[0]))
-
         await usingTellor.addTip(1,web3.utils.toWei('1', 'ether'),{from:accounts[2]});
-
         var vars2 = await oracle.getVariablesOnDeck()
-        console.log("reqId", web3.utils.hexToNumberString(vars2[0]))
-
-
-        //it's supposed to be 2 does the one on the before each not count....
-        //is this the wrong function getVariablesOnDeck????????
-        //assert(vars2 == 2, "request 1 not on deck")
-
+        assert(vars2[0] == 1, "request 1 not on deck")
         var tbalance1 = await oracle.balanceOf(accounts[2])
-        console.log("tbalance1", web3.utils.fromWei(tbalance1, 'ether'))
         assert(tbalance*1 > tbalance1*1, "Tributes not transferred")
-        //No MINING
-        //instead of mining, test submitminingsolution
         for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-         console.log(i)
          }
-        //await helper.advanceTime(86400 * 2);
         let vars = await usingTellor.getCurrentValue.call(1)
-        console.log("_timestampRetrieved", web3.utils.hexToNumberString(vars[2]))
         assert(vars[0] == true, "ifRetreive is not true")
         assert(vars[1] == 1200, "Get last value should work")
     })
 
     it("Test addTipWithEther", async function(){
     	var d = new Date()/1000;
-    	console.log("d", d)
         var startDate = d - (d % 86400);     
-        console.log('startDate',web3.utils.hexToNumberString(startDate));
         await helper.advanceTime(86400 * 2);
-
         await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(usingTellor.address, web3.utils.toWei('5', 'ether')).encodeABI()})      
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.theLazyCoon(userContract.address,web3.utils.toWei('10000', 'ether')).encodeABI()})
-  
-        
         await usingTellor.requestData(api2,"ETH-USD",1000,web3.utils.toWei('1', 'ether'),{from:accounts[2]});
-        //this should be reqId =2
-        //getvariablesondeck returns RequestId, Totaltips, and API
         var vars1 = await oracle.getVariablesOnDeck()
-        console.log("reqId", web3.utils.hexToNumberString(vars1[0]))
-
         await usingTellor.requestData(api,"BTC/USD",1000,web3.utils.toWei('2', 'ether'),{from:accounts[2]});
-        //this should be reqId = 1
-
         var vars2 = await oracle.getVariablesOnDeck()
-        console.log("reqId", web3.utils.hexToNumberString(vars2[0]))
-
         var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
-        console.log("bal1",bal1)
-        
         await usingTellor.addTipWithEther(2,{from:accounts[2], value:web3.utils.toWei('2','ether')});
-        //this should be reqId = 2
-
         var bal2 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
-        console.log("bal2",bal2)
-
         assert(bal1 > bal2, "eth transferred")
-
         var vars3 = await oracle.getVariablesOnDeck()
-        console.log("reqId", web3.utils.hexToNumberString(vars3[0]))
-
-        //it's supposed to be 2 does the one on the before each not count....
-        //is this the wrong function getVariablesOnDeck????????
-        //assert(vars2 == 2, "request 1 not on deck")
-
-        //No MINING
-        //instead of mining, test submitminingsolution
+        assert(vars3[0] == 2, "request 2 not on deck")
         for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-         console.log(i)
          }
-        //await helper.advanceTime(86400 * 2);
         let vars = await usingTellor.getCurrentValue.call(1)
-        console.log("_timestampRetrieved", web3.utils.hexToNumberString(vars[2]))
         assert(vars[0] == true, "ifRetreive is not true")
         assert(vars[1] == 1200, "Get last value should work")
     })
-
-
-/*
-
-setUserContract(address _userContract) 
-transferOwnership(address payable _newOwner)*/
-
-
  });

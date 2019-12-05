@@ -80,7 +80,7 @@ contract UserContract {
     * @param _apiId to tip
     */
     function addTipWithEther(uint256 _apiId) external payable {
-        uint _amount = (msg.value / tributePrice);
+        uint _amount = (msg.value / tributePrice)*1e18;
         require(_tellorm.balanceOf(address(this)) >= _amount, "Balance is lower than tip amount");
         _tellor.addTip(_apiId, _amount);
     }
