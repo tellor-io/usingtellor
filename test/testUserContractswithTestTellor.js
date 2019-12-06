@@ -247,7 +247,7 @@ contract('UserContract Tests', function(accounts) {
          }
       await userContract.setPrice(web3.utils.toWei("1","ether"));
        await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.transfer(userContract.address,web3.utils.toWei("1","ether")).encodeABI()})
-      await userContract.requestDataWithEther(api2,"ETH-USD",1000,web3.utils.toWei("1","ether"),{from:accounts[1], value:web3.utils.toWei('1','ether')});
+      await userContract.requestDataWithEther(api2,"ETH-USD",1000,{from:accounts[1], value:web3.utils.toWei('1','ether')});
       for(var j = 0;j <=4 ;j++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[j],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",2, 3000).encodeABI()})
          }

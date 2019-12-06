@@ -122,7 +122,7 @@ contract('UsingTellor Tests', function(accounts) {
         var vars1 = await oracle.getVariablesOnDeck()
         var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-        await usingTellor.requestDataWithEther(api2,"ETH-USD",1000,web3.utils.toWei("2","ether"),{from:accounts[2], value:web3.utils.toWei('2','ether')});
+        await usingTellor.requestDataWithEther(api2,"ETH-USD",1000,{from:accounts[2], value:web3.utils.toWei('2','ether')});
         var vars2 = await oracle.getVariablesOnDeck()
         assert(vars2[0] == 2, "request 2 not on deck")
         var bal2 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[2]), 'ether');
