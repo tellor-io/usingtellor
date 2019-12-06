@@ -154,25 +154,25 @@
       "type": "function"
     }
   ],
-  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":true,\"inputs\":[],\"name\":\"getVariablesOnDeck\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"},{\"name\":\"\",\"type\":\"uint256\"},{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_requestId\",\"type\":\"uint256\"}],\"name\":\"getNewValueCountbyRequestId\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"},{\"name\":\"_blockNumber\",\"type\":\"uint256\"}],\"name\":\"balanceOfAt\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_requestID\",\"type\":\"uint256\"},{\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"getTimestampbyRequestIDandIndex\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_requestId\",\"type\":\"uint256\"},{\"name\":\"_timestamp\",\"type\":\"uint256\"}],\"name\":\"retrieveData\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"},{\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"allowedToTrade\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"Oracle contract with all tellor getter functions. The logic for the functions on this contract \\r is saved on the TellorGettersLibrary, TellorTransfer, TellorGettersLibrary, and TellorStake\\r\",\"methods\":{\"allowedToTrade(address,uint256)\":{\"details\":\"This function returns whether or not a given user is allowed to trade a given amount  \\r\",\"params\":{\"_amount\":\"uint of amount\\r\",\"_user\":\"address\\r\"},\"return\":\"true if the user is alloed to trade the amount specified\\r\"},\"balanceOf(address)\":{\"details\":\"Gets balance of owner specified\\r\",\"params\":{\"_user\":\"is the owner address used to look up the balance\\r\"},\"return\":\"Returns the balance associated with the passed in _user\\r\"},\"balanceOfAt(address,uint256)\":{\"details\":\"Queries the balance of _user at a specific _blockNumber\\r\",\"params\":{\"_blockNumber\":\"The block number when the balance is queried\\r\",\"_user\":\"The address from which the balance will be retrieved\\r\"},\"return\":\"The balance at _blockNumber\\r\"},\"getNewValueCountbyRequestId(uint256)\":{\"details\":\"Counts the number of values that have been submited for the request \\r if called for the currentRequest being mined it can tell you how many miners have submitted a value for that\\r request so far\\r\",\"params\":{\"_requestId\":\"the requestId to look up\\r\"},\"return\":\"uint count of the number of values received for the requestId\\r\"},\"getTimestampbyRequestIDandIndex(uint256,uint256)\":{\"details\":\"Gets the timestamp for the value based on their index\\r\",\"params\":{\"_index\":\"is the value index to look up\\r\",\"_requestID\":\"is the requestId to look up\\r\"},\"return\":\"uint timestamp\\r\"},\"getVariablesOnDeck()\":{\"details\":\"Getter function for next requestId on queue/request with highest payout at time the function is called\\r\",\"return\":\"onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string\\r\"},\"retrieveData(uint256,uint256)\":{\"details\":\"Retreive value from oracle based on timestamp\\r\",\"params\":{\"_requestId\":\"being requested\\r\",\"_timestamp\":\"to retreive data/value from\\r\"},\"return\":\"value for timestamp submitted\\r\"}},\"title\":\"Tellor Getters\\r\"},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/company/code/usingTellor/contracts/testContracts/TellorGetters.sol\":\"TellorGetters\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/company/code/usingTellor/contracts/libraries/SafeMath.sol\":{\"keccak256\":\"0x8a70742b1e1ac65d3688b2cec1e38196b2de488a18fe4ba66d241414f9728927\",\"urls\":[\"bzzr://da7ee50784484474f0092241847f2d717450ed12bbaeb4040f47628afee80cfb\"]},\"/C/company/code/usingTellor/contracts/libraries/TellorGettersLibrary.sol\":{\"keccak256\":\"0xd21546214e7d31401d1a96398857ec826bbb59cd0c1fe020d62e79a7aa7d58f9\",\"urls\":[\"bzzr://51b57efeef3a3c5da4efd1b2b10652a444cf1070464d529525875a8670a16675\"]},\"/C/company/code/usingTellor/contracts/libraries/TellorStorage.sol\":{\"keccak256\":\"0x3517d1cecb0e449924d673e3fe3bd681bd151973f920d9c716f3baf6499826c7\",\"urls\":[\"bzzr://af89a9f762f67c69fba2cdc517311981663f72e3dd8b597c27aa0d47a4f8560b\"]},\"/C/company/code/usingTellor/contracts/libraries/TellorTransfer.sol\":{\"keccak256\":\"0xed22cf575e10d9794ca7efe160cc360783e00127361a391bd68aa397790394e0\",\"urls\":[\"bzzr://e87dbef3d01b6b847726ec949fb49d4df18cfbc2902e4db6687361c933970a90\"]},\"/C/company/code/usingTellor/contracts/libraries/Utilities.sol\":{\"keccak256\":\"0x70653719f7deda44ce81106e687ad70e56c09c70146e8e70d7ec732f83ba0d6a\",\"urls\":[\"bzzr://0b7a6090a7dd244e28ee3ca27043a88b501854eb17eadc97f1551ff84e2c7202\"]},\"/C/company/code/usingTellor/contracts/testContracts/TellorGetters.sol\":{\"keccak256\":\"0x79a2ea2e2a50fd9e4f9ad7cc9830dff6337f3ab336bc42815fa6b6ac5c4bd2ab\",\"urls\":[\"bzzr://a3ab1b55dd6c3d9bb486ddf487297218cef15f05bd993f7ed181c6d98f667299\"]}},\"version\":1}",
-  "bytecode": "0x608060405234801561001057600080fd5b506108c2806100206000396000f3fe608060405234801561001057600080fd5b506004361061007d5760003560e01c806370a082311161005b57806370a08231146101b757806377fbb6631461020f57806393fa49151461025b578063999cf26c146102a75761007d565b806319e8e03b1461008257806346eee1c4146101135780634ee2cd7e14610155575b600080fd5b61008a61030d565b6040518084815260200183815260200180602001828103825283818151815260200191508051906020019080838360005b838110156100d65780820151818401526020810190506100bb565b50505050905090810190601f1680156101035780820380516001836020036101000a031916815260200191505b5094505050505060405180910390f35b61013f6004803603602081101561012957600080fd5b8101908080359060200190929190505050610327565b6040518082815260200191505060405180910390f35b6101a16004803603604081101561016b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919080359060200190929190505050610344565b6040518082815260200191505060405180910390f35b6101f9600480360360208110156101cd57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610416565b6040518082815260200191505060405180910390f35b6102456004803603604081101561022557600080fd5b8101908080359060200190929190803590602001909291905050506104df565b6040518082815260200191505060405180910390f35b6102916004803603604081101561027157600080fd5b8101908080359060200190929190803590602001909291905050506104ff565b6040518082815260200191505060405180910390f35b6102f3600480360360408110156102bd57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291908035906020019092919050505061051f565b604051808215151515815260200191505060405180910390f35b600080606061031c60006105f1565b925092509250909192565b600061033d82600061072590919063ffffffff16565b9050919050565b60008073__TellorTransfer________________________633f48b1ff909185856040518463ffffffff1660e01b8152600401808481526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060206040518083038186803b1580156103d357600080fd5b505af41580156103e7573d6000803e3d6000fd5b505050506040513d60208110156103fd57600080fd5b8101908080519060200190929190505050905092915050565b60008073__TellorTransfer________________________6393b182b39091846040518363ffffffff1660e01b8152600401808381526020018273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019250505060206040518083038186803b15801561049d57600080fd5b505af41580156104b1573d6000803e3d6000fd5b505050506040513d60208110156104c757600080fd5b81019080805190602001909291905050509050919050565b60006104f78383600061074b9092919063ffffffff16565b905092915050565b6000610517838360006107849092919063ffffffff16565b905092915050565b60008073__TellorTransfer________________________63acaab9e2909185856040518463ffffffff1660e01b8152600401808481526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060206040518083038186803b1580156105ae57600080fd5b505af41580156105c2573d6000803e3d6000fd5b505050506040513d60208110156105d857600080fd5b8101908080519060200190929190505050905092915050565b60008060606000610601856107b9565b905080856048016000838152602001908152602001600020600401600060405180807f746f74616c54697000000000000000000000000000000000000000000000000081525060080190506040518091039020815260200190815260200160002054866048016000848152602001908152602001600020600001808054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156107105780601f106106e557610100808354040283529160200191610710565b820191906000526020600020905b8154815290600101906020018083116106f357829003601f168201915b50505050509050935093509350509193909250565b600082604801600083815260200190815260200160002060030180549050905092915050565b6000836048016000848152602001908152602001600020600301828154811061077057fe5b906000526020600020015490509392505050565b600083604801600084815260200190815260200160002060060160008381526020019081526020016000205490509392505050565b6000806000610806846001016033806020026040519081016040528092919082603380156107fc576020028201915b8154815260200190600101908083116107e8575b505050505061082d565b80925081935050508360430160008281526020019081526020016000205492505050919050565b6000808260016033811061083d57fe5b602002015191506000600190505b6033811015610890578284826033811061086157fe5b602002015111156108835783816033811061087857fe5b602002015192508091505b808060010191505061084b565b5091509156fea165627a7a72305820ad2f637adcf4a1778db5a73fdcdd92a1c63cb25437761dedb4cfc0d1abd038740029",
-  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061007d5760003560e01c806370a082311161005b57806370a08231146101b757806377fbb6631461020f57806393fa49151461025b578063999cf26c146102a75761007d565b806319e8e03b1461008257806346eee1c4146101135780634ee2cd7e14610155575b600080fd5b61008a61030d565b6040518084815260200183815260200180602001828103825283818151815260200191508051906020019080838360005b838110156100d65780820151818401526020810190506100bb565b50505050905090810190601f1680156101035780820380516001836020036101000a031916815260200191505b5094505050505060405180910390f35b61013f6004803603602081101561012957600080fd5b8101908080359060200190929190505050610327565b6040518082815260200191505060405180910390f35b6101a16004803603604081101561016b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919080359060200190929190505050610344565b6040518082815260200191505060405180910390f35b6101f9600480360360208110156101cd57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610416565b6040518082815260200191505060405180910390f35b6102456004803603604081101561022557600080fd5b8101908080359060200190929190803590602001909291905050506104df565b6040518082815260200191505060405180910390f35b6102916004803603604081101561027157600080fd5b8101908080359060200190929190803590602001909291905050506104ff565b6040518082815260200191505060405180910390f35b6102f3600480360360408110156102bd57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291908035906020019092919050505061051f565b604051808215151515815260200191505060405180910390f35b600080606061031c60006105f1565b925092509250909192565b600061033d82600061072590919063ffffffff16565b9050919050565b60008073__TellorTransfer________________________633f48b1ff909185856040518463ffffffff1660e01b8152600401808481526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060206040518083038186803b1580156103d357600080fd5b505af41580156103e7573d6000803e3d6000fd5b505050506040513d60208110156103fd57600080fd5b8101908080519060200190929190505050905092915050565b60008073__TellorTransfer________________________6393b182b39091846040518363ffffffff1660e01b8152600401808381526020018273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019250505060206040518083038186803b15801561049d57600080fd5b505af41580156104b1573d6000803e3d6000fd5b505050506040513d60208110156104c757600080fd5b81019080805190602001909291905050509050919050565b60006104f78383600061074b9092919063ffffffff16565b905092915050565b6000610517838360006107849092919063ffffffff16565b905092915050565b60008073__TellorTransfer________________________63acaab9e2909185856040518463ffffffff1660e01b8152600401808481526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060206040518083038186803b1580156105ae57600080fd5b505af41580156105c2573d6000803e3d6000fd5b505050506040513d60208110156105d857600080fd5b8101908080519060200190929190505050905092915050565b60008060606000610601856107b9565b905080856048016000838152602001908152602001600020600401600060405180807f746f74616c54697000000000000000000000000000000000000000000000000081525060080190506040518091039020815260200190815260200160002054866048016000848152602001908152602001600020600001808054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156107105780601f106106e557610100808354040283529160200191610710565b820191906000526020600020905b8154815290600101906020018083116106f357829003601f168201915b50505050509050935093509350509193909250565b600082604801600083815260200190815260200160002060030180549050905092915050565b6000836048016000848152602001908152602001600020600301828154811061077057fe5b906000526020600020015490509392505050565b600083604801600084815260200190815260200160002060060160008381526020019081526020016000205490509392505050565b6000806000610806846001016033806020026040519081016040528092919082603380156107fc576020028201915b8154815260200190600101908083116107e8575b505050505061082d565b80925081935050508360430160008281526020019081526020016000205492505050919050565b6000808260016033811061083d57fe5b602002015191506000600190505b6033811015610890578284826033811061086157fe5b602002015111156108835783816033811061087857fe5b602002015192508091505b808060010191505061084b565b5091509156fea165627a7a72305820ad2f637adcf4a1778db5a73fdcdd92a1c63cb25437761dedb4cfc0d1abd038740029",
+  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":true,\"inputs\":[],\"name\":\"getVariablesOnDeck\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"},{\"name\":\"\",\"type\":\"uint256\"},{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_requestId\",\"type\":\"uint256\"}],\"name\":\"getNewValueCountbyRequestId\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"},{\"name\":\"_blockNumber\",\"type\":\"uint256\"}],\"name\":\"balanceOfAt\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_requestID\",\"type\":\"uint256\"},{\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"getTimestampbyRequestIDandIndex\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_requestId\",\"type\":\"uint256\"},{\"name\":\"_timestamp\",\"type\":\"uint256\"}],\"name\":\"retrieveData\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"},{\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"allowedToTrade\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"Oracle contract with all tellor getter functions. The logic for the functions on this contract \\r is saved on the TellorGettersLibrary, TellorTransfer, TellorGettersLibrary, and TellorStake\\r\",\"methods\":{\"allowedToTrade(address,uint256)\":{\"details\":\"This function returns whether or not a given user is allowed to trade a given amount  \\r\",\"params\":{\"_amount\":\"uint of amount\\r\",\"_user\":\"address\\r\"},\"return\":\"true if the user is alloed to trade the amount specified\\r\"},\"balanceOf(address)\":{\"details\":\"Gets balance of owner specified\\r\",\"params\":{\"_user\":\"is the owner address used to look up the balance\\r\"},\"return\":\"Returns the balance associated with the passed in _user\\r\"},\"balanceOfAt(address,uint256)\":{\"details\":\"Queries the balance of _user at a specific _blockNumber\\r\",\"params\":{\"_blockNumber\":\"The block number when the balance is queried\\r\",\"_user\":\"The address from which the balance will be retrieved\\r\"},\"return\":\"The balance at _blockNumber\\r\"},\"getNewValueCountbyRequestId(uint256)\":{\"details\":\"Counts the number of values that have been submited for the request \\r if called for the currentRequest being mined it can tell you how many miners have submitted a value for that\\r request so far\\r\",\"params\":{\"_requestId\":\"the requestId to look up\\r\"},\"return\":\"uint count of the number of values received for the requestId\\r\"},\"getTimestampbyRequestIDandIndex(uint256,uint256)\":{\"details\":\"Gets the timestamp for the value based on their index\\r\",\"params\":{\"_index\":\"is the value index to look up\\r\",\"_requestID\":\"is the requestId to look up\\r\"},\"return\":\"uint timestamp\\r\"},\"getVariablesOnDeck()\":{\"details\":\"Getter function for next requestId on queue/request with highest payout at time the function is called\\r\",\"return\":\"onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string\\r\"},\"retrieveData(uint256,uint256)\":{\"details\":\"Retreive value from oracle based on timestamp\\r\",\"params\":{\"_requestId\":\"being requested\\r\",\"_timestamp\":\"to retreive data/value from\\r\"},\"return\":\"value for timestamp submitted\\r\"}},\"title\":\"Tellor Getters\\r\"},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/testContracts/TellorGetters.sol\":\"TellorGetters\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/SafeMath.sol\":{\"keccak256\":\"0x8a70742b1e1ac65d3688b2cec1e38196b2de488a18fe4ba66d241414f9728927\",\"urls\":[\"bzzr://da7ee50784484474f0092241847f2d717450ed12bbaeb4040f47628afee80cfb\"]},\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorGettersLibrary.sol\":{\"keccak256\":\"0xd21546214e7d31401d1a96398857ec826bbb59cd0c1fe020d62e79a7aa7d58f9\",\"urls\":[\"bzzr://51b57efeef3a3c5da4efd1b2b10652a444cf1070464d529525875a8670a16675\"]},\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorStorage.sol\":{\"keccak256\":\"0x3517d1cecb0e449924d673e3fe3bd681bd151973f920d9c716f3baf6499826c7\",\"urls\":[\"bzzr://af89a9f762f67c69fba2cdc517311981663f72e3dd8b597c27aa0d47a4f8560b\"]},\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorTransfer.sol\":{\"keccak256\":\"0xed22cf575e10d9794ca7efe160cc360783e00127361a391bd68aa397790394e0\",\"urls\":[\"bzzr://e87dbef3d01b6b847726ec949fb49d4df18cfbc2902e4db6687361c933970a90\"]},\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/Utilities.sol\":{\"keccak256\":\"0x70653719f7deda44ce81106e687ad70e56c09c70146e8e70d7ec732f83ba0d6a\",\"urls\":[\"bzzr://0b7a6090a7dd244e28ee3ca27043a88b501854eb17eadc97f1551ff84e2c7202\"]},\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/testContracts/TellorGetters.sol\":{\"keccak256\":\"0x79a2ea2e2a50fd9e4f9ad7cc9830dff6337f3ab336bc42815fa6b6ac5c4bd2ab\",\"urls\":[\"bzzr://a3ab1b55dd6c3d9bb486ddf487297218cef15f05bd993f7ed181c6d98f667299\"]}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b506108c2806100206000396000f3fe608060405234801561001057600080fd5b506004361061007d5760003560e01c806370a082311161005b57806370a08231146101b757806377fbb6631461020f57806393fa49151461025b578063999cf26c146102a75761007d565b806319e8e03b1461008257806346eee1c4146101135780634ee2cd7e14610155575b600080fd5b61008a61030d565b6040518084815260200183815260200180602001828103825283818151815260200191508051906020019080838360005b838110156100d65780820151818401526020810190506100bb565b50505050905090810190601f1680156101035780820380516001836020036101000a031916815260200191505b5094505050505060405180910390f35b61013f6004803603602081101561012957600080fd5b8101908080359060200190929190505050610327565b6040518082815260200191505060405180910390f35b6101a16004803603604081101561016b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919080359060200190929190505050610344565b6040518082815260200191505060405180910390f35b6101f9600480360360208110156101cd57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610416565b6040518082815260200191505060405180910390f35b6102456004803603604081101561022557600080fd5b8101908080359060200190929190803590602001909291905050506104df565b6040518082815260200191505060405180910390f35b6102916004803603604081101561027157600080fd5b8101908080359060200190929190803590602001909291905050506104ff565b6040518082815260200191505060405180910390f35b6102f3600480360360408110156102bd57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291908035906020019092919050505061051f565b604051808215151515815260200191505060405180910390f35b600080606061031c60006105f1565b925092509250909192565b600061033d82600061072590919063ffffffff16565b9050919050565b60008073__TellorTransfer________________________633f48b1ff909185856040518463ffffffff1660e01b8152600401808481526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060206040518083038186803b1580156103d357600080fd5b505af41580156103e7573d6000803e3d6000fd5b505050506040513d60208110156103fd57600080fd5b8101908080519060200190929190505050905092915050565b60008073__TellorTransfer________________________6393b182b39091846040518363ffffffff1660e01b8152600401808381526020018273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019250505060206040518083038186803b15801561049d57600080fd5b505af41580156104b1573d6000803e3d6000fd5b505050506040513d60208110156104c757600080fd5b81019080805190602001909291905050509050919050565b60006104f78383600061074b9092919063ffffffff16565b905092915050565b6000610517838360006107849092919063ffffffff16565b905092915050565b60008073__TellorTransfer________________________63acaab9e2909185856040518463ffffffff1660e01b8152600401808481526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060206040518083038186803b1580156105ae57600080fd5b505af41580156105c2573d6000803e3d6000fd5b505050506040513d60208110156105d857600080fd5b8101908080519060200190929190505050905092915050565b60008060606000610601856107b9565b905080856048016000838152602001908152602001600020600401600060405180807f746f74616c54697000000000000000000000000000000000000000000000000081525060080190506040518091039020815260200190815260200160002054866048016000848152602001908152602001600020600001808054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156107105780601f106106e557610100808354040283529160200191610710565b820191906000526020600020905b8154815290600101906020018083116106f357829003601f168201915b50505050509050935093509350509193909250565b600082604801600083815260200190815260200160002060030180549050905092915050565b6000836048016000848152602001908152602001600020600301828154811061077057fe5b906000526020600020015490509392505050565b600083604801600084815260200190815260200160002060060160008381526020019081526020016000205490509392505050565b6000806000610806846001016033806020026040519081016040528092919082603380156107fc576020028201915b8154815260200190600101908083116107e8575b505050505061082d565b80925081935050508360430160008281526020019081526020016000205492505050919050565b6000808260016033811061083d57fe5b602002015191506000600190505b6033811015610890578284826033811061086157fe5b602002015111156108835783816033811061087857fe5b602002015192508091505b808060010191505061084b565b5091509156fea165627a7a72305820928e2f3a0145e98b4a15bec57fb532c7b84f72bd3769bcbb7ff2d68522b849fe0029",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061007d5760003560e01c806370a082311161005b57806370a08231146101b757806377fbb6631461020f57806393fa49151461025b578063999cf26c146102a75761007d565b806319e8e03b1461008257806346eee1c4146101135780634ee2cd7e14610155575b600080fd5b61008a61030d565b6040518084815260200183815260200180602001828103825283818151815260200191508051906020019080838360005b838110156100d65780820151818401526020810190506100bb565b50505050905090810190601f1680156101035780820380516001836020036101000a031916815260200191505b5094505050505060405180910390f35b61013f6004803603602081101561012957600080fd5b8101908080359060200190929190505050610327565b6040518082815260200191505060405180910390f35b6101a16004803603604081101561016b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919080359060200190929190505050610344565b6040518082815260200191505060405180910390f35b6101f9600480360360208110156101cd57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610416565b6040518082815260200191505060405180910390f35b6102456004803603604081101561022557600080fd5b8101908080359060200190929190803590602001909291905050506104df565b6040518082815260200191505060405180910390f35b6102916004803603604081101561027157600080fd5b8101908080359060200190929190803590602001909291905050506104ff565b6040518082815260200191505060405180910390f35b6102f3600480360360408110156102bd57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291908035906020019092919050505061051f565b604051808215151515815260200191505060405180910390f35b600080606061031c60006105f1565b925092509250909192565b600061033d82600061072590919063ffffffff16565b9050919050565b60008073__TellorTransfer________________________633f48b1ff909185856040518463ffffffff1660e01b8152600401808481526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060206040518083038186803b1580156103d357600080fd5b505af41580156103e7573d6000803e3d6000fd5b505050506040513d60208110156103fd57600080fd5b8101908080519060200190929190505050905092915050565b60008073__TellorTransfer________________________6393b182b39091846040518363ffffffff1660e01b8152600401808381526020018273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019250505060206040518083038186803b15801561049d57600080fd5b505af41580156104b1573d6000803e3d6000fd5b505050506040513d60208110156104c757600080fd5b81019080805190602001909291905050509050919050565b60006104f78383600061074b9092919063ffffffff16565b905092915050565b6000610517838360006107849092919063ffffffff16565b905092915050565b60008073__TellorTransfer________________________63acaab9e2909185856040518463ffffffff1660e01b8152600401808481526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001828152602001935050505060206040518083038186803b1580156105ae57600080fd5b505af41580156105c2573d6000803e3d6000fd5b505050506040513d60208110156105d857600080fd5b8101908080519060200190929190505050905092915050565b60008060606000610601856107b9565b905080856048016000838152602001908152602001600020600401600060405180807f746f74616c54697000000000000000000000000000000000000000000000000081525060080190506040518091039020815260200190815260200160002054866048016000848152602001908152602001600020600001808054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156107105780601f106106e557610100808354040283529160200191610710565b820191906000526020600020905b8154815290600101906020018083116106f357829003601f168201915b50505050509050935093509350509193909250565b600082604801600083815260200190815260200160002060030180549050905092915050565b6000836048016000848152602001908152602001600020600301828154811061077057fe5b906000526020600020015490509392505050565b600083604801600084815260200190815260200160002060060160008381526020019081526020016000205490509392505050565b6000806000610806846001016033806020026040519081016040528092919082603380156107fc576020028201915b8154815260200190600101908083116107e8575b505050505061082d565b80925081935050508360430160008281526020019081526020016000205492505050919050565b6000808260016033811061083d57fe5b602002015191506000600190505b6033811015610890578284826033811061086157fe5b602002015111156108835783816033811061087857fe5b602002015192508091505b808060010191505061084b565b5091509156fea165627a7a72305820928e2f3a0145e98b4a15bec57fb532c7b84f72bd3769bcbb7ff2d68522b849fe0029",
   "sourceMap": "471:14678:12:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;471:14678:12;;;;;;;",
   "deployedSourceMap": "471:14678:12:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;471:14678:12;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;13937:134;;;:::i;:::-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;23:1:-1;8:100;33:3;30:1;27:10;8:100;;;99:1;94:3;90:11;84:18;80:1;75:3;71:11;64:39;52:2;49:1;45:10;40:15;;8:100;;;12:14;13937:134:12;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;8513:153;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;8513:153:12;;;;;;;;;;;;;;;;;:::i;:::-;;;;;;;;;;;;;;;;;;;2124:148;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;2124:148:12;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;;;;;;;;;;;;;;;;;;1730:113;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;1730:113:12;;;;;;;;;;;;;;;;;;;:::i;:::-;;;;;;;;;;;;;;;;;;;12778:181;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;12778:181:12;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;;;;;;;;;;;;;;;;;;14761:153;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;14761:153:12;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;;;;;;;;;;;;;;;;;;1380:141;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;1380:141:12;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;;;;;;;;;;;;;;;;;;;;;;13937:134;13989:4;13995;14000:13;14036:27;:6;:25;:27::i;:::-;14029:34;;;;;;13937:134;;;:::o;8513:153::-;8589:4;8612:46;8647:10;8612:6;:34;;:46;;;;:::i;:::-;8605:53;;8513:153;;;:::o;2124:148::-;2202:4;2226:6;:18;;;;2245:5;2251:12;2226:38;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;2226:38:12;;;;8:9:-1;5:2;;;45:16;42:1;39;24:38;77:16;74:1;67:27;5:2;2226:38:12;;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;2226:38:12;;;;;;;;;;;;;;;;2219:45;;2124:148;;;;:::o;1730:113::-;1787:4;1812:6;:16;;;;1829:5;1812:23;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;1812:23:12;;;;8:9:-1;5:2;;;45:16;42:1;39;24:38;77:16;74:1;67:27;5:2;1812:23:12;;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;1812:23:12;;;;;;;;;;;;;;;;1805:30;;1730:113;;;:::o;12778:181::-;12871:4;12894:57;12933:10;12944:6;12894;:38;;:57;;;;;:::i;:::-;12887:64;;12778:181;;;;:::o;14761:153::-;14840:4;14864:42;14884:10;14895;14864:6;:19;;:42;;;;;:::i;:::-;14857:49;;14761:153;;;;:::o;1380:141::-;1454:4;1477:6;:21;;;;1499:5;1505:7;1477:36;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;1477:36:12;;;;8:9:-1;5:2;;;45:16;42:1;39;24:38;77:16;74:1;67:27;5:2;1477:36:12;;;;;;;13:2:-1;8:3;5:11;2:2;;;29:1;26;19:12;2:2;1477:36:12;;;;;;;;;;;;;;;;1470:43;;1380:141;;;;:::o;16144:331:6:-;16242:4;16248;16253:13;16279:17;16299:21;16315:4;16299:15;:21::i;:::-;16279:41;;16339:12;16352:4;:19;;:33;16372:12;16352:33;;;;;;;;;;;:45;;:68;16398:21;;;;;;;;;;;;;;;;;;;16352:68;;;;;;;;;;;;16421:4;:19;;:33;16441:12;16421:33;;;;;;;;;;;:45;;16331:136;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;16144:331;;;;;:::o;9826:211::-;9950:4;9973;:19;;:31;9993:10;9973:31;;;;;;;;;;;:49;;:56;;;;9966:63;;9826:211;;;;:::o;14891:228::-;15031:4;15054;:19;;:31;15074:10;15054:31;;;;;;;;;;;:49;;15104:6;15054:57;;;;;;;;;;;;;;;;15047:64;;14891:228;;;;;:::o;17787:214::-;17914:4;17938;:19;;:31;17958:10;17938:31;;;;;;;;;;;:43;;:55;17982:10;17938:55;;;;;;;;;;;;17931:62;;17787:214;;;;;:::o;16723:297::-;16818:15;16849:9;16873:11;16915:31;16932:4;:13;;16915:31;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:16;:31::i;:::-;16899:47;;;;;;;;16975:4;:29;;:37;17005:6;16975:37;;;;;;;;;;;;16962:50;;16723:297;;;;;:::o;317:310:10:-;377:11;389:16;424:4;429:1;424:7;;;;;;;;;;;418:13;;465:6;472:1;465:8;;461:159;478:11;474:1;:15;461:159;;;522:3;512:4;517:1;512:7;;;;;;;;;;;:13;509:100;;;551:4;556:1;551:7;;;;;;;;;;;545:13;;588:1;577:12;;509:100;490:3;;;;;;;461:159;;;;317:310;;;:::o",
   "source": "pragma solidity ^0.5.0;\r\n\r\nimport \"../libraries/SafeMath.sol\";\r\nimport \"../libraries/Utilities.sol\";\r\nimport \"../libraries/TellorStorage.sol\";\r\nimport \"../libraries/TellorTransfer.sol\";\r\nimport \"../libraries/TellorGettersLibrary.sol\";\r\n\r\n/**\r\n* @title Tellor Getters\r\n* @dev Oracle contract with all tellor getter functions. The logic for the functions on this contract \r\n* is saved on the TellorGettersLibrary, TellorTransfer, TellorGettersLibrary, and TellorStake\r\n*/\r\ncontract TellorGetters{\r\n    using SafeMath for uint256;\r\n\r\n    using TellorTransfer for TellorStorage.TellorStorageStruct;\r\n    using TellorGettersLibrary for TellorStorage.TellorStorageStruct;\r\n    //using TellorStake for TellorStorage.TellorStorageStruct;\r\n\r\n    TellorStorage.TellorStorageStruct tellor;\r\n    \r\n\r\n    // *\r\n    // * @param _user address\r\n    // * @param _spender address\r\n    // * @return Returns the remaining allowance of tokens granted to the _spender from the _user\r\n    \r\n    // function allowance(address _user, address _spender) external view returns (uint) {\r\n    //    return tellor.allowance(_user,_spender);\r\n    // }\r\n\r\n    /**\r\n    * @dev This function returns whether or not a given user is allowed to trade a given amount  \r\n    * @param _user address\r\n    * @param _amount uint of amount\r\n    * @return true if the user is alloed to trade the amount specified\r\n    */\r\n    function allowedToTrade(address _user,uint _amount) external view returns(bool){\r\n        return tellor.allowedToTrade(_user,_amount);\r\n    }\r\n\r\n    /**\r\n    * @dev Gets balance of owner specified\r\n    * @param _user is the owner address used to look up the balance\r\n    * @return Returns the balance associated with the passed in _user\r\n    */\r\n    function balanceOf(address _user) external view returns (uint) { \r\n        return tellor.balanceOf(_user);\r\n    }\r\n\r\n    /**\r\n    * @dev Queries the balance of _user at a specific _blockNumber\r\n    * @param _user The address from which the balance will be retrieved\r\n    * @param _blockNumber The block number when the balance is queried\r\n    * @return The balance at _blockNumber\r\n    */\r\n    function balanceOfAt(address _user, uint _blockNumber) external view returns (uint) {\r\n        return tellor.balanceOfAt(_user,_blockNumber);\r\n    }\r\n\r\n    // /**\r\n    // * @dev This function tells you if a given challenge has been completed by a given miner\r\n    // * @param _challenge the challenge to search for\r\n    // * @param _miner address that you want to know if they solved the challenge\r\n    // * @return true if the _miner address provided solved the \r\n    // */\r\n    // function didMine(bytes32 _challenge, address _miner) external view returns(bool){\r\n    //     return tellor.didMine(_challenge,_miner);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Checks if an address voted in a given dispute\r\n    // * @param _disputeId to look up\r\n    // * @param _address to look up\r\n    // * @return bool of whether or not party voted\r\n    // */\r\n    // function didVote(uint _disputeId, address _address) external view returns(bool){\r\n    //     return tellor.didVote(_disputeId,_address);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev allows Tellor to read data from the addressVars mapping\r\n    // * @param _data is the keccak256(\"variable_name\") of the variable that is being accessed. \r\n    // * These are examples of how the variables are saved within other functions:\r\n    // * addressVars[keccak256(\"_owner\")]\r\n    // * addressVars[keccak256(\"tellorContract\")]\r\n    // */\r\n    // function getAddressVars(bytes32 _data) view external returns(address){\r\n    //     return tellor.getAddressVars(_data);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Gets all dispute variables\r\n    // * @param _disputeId to look up\r\n    // * @return bytes32 hash of dispute \r\n    // * @return bool executed where true if it has been voted on\r\n    // * @return bool disputeVotePassed\r\n    // * @return bool isPropFork true if the dispute is a proposed fork\r\n    // * @return address of reportedMiner\r\n    // * @return address of reportingParty\r\n    // * @return address of proposedForkAddress\r\n    // * @return uint of requestId\r\n    // * @return uint of timestamp\r\n    // * @return uint of value\r\n    // * @return uint of minExecutionDate\r\n    // * @return uint of numberOfVotes\r\n    // * @return uint of blocknumber\r\n    // * @return uint of minerSlot\r\n    // * @return uint of quorum\r\n    // * @return uint of fee\r\n    // * @return int count of the current tally\r\n    // */\r\n    // function getAllDisputeVars(uint _disputeId) public view returns(bytes32, bool, bool, bool, address, address, address,uint[9] memory, int){\r\n    //     return tellor.getAllDisputeVars(_disputeId);\r\n    // }\r\n    \r\n\r\n    // /**\r\n    // * @dev Getter function for variables for the requestId being currently mined(currentRequestId)\r\n    // * @return current challenge, curretnRequestId, level of difficulty, api/query string, and granularity(number of decimals requested), total tip for the request \r\n    // */\r\n    // function getCurrentVariables() external view returns(bytes32, uint, uint,string memory,uint,uint){    \r\n    //     return tellor.getCurrentVariables();\r\n    // }\r\n\r\n    // *\r\n    // * @dev Checks if a given hash of miner,requestId has been disputed\r\n    // * @param _hash is the sha256(abi.encodePacked(_miners[2],_requestId));\r\n    // * @return uint disputeId\r\n    \r\n    // function getDisputeIdByDisputeHash(bytes32 _hash) external view returns(uint){\r\n    //     return  tellor.getDisputeIdByDisputeHash(_hash);\r\n    // }\r\n    \r\n\r\n    // /**\r\n    // * @dev Checks for uint variables in the disputeUintVars mapping based on the disuputeId\r\n    // * @param _disputeId is the dispute id;\r\n    // * @param _data the variable to pull from the mapping. _data = keccak256(\"variable_name\") where variable_name is \r\n    // * the variables/strings used to save the data in the mapping. The variables names are  \r\n    // * commented out under the disputeUintVars under the Dispute struct\r\n    // * @return uint value for the bytes32 data submitted\r\n    // */\r\n    // function getDisputeUintVars(uint _disputeId,bytes32 _data) external view returns(uint){\r\n    //     return tellor.getDisputeUintVars(_disputeId,_data);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Gets the a value for the latest timestamp available\r\n    // * @return value for timestamp of last proof of work submited\r\n    // * @return true if the is a timestamp for the lastNewValue\r\n    // */\r\n    // function getLastNewValue() external view returns(uint,bool){\r\n    //     return tellor.getLastNewValue();\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Gets the a value for the latest timestamp available\r\n    // * @param _requestId being requested\r\n    // * @return value for timestamp of last proof of work submited and if true if it exist or 0 and false if it doesn't\r\n    // */\r\n    // function getLastNewValueById(uint _requestId) external view returns(uint,bool){\r\n    //     return tellor.getLastNewValueById(_requestId);\r\n    // }\r\n        \r\n\r\n    // /**\r\n    // * @dev Gets blocknumber for mined timestamp \r\n    // * @param _requestId to look up\r\n    // * @param _timestamp is the timestamp to look up blocknumber\r\n    // * @return uint of the blocknumber which the dispute was mined\r\n    // */\r\n    // function getMinedBlockNum(uint _requestId, uint _timestamp) external view returns(uint){\r\n    //     return tellor.getMinedBlockNum(_requestId,_timestamp);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp \r\n    // * @param _requestId to look up\r\n    // * @param _timestamp is the timestamp to look up miners for\r\n    // * @return the 5 miners' addresses\r\n    // */\r\n    // function getMinersByRequestIdAndTimestamp(uint _requestId, uint _timestamp) external view returns(address[5] memory){\r\n    //     return tellor.getMinersByRequestIdAndTimestamp(_requestId,_timestamp);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Get the name of the token\r\n    // * return string of the token name\r\n    // */\r\n    // function getName() external view returns(string memory){\r\n    //     return tellor.getName();\r\n    // }\r\n\r\n\r\n    /**\r\n    * @dev Counts the number of values that have been submited for the request \r\n    * if called for the currentRequest being mined it can tell you how many miners have submitted a value for that\r\n    * request so far\r\n    * @param _requestId the requestId to look up\r\n    * @return uint count of the number of values received for the requestId\r\n    */\r\n    function getNewValueCountbyRequestId(uint _requestId) external view returns(uint){\r\n        return tellor.getNewValueCountbyRequestId(_requestId);\r\n    }\r\n\r\n\r\n    // /**\r\n    // * @dev Getter function for the specified requestQ index\r\n    // * @param _index to look up in the requestQ array\r\n    // * @return uint of reqeuestId\r\n    // */\r\n    // function getRequestIdByRequestQIndex(uint _index) external view returns(uint){\r\n    //     return tellor.getRequestIdByRequestQIndex(_index);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Getter function for requestId based on timestamp \r\n    // * @param _timestamp to check requestId\r\n    // * @return uint of reqeuestId\r\n    // */\r\n    // function getRequestIdByTimestamp(uint _timestamp) external view returns(uint){    \r\n    //     return tellor.getRequestIdByTimestamp(_timestamp);\r\n    // }\r\n\r\n    // /**\r\n    // * @dev Getter function for requestId based on the queryHash\r\n    // * @param _request is the hash(of string api and granularity) to check if a request already exists\r\n    // * @return uint requestId\r\n    // */\r\n    // function getRequestIdByQueryHash(bytes32 _request) external view returns(uint){    \r\n    //     return tellor.getRequestIdByQueryHash(_request);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Getter function for the requestQ array\r\n    // * @return the requestQ arrray\r\n    // */\r\n    // function getRequestQ() view public returns(uint[51] memory){\r\n    //     return tellor.getRequestQ();\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Allowes access to the uint variables saved in the apiUintVars under the requestDetails struct\r\n    // * for the requestId specified\r\n    // * @param _requestId to look up\r\n    // * @param _data the variable to pull from the mapping. _data = keccak256(\"variable_name\") where variable_name is \r\n    // * the variables/strings used to save the data in the mapping. The variables names are  \r\n    // * commented out under the apiUintVars under the requestDetails struct\r\n    // * @return uint value of the apiUintVars specified in _data for the requestId specified\r\n    // */\r\n    // function getRequestUintVars(uint _requestId,bytes32 _data) external view returns(uint){\r\n    //     return tellor.getRequestUintVars(_requestId,_data);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev Gets the API struct variables that are not mappings\r\n    // * @param _requestId to look up\r\n    // * @return string of api to query\r\n    // * @return string of symbol of api to query\r\n    // * @return bytes32 hash of string\r\n    // * @return bytes32 of the granularity(decimal places) requested\r\n    // * @return uint of index in requestQ array\r\n    // * @return uint of current payout/tip for this requestId\r\n    // */\r\n    // function getRequestVars(uint _requestId) external view returns(string memory, string memory,bytes32,uint, uint, uint) {\r\n    //     return tellor.getRequestVars(_requestId);\r\n    // }\r\n\r\n\r\n    // /**\r\n    // * @dev This function allows users to retireve all information about a staker\r\n    // * @param _staker address of staker inquiring about\r\n    // * @return uint current state of staker\r\n    // * @return uint startDate of staking\r\n    // */\r\n    // function getStakerInfo(address _staker) external view returns(uint,uint){\r\n    //     return tellor.getStakerInfo(_staker);\r\n    // }\r\n    \r\n    // /**\r\n    // * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp \r\n    // * @param _requestId to look up\r\n    // * @param _timestamp is the timestampt to look up miners for\r\n    // * @return address[5] array of 5 addresses ofminers that mined the requestId\r\n    // */    \r\n    // function getSubmissionsByTimestamp(uint _requestId, uint _timestamp) external view returns(uint[5] memory){\r\n    //     return tellor.getSubmissionsByTimestamp(_requestId,_timestamp);\r\n    // }\r\n\r\n    // /**\r\n    // * @dev Get the symbol of the token\r\n    // * return string of the token symbol\r\n    // */\r\n    // function getSymbol() external view returns(string memory){\r\n    //     return tellor.getSymbol();\r\n    // } \r\n\r\n    /**\r\n    * @dev Gets the timestamp for the value based on their index\r\n    * @param _requestID is the requestId to look up\r\n    * @param _index is the value index to look up\r\n    * @return uint timestamp\r\n    */\r\n    function getTimestampbyRequestIDandIndex(uint _requestID, uint _index) external view returns(uint){\r\n        return tellor.getTimestampbyRequestIDandIndex(_requestID,_index);\r\n    }\r\n\r\n\r\n    // /**\r\n    // * @dev Getter for the variables saved under the TellorStorageStruct uintVars variable\r\n    // * @param _data the variable to pull from the mapping. _data = keccak256(\"variable_name\") where variable_name is \r\n    // * the variables/strings used to save the data in the mapping. The variables names are  \r\n    // * commented out under the uintVars under the TellorStorageStruct struct\r\n    // * This is an example of how data is saved into the mapping within other functions: \r\n    // * self.uintVars[keccak256(\"stakerCount\")]\r\n    // * @return uint of specified variable  \r\n    // */ \r\n    // function getUintVar(bytes32 _data) view public returns(uint){\r\n    //     return tellor.getUintVar(_data);\r\n    // }\r\n\r\n\r\n    /**\r\n    * @dev Getter function for next requestId on queue/request with highest payout at time the function is called\r\n    * @return onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string\r\n    */\r\n    function getVariablesOnDeck() external view returns(uint, uint,string memory){    \r\n        return tellor.getVariablesOnDeck();\r\n    }\r\n\r\n    \r\n    // /**\r\n    // * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp \r\n    // * @param _requestId to look up\r\n    // * @param _timestamp is the timestamp to look up miners for\r\n    // * @return bool true if requestId/timestamp is under dispute\r\n    // */\r\n    // function isInDispute(uint _requestId, uint _timestamp) external view returns(bool){\r\n    //     return tellor.isInDispute(_requestId,_timestamp);\r\n    // }\r\n    \r\n\r\n    /**\r\n    * @dev Retreive value from oracle based on timestamp\r\n    * @param _requestId being requested\r\n    * @param _timestamp to retreive data/value from\r\n    * @return value for timestamp submitted\r\n    */\r\n    function retrieveData(uint _requestId, uint _timestamp) external view returns (uint) {\r\n        return tellor.retrieveData(_requestId,_timestamp);\r\n    }\r\n\r\n\r\n    // *\r\n    // * @dev Getter for the total_supply of oracle tokens\r\n    // * @return uint total supply\r\n    \r\n    // function totalSupply() external view returns (uint) {\r\n    //    return tellor.totalSupply();\r\n    // }\r\n\r\n\r\n}\r\n",
-  "sourcePath": "C:\\company\\code\\usingTellor\\contracts\\testContracts\\TellorGetters.sol",
+  "sourcePath": "C:\\users\\lloya\\documents\\dda\\1tellor\\tellor\\projects\\tellornpm\\usingtellor\\contracts\\testContracts\\TellorGetters.sol",
   "ast": {
-    "absolutePath": "/C/company/code/usingTellor/contracts/testContracts/TellorGetters.sol",
+    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/testContracts/TellorGetters.sol",
     "exportedSymbols": {
       "TellorGetters": [
-        4041
+        4033
       ]
     },
-    "id": 4042,
+    "id": 4034,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 3920,
+        "id": 3912,
         "literals": [
           "solidity",
           "^",
@@ -183,56 +183,56 @@
         "src": "0:23:12"
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/SafeMath.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/SafeMath.sol",
         "file": "../libraries/SafeMath.sol",
-        "id": 3921,
+        "id": 3913,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 1584,
+        "scope": 4034,
+        "sourceUnit": 1576,
         "src": "27:35:12",
         "symbolAliases": [],
         "unitAlias": ""
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/Utilities.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/Utilities.sol",
         "file": "../libraries/Utilities.sol",
-        "id": 3922,
+        "id": 3914,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 3781,
+        "scope": 4034,
+        "sourceUnit": 3773,
         "src": "64:36:12",
         "symbolAliases": [],
         "unitAlias": ""
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/TellorStorage.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorStorage.sol",
         "file": "../libraries/TellorStorage.sol",
-        "id": 3923,
+        "id": 3915,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 3164,
+        "scope": 4034,
+        "sourceUnit": 3156,
         "src": "102:40:12",
         "symbolAliases": [],
         "unitAlias": ""
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/TellorTransfer.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorTransfer.sol",
         "file": "../libraries/TellorTransfer.sol",
-        "id": 3924,
+        "id": 3916,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 3671,
+        "scope": 4034,
+        "sourceUnit": 3663,
         "src": "144:41:12",
         "symbolAliases": [],
         "unitAlias": ""
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/TellorGettersLibrary.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorGettersLibrary.sol",
         "file": "../libraries/TellorGettersLibrary.sol",
-        "id": 3925,
+        "id": 3917,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 1784,
+        "scope": 4034,
+        "sourceUnit": 1776,
         "src": "187:47:12",
         "symbolAliases": [],
         "unitAlias": ""
@@ -243,31 +243,31 @@
         "contractKind": "contract",
         "documentation": "@title Tellor Getters\r\n@dev Oracle contract with all tellor getter functions. The logic for the functions on this contract \r\nis saved on the TellorGettersLibrary, TellorTransfer, TellorGettersLibrary, and TellorStake\r",
         "fullyImplemented": true,
-        "id": 4041,
+        "id": 4033,
         "linearizedBaseContracts": [
-          4041
+          4033
         ],
         "name": "TellorGetters",
         "nodeType": "ContractDefinition",
         "nodes": [
           {
-            "id": 3928,
+            "id": 3920,
             "libraryName": {
               "contractScope": null,
-              "id": 3926,
+              "id": 3918,
               "name": "SafeMath",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 1583,
+              "referencedDeclaration": 1575,
               "src": "506:8:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_SafeMath_$1583",
+                "typeIdentifier": "t_contract$_SafeMath_$1575",
                 "typeString": "library SafeMath"
               }
             },
             "nodeType": "UsingForDirective",
             "src": "500:27:12",
             "typeName": {
-              "id": 3927,
+              "id": 3919,
               "name": "uint256",
               "nodeType": "ElementaryTypeName",
               "src": "519:7:12",
@@ -278,16 +278,16 @@
             }
           },
           {
-            "id": 3931,
+            "id": 3923,
             "libraryName": {
               "contractScope": null,
-              "id": 3929,
+              "id": 3921,
               "name": "TellorTransfer",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 3670,
+              "referencedDeclaration": 3662,
               "src": "541:14:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_TellorTransfer_$3670",
+                "typeIdentifier": "t_contract$_TellorTransfer_$3662",
                 "typeString": "library TellorTransfer"
               }
             },
@@ -295,28 +295,28 @@
             "src": "535:59:12",
             "typeName": {
               "contractScope": null,
-              "id": 3930,
+              "id": 3922,
               "name": "TellorStorage.TellorStorageStruct",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 3162,
+              "referencedDeclaration": 3154,
               "src": "560:33:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage_ptr",
+                "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage_ptr",
                 "typeString": "struct TellorStorage.TellorStorageStruct"
               }
             }
           },
           {
-            "id": 3934,
+            "id": 3926,
             "libraryName": {
               "contractScope": null,
-              "id": 3932,
+              "id": 3924,
               "name": "TellorGettersLibrary",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 1783,
+              "referencedDeclaration": 1775,
               "src": "606:20:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_TellorGettersLibrary_$1783",
+                "typeIdentifier": "t_contract$_TellorGettersLibrary_$1775",
                 "typeString": "library TellorGettersLibrary"
               }
             },
@@ -324,39 +324,39 @@
             "src": "600:65:12",
             "typeName": {
               "contractScope": null,
-              "id": 3933,
+              "id": 3925,
               "name": "TellorStorage.TellorStorageStruct",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 3162,
+              "referencedDeclaration": 3154,
               "src": "631:33:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage_ptr",
+                "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage_ptr",
                 "typeString": "struct TellorStorage.TellorStorageStruct"
               }
             }
           },
           {
             "constant": false,
-            "id": 3936,
+            "id": 3928,
             "name": "tellor",
             "nodeType": "VariableDeclaration",
-            "scope": 4041,
+            "scope": 4033,
             "src": "737:40:12",
             "stateVariable": true,
             "storageLocation": "default",
             "typeDescriptions": {
-              "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+              "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
               "typeString": "struct TellorStorage.TellorStorageStruct"
             },
             "typeName": {
               "contractScope": null,
-              "id": 3935,
+              "id": 3927,
               "name": "TellorStorage.TellorStorageStruct",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 3162,
+              "referencedDeclaration": 3154,
               "src": "737:33:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage_ptr",
+                "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage_ptr",
                 "typeString": "struct TellorStorage.TellorStorageStruct"
               }
             },
@@ -365,7 +365,7 @@
           },
           {
             "body": {
-              "id": 3951,
+              "id": 3943,
               "nodeType": "Block",
               "src": "1459:62:12",
               "statements": [
@@ -375,11 +375,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 3947,
+                        "id": 3939,
                         "name": "_user",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3938,
+                        "referencedDeclaration": 3930,
                         "src": "1499:5:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_address",
@@ -388,11 +388,11 @@
                       },
                       {
                         "argumentTypes": null,
-                        "id": 3948,
+                        "id": 3940,
                         "name": "_amount",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3940,
+                        "referencedDeclaration": 3932,
                         "src": "1505:7:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -413,32 +413,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 3945,
+                        "id": 3937,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "1477:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 3946,
+                      "id": 3938,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "allowedToTrade",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 3594,
+                      "referencedDeclaration": 3586,
                       "src": "1477:21:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_address_$_t_uint256_$returns$_t_bool_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_address_$_t_uint256_$returns$_t_bool_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,address,uint256) view returns (bool)"
                       }
                     },
-                    "id": 3949,
+                    "id": 3941,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -452,30 +452,30 @@
                       "typeString": "bool"
                     }
                   },
-                  "functionReturnParameters": 3944,
-                  "id": 3950,
+                  "functionReturnParameters": 3936,
+                  "id": 3942,
                   "nodeType": "Return",
                   "src": "1470:43:12"
                 }
               ]
             },
             "documentation": "@dev This function returns whether or not a given user is allowed to trade a given amount  \r\n@param _user address\r\n@param _amount uint of amount\r\n@return true if the user is alloed to trade the amount specified\r",
-            "id": 3952,
+            "id": 3944,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "allowedToTrade",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3941,
+              "id": 3933,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3938,
+                  "id": 3930,
                   "name": "_user",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3952,
+                  "scope": 3944,
                   "src": "1404:13:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -484,7 +484,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 3937,
+                    "id": 3929,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "1404:7:12",
@@ -499,10 +499,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 3940,
+                  "id": 3932,
                   "name": "_amount",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3952,
+                  "scope": 3944,
                   "src": "1418:12:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -511,7 +511,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3939,
+                    "id": 3931,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "1418:4:12",
@@ -527,15 +527,15 @@
               "src": "1403:28:12"
             },
             "returnParameters": {
-              "id": 3944,
+              "id": 3936,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3943,
+                  "id": 3935,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3952,
+                  "scope": 3944,
                   "src": "1454:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -544,7 +544,7 @@
                     "typeString": "bool"
                   },
                   "typeName": {
-                    "id": 3942,
+                    "id": 3934,
                     "name": "bool",
                     "nodeType": "ElementaryTypeName",
                     "src": "1454:4:12",
@@ -559,7 +559,7 @@
               ],
               "src": "1453:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "1380:141:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -567,7 +567,7 @@
           },
           {
             "body": {
-              "id": 3964,
+              "id": 3956,
               "nodeType": "Block",
               "src": "1793:50:12",
               "statements": [
@@ -577,11 +577,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 3961,
+                        "id": 3953,
                         "name": "_user",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3954,
+                        "referencedDeclaration": 3946,
                         "src": "1829:5:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_address",
@@ -598,32 +598,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 3959,
+                        "id": 3951,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "1812:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 3960,
+                      "id": 3952,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "balanceOf",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 3397,
+                      "referencedDeclaration": 3389,
                       "src": "1812:16:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_address_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_address_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,address) view returns (uint256)"
                       }
                     },
-                    "id": 3962,
+                    "id": 3954,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -637,30 +637,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 3958,
-                  "id": 3963,
+                  "functionReturnParameters": 3950,
+                  "id": 3955,
                   "nodeType": "Return",
                   "src": "1805:30:12"
                 }
               ]
             },
             "documentation": "@dev Gets balance of owner specified\r\n@param _user is the owner address used to look up the balance\r\n@return Returns the balance associated with the passed in _user\r",
-            "id": 3965,
+            "id": 3957,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "balanceOf",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3955,
+              "id": 3947,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3954,
+                  "id": 3946,
                   "name": "_user",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3965,
+                  "scope": 3957,
                   "src": "1749:13:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -669,7 +669,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 3953,
+                    "id": 3945,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "1749:7:12",
@@ -686,15 +686,15 @@
               "src": "1748:15:12"
             },
             "returnParameters": {
-              "id": 3958,
+              "id": 3950,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3957,
+                  "id": 3949,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3965,
+                  "scope": 3957,
                   "src": "1787:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -703,7 +703,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3956,
+                    "id": 3948,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "1787:4:12",
@@ -718,7 +718,7 @@
               ],
               "src": "1786:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "1730:113:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -726,7 +726,7 @@
           },
           {
             "body": {
-              "id": 3980,
+              "id": 3972,
               "nodeType": "Block",
               "src": "2208:64:12",
               "statements": [
@@ -736,11 +736,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 3976,
+                        "id": 3968,
                         "name": "_user",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3967,
+                        "referencedDeclaration": 3959,
                         "src": "2245:5:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_address",
@@ -749,11 +749,11 @@
                       },
                       {
                         "argumentTypes": null,
-                        "id": 3977,
+                        "id": 3969,
                         "name": "_blockNumber",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3969,
+                        "referencedDeclaration": 3961,
                         "src": "2251:12:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -774,32 +774,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 3974,
+                        "id": 3966,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "2226:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 3975,
+                      "id": 3967,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "balanceOfAt",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 3441,
+                      "referencedDeclaration": 3433,
                       "src": "2226:18:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_address_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_address_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,address,uint256) view returns (uint256)"
                       }
                     },
-                    "id": 3978,
+                    "id": 3970,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -813,30 +813,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 3973,
-                  "id": 3979,
+                  "functionReturnParameters": 3965,
+                  "id": 3971,
                   "nodeType": "Return",
                   "src": "2219:45:12"
                 }
               ]
             },
             "documentation": "@dev Queries the balance of _user at a specific _blockNumber\r\n@param _user The address from which the balance will be retrieved\r\n@param _blockNumber The block number when the balance is queried\r\n@return The balance at _blockNumber\r",
-            "id": 3981,
+            "id": 3973,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "balanceOfAt",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3970,
+              "id": 3962,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3967,
+                  "id": 3959,
                   "name": "_user",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3981,
+                  "scope": 3973,
                   "src": "2145:13:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -845,7 +845,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 3966,
+                    "id": 3958,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "2145:7:12",
@@ -860,10 +860,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 3969,
+                  "id": 3961,
                   "name": "_blockNumber",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3981,
+                  "scope": 3973,
                   "src": "2160:17:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -872,7 +872,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3968,
+                    "id": 3960,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "2160:4:12",
@@ -888,15 +888,15 @@
               "src": "2144:34:12"
             },
             "returnParameters": {
-              "id": 3973,
+              "id": 3965,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3972,
+                  "id": 3964,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3981,
+                  "scope": 3973,
                   "src": "2202:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -905,7 +905,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3971,
+                    "id": 3963,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "2202:4:12",
@@ -920,7 +920,7 @@
               ],
               "src": "2201:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "2124:148:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -928,7 +928,7 @@
           },
           {
             "body": {
-              "id": 3993,
+              "id": 3985,
               "nodeType": "Block",
               "src": "8594:72:12",
               "statements": [
@@ -938,11 +938,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 3990,
+                        "id": 3982,
                         "name": "_requestId",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3983,
+                        "referencedDeclaration": 3975,
                         "src": "8647:10:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -959,32 +959,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 3988,
+                        "id": 3980,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "8612:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 3989,
+                      "id": 3981,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "getNewValueCountbyRequestId",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 1676,
+                      "referencedDeclaration": 1668,
                       "src": "8612:34:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,uint256) view returns (uint256)"
                       }
                     },
-                    "id": 3991,
+                    "id": 3983,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -998,30 +998,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 3987,
-                  "id": 3992,
+                  "functionReturnParameters": 3979,
+                  "id": 3984,
                   "nodeType": "Return",
                   "src": "8605:53:12"
                 }
               ]
             },
             "documentation": "@dev Counts the number of values that have been submited for the request \r\nif called for the currentRequest being mined it can tell you how many miners have submitted a value for that\r\nrequest so far\r\n@param _requestId the requestId to look up\r\n@return uint count of the number of values received for the requestId\r",
-            "id": 3994,
+            "id": 3986,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "getNewValueCountbyRequestId",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3984,
+              "id": 3976,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3983,
+                  "id": 3975,
                   "name": "_requestId",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3994,
+                  "scope": 3986,
                   "src": "8550:15:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1030,7 +1030,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3982,
+                    "id": 3974,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "8550:4:12",
@@ -1046,15 +1046,15 @@
               "src": "8549:17:12"
             },
             "returnParameters": {
-              "id": 3987,
+              "id": 3979,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3986,
+                  "id": 3978,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3994,
+                  "scope": 3986,
                   "src": "8589:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1063,7 +1063,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3985,
+                    "id": 3977,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "8589:4:12",
@@ -1078,7 +1078,7 @@
               ],
               "src": "8588:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "8513:153:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -1086,7 +1086,7 @@
           },
           {
             "body": {
-              "id": 4009,
+              "id": 4001,
               "nodeType": "Block",
               "src": "12876:83:12",
               "statements": [
@@ -1096,11 +1096,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 4005,
+                        "id": 3997,
                         "name": "_requestID",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3996,
+                        "referencedDeclaration": 3988,
                         "src": "12933:10:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -1109,11 +1109,11 @@
                       },
                       {
                         "argumentTypes": null,
-                        "id": 4006,
+                        "id": 3998,
                         "name": "_index",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3998,
+                        "referencedDeclaration": 3990,
                         "src": "12944:6:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -1134,32 +1134,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 4003,
+                        "id": 3995,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "12894:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 4004,
+                      "id": 3996,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "getTimestampbyRequestIDandIndex",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 1696,
+                      "referencedDeclaration": 1688,
                       "src": "12894:38:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_uint256_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_uint256_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,uint256,uint256) view returns (uint256)"
                       }
                     },
-                    "id": 4007,
+                    "id": 3999,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -1173,30 +1173,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 4002,
-                  "id": 4008,
+                  "functionReturnParameters": 3994,
+                  "id": 4000,
                   "nodeType": "Return",
                   "src": "12887:64:12"
                 }
               ]
             },
             "documentation": "@dev Gets the timestamp for the value based on their index\r\n@param _requestID is the requestId to look up\r\n@param _index is the value index to look up\r\n@return uint timestamp\r",
-            "id": 4010,
+            "id": 4002,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "getTimestampbyRequestIDandIndex",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3999,
+              "id": 3991,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3996,
+                  "id": 3988,
                   "name": "_requestID",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4010,
+                  "scope": 4002,
                   "src": "12819:15:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1205,7 +1205,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3995,
+                    "id": 3987,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "12819:4:12",
@@ -1219,10 +1219,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 3998,
+                  "id": 3990,
                   "name": "_index",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4010,
+                  "scope": 4002,
                   "src": "12836:11:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1231,7 +1231,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3997,
+                    "id": 3989,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "12836:4:12",
@@ -1247,15 +1247,15 @@
               "src": "12818:30:12"
             },
             "returnParameters": {
-              "id": 4002,
+              "id": 3994,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 4001,
+                  "id": 3993,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4010,
+                  "scope": 4002,
                   "src": "12871:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1264,7 +1264,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4000,
+                    "id": 3992,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "12871:4:12",
@@ -1279,7 +1279,7 @@
               ],
               "src": "12870:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "12778:181:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -1287,7 +1287,7 @@
           },
           {
             "body": {
-              "id": 4023,
+              "id": 4015,
               "nodeType": "Block",
               "src": "14014:57:12",
               "statements": [
@@ -1299,32 +1299,32 @@
                       "argumentTypes": [],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 4019,
+                        "id": 4011,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "14036:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 4020,
+                      "id": 4012,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "getVariablesOnDeck",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 1731,
+                      "referencedDeclaration": 1723,
                       "src": "14036:25:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$returns$_t_uint256_$_t_uint256_$_t_string_memory_ptr_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$returns$_t_uint256_$_t_uint256_$_t_string_memory_ptr_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer) view returns (uint256,uint256,string memory)"
                       }
                     },
-                    "id": 4021,
+                    "id": 4013,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -1338,36 +1338,36 @@
                       "typeString": "tuple(uint256,uint256,string memory)"
                     }
                   },
-                  "functionReturnParameters": 4018,
-                  "id": 4022,
+                  "functionReturnParameters": 4010,
+                  "id": 4014,
                   "nodeType": "Return",
                   "src": "14029:34:12"
                 }
               ]
             },
             "documentation": "@dev Getter function for next requestId on queue/request with highest payout at time the function is called\r\n@return onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string\r",
-            "id": 4024,
+            "id": 4016,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "getVariablesOnDeck",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 4011,
+              "id": 4003,
               "nodeType": "ParameterList",
               "parameters": [],
               "src": "13964:2:12"
             },
             "returnParameters": {
-              "id": 4018,
+              "id": 4010,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 4013,
+                  "id": 4005,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4024,
+                  "scope": 4016,
                   "src": "13989:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1376,7 +1376,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4012,
+                    "id": 4004,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "13989:4:12",
@@ -1390,10 +1390,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 4015,
+                  "id": 4007,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4024,
+                  "scope": 4016,
                   "src": "13995:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1402,7 +1402,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4014,
+                    "id": 4006,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "13995:4:12",
@@ -1416,10 +1416,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 4017,
+                  "id": 4009,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4024,
+                  "scope": 4016,
                   "src": "14000:13:12",
                   "stateVariable": false,
                   "storageLocation": "memory",
@@ -1428,7 +1428,7 @@
                     "typeString": "string"
                   },
                   "typeName": {
-                    "id": 4016,
+                    "id": 4008,
                     "name": "string",
                     "nodeType": "ElementaryTypeName",
                     "src": "14000:6:12",
@@ -1443,7 +1443,7 @@
               ],
               "src": "13988:26:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "13937:134:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -1451,7 +1451,7 @@
           },
           {
             "body": {
-              "id": 4039,
+              "id": 4031,
               "nodeType": "Block",
               "src": "14846:68:12",
               "statements": [
@@ -1461,11 +1461,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 4035,
+                        "id": 4027,
                         "name": "_requestId",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 4026,
+                        "referencedDeclaration": 4018,
                         "src": "14884:10:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -1474,11 +1474,11 @@
                       },
                       {
                         "argumentTypes": null,
-                        "id": 4036,
+                        "id": 4028,
                         "name": "_timestamp",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 4028,
+                        "referencedDeclaration": 4020,
                         "src": "14895:10:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -1499,32 +1499,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 4033,
+                        "id": 4025,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "14864:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 4034,
+                      "id": 4026,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "retrieveData",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 1782,
+                      "referencedDeclaration": 1774,
                       "src": "14864:19:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_uint256_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_uint256_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,uint256,uint256) view returns (uint256)"
                       }
                     },
-                    "id": 4037,
+                    "id": 4029,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -1538,30 +1538,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 4032,
-                  "id": 4038,
+                  "functionReturnParameters": 4024,
+                  "id": 4030,
                   "nodeType": "Return",
                   "src": "14857:49:12"
                 }
               ]
             },
             "documentation": "@dev Retreive value from oracle based on timestamp\r\n@param _requestId being requested\r\n@param _timestamp to retreive data/value from\r\n@return value for timestamp submitted\r",
-            "id": 4040,
+            "id": 4032,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "retrieveData",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 4029,
+              "id": 4021,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 4026,
+                  "id": 4018,
                   "name": "_requestId",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4040,
+                  "scope": 4032,
                   "src": "14783:15:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1570,7 +1570,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4025,
+                    "id": 4017,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "14783:4:12",
@@ -1584,10 +1584,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 4028,
+                  "id": 4020,
                   "name": "_timestamp",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4040,
+                  "scope": 4032,
                   "src": "14800:15:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1596,7 +1596,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4027,
+                    "id": 4019,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "14800:4:12",
@@ -1612,15 +1612,15 @@
               "src": "14782:34:12"
             },
             "returnParameters": {
-              "id": 4032,
+              "id": 4024,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 4031,
+                  "id": 4023,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4040,
+                  "scope": 4032,
                   "src": "14840:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1629,7 +1629,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4030,
+                    "id": 4022,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "14840:4:12",
@@ -1644,31 +1644,31 @@
               ],
               "src": "14839:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "14761:153:12",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
-        "scope": 4042,
+        "scope": 4034,
         "src": "471:14678:12"
       }
     ],
     "src": "0:15151:12"
   },
   "legacyAST": {
-    "absolutePath": "/C/company/code/usingTellor/contracts/testContracts/TellorGetters.sol",
+    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/testContracts/TellorGetters.sol",
     "exportedSymbols": {
       "TellorGetters": [
-        4041
+        4033
       ]
     },
-    "id": 4042,
+    "id": 4034,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 3920,
+        "id": 3912,
         "literals": [
           "solidity",
           "^",
@@ -1679,56 +1679,56 @@
         "src": "0:23:12"
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/SafeMath.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/SafeMath.sol",
         "file": "../libraries/SafeMath.sol",
-        "id": 3921,
+        "id": 3913,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 1584,
+        "scope": 4034,
+        "sourceUnit": 1576,
         "src": "27:35:12",
         "symbolAliases": [],
         "unitAlias": ""
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/Utilities.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/Utilities.sol",
         "file": "../libraries/Utilities.sol",
-        "id": 3922,
+        "id": 3914,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 3781,
+        "scope": 4034,
+        "sourceUnit": 3773,
         "src": "64:36:12",
         "symbolAliases": [],
         "unitAlias": ""
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/TellorStorage.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorStorage.sol",
         "file": "../libraries/TellorStorage.sol",
-        "id": 3923,
+        "id": 3915,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 3164,
+        "scope": 4034,
+        "sourceUnit": 3156,
         "src": "102:40:12",
         "symbolAliases": [],
         "unitAlias": ""
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/TellorTransfer.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorTransfer.sol",
         "file": "../libraries/TellorTransfer.sol",
-        "id": 3924,
+        "id": 3916,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 3671,
+        "scope": 4034,
+        "sourceUnit": 3663,
         "src": "144:41:12",
         "symbolAliases": [],
         "unitAlias": ""
       },
       {
-        "absolutePath": "/C/company/code/usingTellor/contracts/libraries/TellorGettersLibrary.sol",
+        "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/libraries/TellorGettersLibrary.sol",
         "file": "../libraries/TellorGettersLibrary.sol",
-        "id": 3925,
+        "id": 3917,
         "nodeType": "ImportDirective",
-        "scope": 4042,
-        "sourceUnit": 1784,
+        "scope": 4034,
+        "sourceUnit": 1776,
         "src": "187:47:12",
         "symbolAliases": [],
         "unitAlias": ""
@@ -1739,31 +1739,31 @@
         "contractKind": "contract",
         "documentation": "@title Tellor Getters\r\n@dev Oracle contract with all tellor getter functions. The logic for the functions on this contract \r\nis saved on the TellorGettersLibrary, TellorTransfer, TellorGettersLibrary, and TellorStake\r",
         "fullyImplemented": true,
-        "id": 4041,
+        "id": 4033,
         "linearizedBaseContracts": [
-          4041
+          4033
         ],
         "name": "TellorGetters",
         "nodeType": "ContractDefinition",
         "nodes": [
           {
-            "id": 3928,
+            "id": 3920,
             "libraryName": {
               "contractScope": null,
-              "id": 3926,
+              "id": 3918,
               "name": "SafeMath",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 1583,
+              "referencedDeclaration": 1575,
               "src": "506:8:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_SafeMath_$1583",
+                "typeIdentifier": "t_contract$_SafeMath_$1575",
                 "typeString": "library SafeMath"
               }
             },
             "nodeType": "UsingForDirective",
             "src": "500:27:12",
             "typeName": {
-              "id": 3927,
+              "id": 3919,
               "name": "uint256",
               "nodeType": "ElementaryTypeName",
               "src": "519:7:12",
@@ -1774,16 +1774,16 @@
             }
           },
           {
-            "id": 3931,
+            "id": 3923,
             "libraryName": {
               "contractScope": null,
-              "id": 3929,
+              "id": 3921,
               "name": "TellorTransfer",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 3670,
+              "referencedDeclaration": 3662,
               "src": "541:14:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_TellorTransfer_$3670",
+                "typeIdentifier": "t_contract$_TellorTransfer_$3662",
                 "typeString": "library TellorTransfer"
               }
             },
@@ -1791,28 +1791,28 @@
             "src": "535:59:12",
             "typeName": {
               "contractScope": null,
-              "id": 3930,
+              "id": 3922,
               "name": "TellorStorage.TellorStorageStruct",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 3162,
+              "referencedDeclaration": 3154,
               "src": "560:33:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage_ptr",
+                "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage_ptr",
                 "typeString": "struct TellorStorage.TellorStorageStruct"
               }
             }
           },
           {
-            "id": 3934,
+            "id": 3926,
             "libraryName": {
               "contractScope": null,
-              "id": 3932,
+              "id": 3924,
               "name": "TellorGettersLibrary",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 1783,
+              "referencedDeclaration": 1775,
               "src": "606:20:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_TellorGettersLibrary_$1783",
+                "typeIdentifier": "t_contract$_TellorGettersLibrary_$1775",
                 "typeString": "library TellorGettersLibrary"
               }
             },
@@ -1820,39 +1820,39 @@
             "src": "600:65:12",
             "typeName": {
               "contractScope": null,
-              "id": 3933,
+              "id": 3925,
               "name": "TellorStorage.TellorStorageStruct",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 3162,
+              "referencedDeclaration": 3154,
               "src": "631:33:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage_ptr",
+                "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage_ptr",
                 "typeString": "struct TellorStorage.TellorStorageStruct"
               }
             }
           },
           {
             "constant": false,
-            "id": 3936,
+            "id": 3928,
             "name": "tellor",
             "nodeType": "VariableDeclaration",
-            "scope": 4041,
+            "scope": 4033,
             "src": "737:40:12",
             "stateVariable": true,
             "storageLocation": "default",
             "typeDescriptions": {
-              "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+              "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
               "typeString": "struct TellorStorage.TellorStorageStruct"
             },
             "typeName": {
               "contractScope": null,
-              "id": 3935,
+              "id": 3927,
               "name": "TellorStorage.TellorStorageStruct",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 3162,
+              "referencedDeclaration": 3154,
               "src": "737:33:12",
               "typeDescriptions": {
-                "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage_ptr",
+                "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage_ptr",
                 "typeString": "struct TellorStorage.TellorStorageStruct"
               }
             },
@@ -1861,7 +1861,7 @@
           },
           {
             "body": {
-              "id": 3951,
+              "id": 3943,
               "nodeType": "Block",
               "src": "1459:62:12",
               "statements": [
@@ -1871,11 +1871,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 3947,
+                        "id": 3939,
                         "name": "_user",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3938,
+                        "referencedDeclaration": 3930,
                         "src": "1499:5:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_address",
@@ -1884,11 +1884,11 @@
                       },
                       {
                         "argumentTypes": null,
-                        "id": 3948,
+                        "id": 3940,
                         "name": "_amount",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3940,
+                        "referencedDeclaration": 3932,
                         "src": "1505:7:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -1909,32 +1909,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 3945,
+                        "id": 3937,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "1477:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 3946,
+                      "id": 3938,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "allowedToTrade",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 3594,
+                      "referencedDeclaration": 3586,
                       "src": "1477:21:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_address_$_t_uint256_$returns$_t_bool_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_address_$_t_uint256_$returns$_t_bool_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,address,uint256) view returns (bool)"
                       }
                     },
-                    "id": 3949,
+                    "id": 3941,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -1948,30 +1948,30 @@
                       "typeString": "bool"
                     }
                   },
-                  "functionReturnParameters": 3944,
-                  "id": 3950,
+                  "functionReturnParameters": 3936,
+                  "id": 3942,
                   "nodeType": "Return",
                   "src": "1470:43:12"
                 }
               ]
             },
             "documentation": "@dev This function returns whether or not a given user is allowed to trade a given amount  \r\n@param _user address\r\n@param _amount uint of amount\r\n@return true if the user is alloed to trade the amount specified\r",
-            "id": 3952,
+            "id": 3944,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "allowedToTrade",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3941,
+              "id": 3933,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3938,
+                  "id": 3930,
                   "name": "_user",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3952,
+                  "scope": 3944,
                   "src": "1404:13:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -1980,7 +1980,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 3937,
+                    "id": 3929,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "1404:7:12",
@@ -1995,10 +1995,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 3940,
+                  "id": 3932,
                   "name": "_amount",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3952,
+                  "scope": 3944,
                   "src": "1418:12:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2007,7 +2007,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3939,
+                    "id": 3931,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "1418:4:12",
@@ -2023,15 +2023,15 @@
               "src": "1403:28:12"
             },
             "returnParameters": {
-              "id": 3944,
+              "id": 3936,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3943,
+                  "id": 3935,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3952,
+                  "scope": 3944,
                   "src": "1454:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2040,7 +2040,7 @@
                     "typeString": "bool"
                   },
                   "typeName": {
-                    "id": 3942,
+                    "id": 3934,
                     "name": "bool",
                     "nodeType": "ElementaryTypeName",
                     "src": "1454:4:12",
@@ -2055,7 +2055,7 @@
               ],
               "src": "1453:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "1380:141:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -2063,7 +2063,7 @@
           },
           {
             "body": {
-              "id": 3964,
+              "id": 3956,
               "nodeType": "Block",
               "src": "1793:50:12",
               "statements": [
@@ -2073,11 +2073,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 3961,
+                        "id": 3953,
                         "name": "_user",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3954,
+                        "referencedDeclaration": 3946,
                         "src": "1829:5:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_address",
@@ -2094,32 +2094,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 3959,
+                        "id": 3951,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "1812:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 3960,
+                      "id": 3952,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "balanceOf",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 3397,
+                      "referencedDeclaration": 3389,
                       "src": "1812:16:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_address_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_address_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,address) view returns (uint256)"
                       }
                     },
-                    "id": 3962,
+                    "id": 3954,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -2133,30 +2133,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 3958,
-                  "id": 3963,
+                  "functionReturnParameters": 3950,
+                  "id": 3955,
                   "nodeType": "Return",
                   "src": "1805:30:12"
                 }
               ]
             },
             "documentation": "@dev Gets balance of owner specified\r\n@param _user is the owner address used to look up the balance\r\n@return Returns the balance associated with the passed in _user\r",
-            "id": 3965,
+            "id": 3957,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "balanceOf",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3955,
+              "id": 3947,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3954,
+                  "id": 3946,
                   "name": "_user",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3965,
+                  "scope": 3957,
                   "src": "1749:13:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2165,7 +2165,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 3953,
+                    "id": 3945,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "1749:7:12",
@@ -2182,15 +2182,15 @@
               "src": "1748:15:12"
             },
             "returnParameters": {
-              "id": 3958,
+              "id": 3950,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3957,
+                  "id": 3949,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3965,
+                  "scope": 3957,
                   "src": "1787:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2199,7 +2199,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3956,
+                    "id": 3948,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "1787:4:12",
@@ -2214,7 +2214,7 @@
               ],
               "src": "1786:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "1730:113:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -2222,7 +2222,7 @@
           },
           {
             "body": {
-              "id": 3980,
+              "id": 3972,
               "nodeType": "Block",
               "src": "2208:64:12",
               "statements": [
@@ -2232,11 +2232,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 3976,
+                        "id": 3968,
                         "name": "_user",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3967,
+                        "referencedDeclaration": 3959,
                         "src": "2245:5:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_address",
@@ -2245,11 +2245,11 @@
                       },
                       {
                         "argumentTypes": null,
-                        "id": 3977,
+                        "id": 3969,
                         "name": "_blockNumber",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3969,
+                        "referencedDeclaration": 3961,
                         "src": "2251:12:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -2270,32 +2270,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 3974,
+                        "id": 3966,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "2226:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 3975,
+                      "id": 3967,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "balanceOfAt",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 3441,
+                      "referencedDeclaration": 3433,
                       "src": "2226:18:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_address_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_delegatecall_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_address_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,address,uint256) view returns (uint256)"
                       }
                     },
-                    "id": 3978,
+                    "id": 3970,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -2309,30 +2309,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 3973,
-                  "id": 3979,
+                  "functionReturnParameters": 3965,
+                  "id": 3971,
                   "nodeType": "Return",
                   "src": "2219:45:12"
                 }
               ]
             },
             "documentation": "@dev Queries the balance of _user at a specific _blockNumber\r\n@param _user The address from which the balance will be retrieved\r\n@param _blockNumber The block number when the balance is queried\r\n@return The balance at _blockNumber\r",
-            "id": 3981,
+            "id": 3973,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "balanceOfAt",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3970,
+              "id": 3962,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3967,
+                  "id": 3959,
                   "name": "_user",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3981,
+                  "scope": 3973,
                   "src": "2145:13:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2341,7 +2341,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 3966,
+                    "id": 3958,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "2145:7:12",
@@ -2356,10 +2356,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 3969,
+                  "id": 3961,
                   "name": "_blockNumber",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3981,
+                  "scope": 3973,
                   "src": "2160:17:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2368,7 +2368,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3968,
+                    "id": 3960,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "2160:4:12",
@@ -2384,15 +2384,15 @@
               "src": "2144:34:12"
             },
             "returnParameters": {
-              "id": 3973,
+              "id": 3965,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3972,
+                  "id": 3964,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3981,
+                  "scope": 3973,
                   "src": "2202:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2401,7 +2401,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3971,
+                    "id": 3963,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "2202:4:12",
@@ -2416,7 +2416,7 @@
               ],
               "src": "2201:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "2124:148:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -2424,7 +2424,7 @@
           },
           {
             "body": {
-              "id": 3993,
+              "id": 3985,
               "nodeType": "Block",
               "src": "8594:72:12",
               "statements": [
@@ -2434,11 +2434,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 3990,
+                        "id": 3982,
                         "name": "_requestId",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3983,
+                        "referencedDeclaration": 3975,
                         "src": "8647:10:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -2455,32 +2455,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 3988,
+                        "id": 3980,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "8612:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 3989,
+                      "id": 3981,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "getNewValueCountbyRequestId",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 1676,
+                      "referencedDeclaration": 1668,
                       "src": "8612:34:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,uint256) view returns (uint256)"
                       }
                     },
-                    "id": 3991,
+                    "id": 3983,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -2494,30 +2494,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 3987,
-                  "id": 3992,
+                  "functionReturnParameters": 3979,
+                  "id": 3984,
                   "nodeType": "Return",
                   "src": "8605:53:12"
                 }
               ]
             },
             "documentation": "@dev Counts the number of values that have been submited for the request \r\nif called for the currentRequest being mined it can tell you how many miners have submitted a value for that\r\nrequest so far\r\n@param _requestId the requestId to look up\r\n@return uint count of the number of values received for the requestId\r",
-            "id": 3994,
+            "id": 3986,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "getNewValueCountbyRequestId",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3984,
+              "id": 3976,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3983,
+                  "id": 3975,
                   "name": "_requestId",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3994,
+                  "scope": 3986,
                   "src": "8550:15:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2526,7 +2526,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3982,
+                    "id": 3974,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "8550:4:12",
@@ -2542,15 +2542,15 @@
               "src": "8549:17:12"
             },
             "returnParameters": {
-              "id": 3987,
+              "id": 3979,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3986,
+                  "id": 3978,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 3994,
+                  "scope": 3986,
                   "src": "8589:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2559,7 +2559,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3985,
+                    "id": 3977,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "8589:4:12",
@@ -2574,7 +2574,7 @@
               ],
               "src": "8588:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "8513:153:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -2582,7 +2582,7 @@
           },
           {
             "body": {
-              "id": 4009,
+              "id": 4001,
               "nodeType": "Block",
               "src": "12876:83:12",
               "statements": [
@@ -2592,11 +2592,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 4005,
+                        "id": 3997,
                         "name": "_requestID",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3996,
+                        "referencedDeclaration": 3988,
                         "src": "12933:10:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -2605,11 +2605,11 @@
                       },
                       {
                         "argumentTypes": null,
-                        "id": 4006,
+                        "id": 3998,
                         "name": "_index",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3998,
+                        "referencedDeclaration": 3990,
                         "src": "12944:6:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -2630,32 +2630,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 4003,
+                        "id": 3995,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "12894:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 4004,
+                      "id": 3996,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "getTimestampbyRequestIDandIndex",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 1696,
+                      "referencedDeclaration": 1688,
                       "src": "12894:38:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_uint256_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_uint256_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,uint256,uint256) view returns (uint256)"
                       }
                     },
-                    "id": 4007,
+                    "id": 3999,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -2669,30 +2669,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 4002,
-                  "id": 4008,
+                  "functionReturnParameters": 3994,
+                  "id": 4000,
                   "nodeType": "Return",
                   "src": "12887:64:12"
                 }
               ]
             },
             "documentation": "@dev Gets the timestamp for the value based on their index\r\n@param _requestID is the requestId to look up\r\n@param _index is the value index to look up\r\n@return uint timestamp\r",
-            "id": 4010,
+            "id": 4002,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "getTimestampbyRequestIDandIndex",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 3999,
+              "id": 3991,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 3996,
+                  "id": 3988,
                   "name": "_requestID",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4010,
+                  "scope": 4002,
                   "src": "12819:15:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2701,7 +2701,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3995,
+                    "id": 3987,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "12819:4:12",
@@ -2715,10 +2715,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 3998,
+                  "id": 3990,
                   "name": "_index",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4010,
+                  "scope": 4002,
                   "src": "12836:11:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2727,7 +2727,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 3997,
+                    "id": 3989,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "12836:4:12",
@@ -2743,15 +2743,15 @@
               "src": "12818:30:12"
             },
             "returnParameters": {
-              "id": 4002,
+              "id": 3994,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 4001,
+                  "id": 3993,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4010,
+                  "scope": 4002,
                   "src": "12871:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2760,7 +2760,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4000,
+                    "id": 3992,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "12871:4:12",
@@ -2775,7 +2775,7 @@
               ],
               "src": "12870:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "12778:181:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -2783,7 +2783,7 @@
           },
           {
             "body": {
-              "id": 4023,
+              "id": 4015,
               "nodeType": "Block",
               "src": "14014:57:12",
               "statements": [
@@ -2795,32 +2795,32 @@
                       "argumentTypes": [],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 4019,
+                        "id": 4011,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "14036:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 4020,
+                      "id": 4012,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "getVariablesOnDeck",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 1731,
+                      "referencedDeclaration": 1723,
                       "src": "14036:25:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$returns$_t_uint256_$_t_uint256_$_t_string_memory_ptr_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$returns$_t_uint256_$_t_uint256_$_t_string_memory_ptr_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer) view returns (uint256,uint256,string memory)"
                       }
                     },
-                    "id": 4021,
+                    "id": 4013,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -2834,36 +2834,36 @@
                       "typeString": "tuple(uint256,uint256,string memory)"
                     }
                   },
-                  "functionReturnParameters": 4018,
-                  "id": 4022,
+                  "functionReturnParameters": 4010,
+                  "id": 4014,
                   "nodeType": "Return",
                   "src": "14029:34:12"
                 }
               ]
             },
             "documentation": "@dev Getter function for next requestId on queue/request with highest payout at time the function is called\r\n@return onDeck/info on request with highest payout-- RequestId, Totaltips, and API query string\r",
-            "id": 4024,
+            "id": 4016,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "getVariablesOnDeck",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 4011,
+              "id": 4003,
               "nodeType": "ParameterList",
               "parameters": [],
               "src": "13964:2:12"
             },
             "returnParameters": {
-              "id": 4018,
+              "id": 4010,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 4013,
+                  "id": 4005,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4024,
+                  "scope": 4016,
                   "src": "13989:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2872,7 +2872,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4012,
+                    "id": 4004,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "13989:4:12",
@@ -2886,10 +2886,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 4015,
+                  "id": 4007,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4024,
+                  "scope": 4016,
                   "src": "13995:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -2898,7 +2898,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4014,
+                    "id": 4006,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "13995:4:12",
@@ -2912,10 +2912,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 4017,
+                  "id": 4009,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4024,
+                  "scope": 4016,
                   "src": "14000:13:12",
                   "stateVariable": false,
                   "storageLocation": "memory",
@@ -2924,7 +2924,7 @@
                     "typeString": "string"
                   },
                   "typeName": {
-                    "id": 4016,
+                    "id": 4008,
                     "name": "string",
                     "nodeType": "ElementaryTypeName",
                     "src": "14000:6:12",
@@ -2939,7 +2939,7 @@
               ],
               "src": "13988:26:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "13937:134:12",
             "stateMutability": "view",
             "superFunction": null,
@@ -2947,7 +2947,7 @@
           },
           {
             "body": {
-              "id": 4039,
+              "id": 4031,
               "nodeType": "Block",
               "src": "14846:68:12",
               "statements": [
@@ -2957,11 +2957,11 @@
                     "arguments": [
                       {
                         "argumentTypes": null,
-                        "id": 4035,
+                        "id": 4027,
                         "name": "_requestId",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 4026,
+                        "referencedDeclaration": 4018,
                         "src": "14884:10:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -2970,11 +2970,11 @@
                       },
                       {
                         "argumentTypes": null,
-                        "id": 4036,
+                        "id": 4028,
                         "name": "_timestamp",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 4028,
+                        "referencedDeclaration": 4020,
                         "src": "14895:10:12",
                         "typeDescriptions": {
                           "typeIdentifier": "t_uint256",
@@ -2995,32 +2995,32 @@
                       ],
                       "expression": {
                         "argumentTypes": null,
-                        "id": 4033,
+                        "id": 4025,
                         "name": "tellor",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 3936,
+                        "referencedDeclaration": 3928,
                         "src": "14864:6:12",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3162_storage",
+                          "typeIdentifier": "t_struct$_TellorStorageStruct_$3154_storage",
                           "typeString": "struct TellorStorage.TellorStorageStruct storage ref"
                         }
                       },
-                      "id": 4034,
+                      "id": 4026,
                       "isConstant": false,
                       "isLValue": true,
                       "isPure": false,
                       "lValueRequested": false,
                       "memberName": "retrieveData",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 1782,
+                      "referencedDeclaration": 1774,
                       "src": "14864:19:12",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$_t_uint256_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3162_storage_ptr_$",
+                        "typeIdentifier": "t_function_internal_view$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$_t_uint256_$_t_uint256_$returns$_t_uint256_$bound_to$_t_struct$_TellorStorageStruct_$3154_storage_ptr_$",
                         "typeString": "function (struct TellorStorage.TellorStorageStruct storage pointer,uint256,uint256) view returns (uint256)"
                       }
                     },
-                    "id": 4037,
+                    "id": 4029,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -3034,30 +3034,30 @@
                       "typeString": "uint256"
                     }
                   },
-                  "functionReturnParameters": 4032,
-                  "id": 4038,
+                  "functionReturnParameters": 4024,
+                  "id": 4030,
                   "nodeType": "Return",
                   "src": "14857:49:12"
                 }
               ]
             },
             "documentation": "@dev Retreive value from oracle based on timestamp\r\n@param _requestId being requested\r\n@param _timestamp to retreive data/value from\r\n@return value for timestamp submitted\r",
-            "id": 4040,
+            "id": 4032,
             "implemented": true,
             "kind": "function",
             "modifiers": [],
             "name": "retrieveData",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 4029,
+              "id": 4021,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 4026,
+                  "id": 4018,
                   "name": "_requestId",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4040,
+                  "scope": 4032,
                   "src": "14783:15:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -3066,7 +3066,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4025,
+                    "id": 4017,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "14783:4:12",
@@ -3080,10 +3080,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 4028,
+                  "id": 4020,
                   "name": "_timestamp",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4040,
+                  "scope": 4032,
                   "src": "14800:15:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -3092,7 +3092,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4027,
+                    "id": 4019,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "14800:4:12",
@@ -3108,15 +3108,15 @@
               "src": "14782:34:12"
             },
             "returnParameters": {
-              "id": 4032,
+              "id": 4024,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 4031,
+                  "id": 4023,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 4040,
+                  "scope": 4032,
                   "src": "14840:4:12",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -3125,7 +3125,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 4030,
+                    "id": 4022,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
                     "src": "14840:4:12",
@@ -3140,14 +3140,14 @@
               ],
               "src": "14839:6:12"
             },
-            "scope": 4041,
+            "scope": 4033,
             "src": "14761:153:12",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
-        "scope": 4042,
+        "scope": 4034,
         "src": "471:14678:12"
       }
     ],
@@ -3158,8 +3158,8 @@
     "version": "0.5.8+commit.23d335f2.Emscripten.clang"
   },
   "networks": {},
-  "schemaVersion": "3.0.16",
-  "updatedAt": "2019-12-05T16:36:50.662Z",
+  "schemaVersion": "3.0.11",
+  "updatedAt": "2019-12-06T02:41:38.805Z",
   "devdoc": {
     "details": "Oracle contract with all tellor getter functions. The logic for the functions on this contract \r is saved on the TellorGettersLibrary, TellorTransfer, TellorGettersLibrary, and TellorStake\r",
     "methods": {
