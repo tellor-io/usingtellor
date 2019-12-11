@@ -108,6 +108,24 @@ contract UserContract {
     }
 
     /**
+    * @dev Allows the user to get the latest value for the requestId specified
+    */
+    function resultFor(bytes32 Id) view external returns (uint256 timestamp, uint256 outcome, int status) {
+        //how do we go from bytes 32 to uint requestID....
+        uint _requestId = _tellorm.getRequestIdByQueryHash(Id);
+        require (_requestId > 0, "request Id does not exist in Tellor");
+        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
+        if (_count > 0) {
+            timestamp = _tellorm.getTimestampbyRequestIDandIndex(_requestId, _count - 1); //will this work with a zero index? (or insta hit?)
+            //define and check status--should it be defined in the mappings contract?
+            status = 1;
+            return ( timestamp, _tellorm.retrieveData(_requestId, timestamp), status);
+        }
+        //define check status
+        status = 404;
+        return (0, 0, 404);
+    }
+    /**
     * @dev Allows the user to get the first verified value for the requestId after the specified timestamp
     * @param _requestId is the requestId to look up the value for
     * @param _timestamp after which to search for first verified value

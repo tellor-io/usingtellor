@@ -226,14 +226,14 @@ library TellorGettersLibrary{
     // }
 
 
-    // /**
-    // * @dev Getter function for requestId based on the qeuaryHash
-    // * @param _queryHash hash(of string api and granularity) to check if a request already exists
-    // * @return uint requestId
-    // */
-    // function getRequestIdByQueryHash(TellorStorage.TellorStorageStruct storage self, bytes32 _queryHash) internal view returns(uint){    
-    //     return self.requestIdByQueryHash[_queryHash];
-    // }
+    /**
+    * @dev Getter function for requestId based on the qeuaryHash
+    * @param _queryHash hash(of string api and granularity) to check if a request already exists
+    * @return uint requestId
+    */
+    function getRequestIdByQueryHash(TellorStorage.TellorStorageStruct storage self, bytes32 _queryHash) internal view returns(uint){    
+        return self.requestIdByQueryHash[_queryHash];
+    }
 
 
     // /**
@@ -259,20 +259,20 @@ library TellorGettersLibrary{
     // }
 
 
-    // /**
-    // * @dev Gets the API struct variables that are not mappings
-    // * @param _requestId to look up
-    // * @return string of api to query
-    // * @return string of symbol of api to query
-    // * @return bytes32 hash of string
-    // * @return bytes32 of the granularity(decimal places) requested
-    // * @return uint of index in requestQ array
-    // * @return uint of current payout/tip for this requestId
-    // */
-    // function getRequestVars(TellorStorage.TellorStorageStruct storage self,uint _requestId) internal view returns(string memory,string memory, bytes32,uint, uint, uint) {
-    //     TellorStorage.Request storage _request = self.requestDetails[_requestId]; 
-    //     return (_request.queryString,_request.dataSymbol,_request.queryHash, _request.apiUintVars[keccak256("granularity")],_request.apiUintVars[keccak256("requestQPosition")],_request.apiUintVars[keccak256("totalTip")]);
-    // }
+    /**
+    * @dev Gets the API struct variables that are not mappings
+    * @param _requestId to look up
+    * @return string of api to query
+    * @return string of symbol of api to query
+    * @return bytes32 hash of string
+    * @return bytes32 of the granularity(decimal places) requested
+    * @return uint of index in requestQ array
+    * @return uint of current payout/tip for this requestId
+    */
+    function getRequestVars(TellorStorage.TellorStorageStruct storage self,uint _requestId) internal view returns(string memory,string memory, bytes32,uint, uint, uint) {
+        TellorStorage.Request storage _request = self.requestDetails[_requestId]; 
+        return (_request.queryString,_request.dataSymbol,_request.queryHash, _request.apiUintVars[keccak256("granularity")],_request.apiUintVars[keccak256("requestQPosition")],_request.apiUintVars[keccak256("totalTip")]);
+    }
 
 
     // /**

@@ -53,6 +53,18 @@ contract('UsingTellor Tests', function(accounts) {
         assert(vars[1] == 1200, "Get last value should work")
     })
 
+    it("Test resultFor", async function(){
+        let queryhash = await oracle.getRequestVars(1);
+        console.log("queryhash id = 1", queryhash[2]);
+        for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         }
+        let _id = web3.utils.keccak256(api, 1000)
+        let vars = await usingTellor.resultFor.call(_id)
+        assert(vars[0] == true, "ifRetreive is not true")
+        assert(vars[1] == 1200, "Get last value should work")
+    })
+
     it("Test getFirstVerifiedDataAfter", async function(){
     	var d = new Date()/1000;
         var startDate = d - (d % 86400);     

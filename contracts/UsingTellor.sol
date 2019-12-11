@@ -33,6 +33,10 @@ contract UsingTellor {
         return tellorUserContract.getCurrentValue(_requestId);
     }
 
+    function resultFor(bytes32 Id) view external returns (uint256 timestamp, uint256 outcome, int status){
+        return tellorUserContract.resultFor(Id);
+    }
+
     //How can we make this one more efficient?
     /**
     * @dev Allows the user to get the first verified value for the requestId after the specified timestamp

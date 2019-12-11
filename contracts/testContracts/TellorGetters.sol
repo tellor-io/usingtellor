@@ -232,14 +232,14 @@ contract TellorGetters{
     //     return tellor.getRequestIdByTimestamp(_timestamp);
     // }
 
-    // /**
-    // * @dev Getter function for requestId based on the queryHash
-    // * @param _request is the hash(of string api and granularity) to check if a request already exists
-    // * @return uint requestId
-    // */
-    // function getRequestIdByQueryHash(bytes32 _request) external view returns(uint){    
-    //     return tellor.getRequestIdByQueryHash(_request);
-    // }
+    /**
+    * @dev Getter function for requestId based on the queryHash
+    * @param _request is the hash(of string api and granularity) to check if a request already exists
+    * @return uint requestId
+    */
+    function getRequestIdByQueryHash(bytes32 _request) external view returns(uint){    
+        return tellor.getRequestIdByQueryHash(_request);
+    }
 
 
     // /**
@@ -265,19 +265,19 @@ contract TellorGetters{
     // }
 
 
-    // /**
-    // * @dev Gets the API struct variables that are not mappings
-    // * @param _requestId to look up
-    // * @return string of api to query
-    // * @return string of symbol of api to query
-    // * @return bytes32 hash of string
-    // * @return bytes32 of the granularity(decimal places) requested
-    // * @return uint of index in requestQ array
-    // * @return uint of current payout/tip for this requestId
-    // */
-    // function getRequestVars(uint _requestId) external view returns(string memory, string memory,bytes32,uint, uint, uint) {
-    //     return tellor.getRequestVars(_requestId);
-    // }
+    /**
+    * @dev Gets the API struct variables that are not mappings
+    * @param _requestId to look up
+    * @return string of api to query
+    * @return string of symbol of api to query
+    * @return bytes32 hash of string
+    * @return bytes32 of the granularity(decimal places) requested
+    * @return uint of index in requestQ array
+    * @return uint of current payout/tip for this requestId
+    */
+    function getRequestVars(uint _requestId) external view returns(string memory, string memory,bytes32,uint, uint, uint) {
+        return tellor.getRequestVars(_requestId);
+    }
 
 
     // /**
