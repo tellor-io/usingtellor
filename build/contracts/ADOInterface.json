@@ -1,0 +1,400 @@
+{
+  "contractName": "ADOInterface",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "Id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "resultFor",
+      "outputs": [
+        {
+          "name": "timestamp",
+          "type": "uint256"
+        },
+        {
+          "name": "outcome",
+          "type": "int256"
+        },
+        {
+          "name": "status",
+          "type": "int256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":true,\"inputs\":[{\"name\":\"Id\",\"type\":\"bytes32\"}],\"name\":\"resultFor\",\"outputs\":[{\"name\":\"timestamp\",\"type\":\"uint256\"},{\"name\":\"outcome\",\"type\":\"int256\"},{\"name\":\"status\",\"type\":\"int256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/company/code/usingTellor/contracts/interfaces/ADOInterface.sol\":\"ADOInterface\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/company/code/usingTellor/contracts/interfaces/ADOInterface.sol\":{\"keccak256\":\"0xeb68f4d3dbd5ec3864995eaf777e7939191482196f519bbd2c846a63c640ae4c\",\"urls\":[\"bzzr://beb24faf173ba6101a767148ee386493c6f15f1b77f49df1a69c793863b9f1f6\"]}},\"version\":1}",
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "pragma solidity ^0.5.0;\r\n\r\ninterface ADOInterface {\r\n\t\tfunction resultFor(bytes32 Id) view external returns (uint256 timestamp, int256 outcome, int256 status);\r\n}\r\n\r\n",
+  "sourcePath": "C:\\company\\code\\usingTellor\\contracts\\interfaces\\ADOInterface.sol",
+  "ast": {
+    "absolutePath": "/C/company/code/usingTellor/contracts/interfaces/ADOInterface.sol",
+    "exportedSymbols": {
+      "ADOInterface": [
+        1661
+      ]
+    },
+    "id": 1662,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 1649,
+        "literals": [
+          "solidity",
+          "^",
+          "0.5",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:23:5"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": null,
+        "fullyImplemented": false,
+        "id": 1661,
+        "linearizedBaseContracts": [
+          1661
+        ],
+        "name": "ADOInterface",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": null,
+            "documentation": null,
+            "id": 1660,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "resultFor",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 1652,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 1651,
+                  "name": "Id",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1660,
+                  "src": "74:10:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 1650,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "74:7:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "73:12:5"
+            },
+            "returnParameters": {
+              "id": 1659,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 1654,
+                  "name": "timestamp",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1660,
+                  "src": "109:17:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 1653,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "109:7:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 1656,
+                  "name": "outcome",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1660,
+                  "src": "128:14:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_int256",
+                    "typeString": "int256"
+                  },
+                  "typeName": {
+                    "id": 1655,
+                    "name": "int256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "128:6:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_int256",
+                      "typeString": "int256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 1658,
+                  "name": "status",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1660,
+                  "src": "144:13:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_int256",
+                    "typeString": "int256"
+                  },
+                  "typeName": {
+                    "id": 1657,
+                    "name": "int256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "144:6:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_int256",
+                      "typeString": "int256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "108:50:5"
+            },
+            "scope": 1661,
+            "src": "55:104:5",
+            "stateMutability": "view",
+            "superFunction": null,
+            "visibility": "external"
+          }
+        ],
+        "scope": 1662,
+        "src": "27:135:5"
+      }
+    ],
+    "src": "0:166:5"
+  },
+  "legacyAST": {
+    "absolutePath": "/C/company/code/usingTellor/contracts/interfaces/ADOInterface.sol",
+    "exportedSymbols": {
+      "ADOInterface": [
+        1661
+      ]
+    },
+    "id": 1662,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 1649,
+        "literals": [
+          "solidity",
+          "^",
+          "0.5",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:23:5"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": null,
+        "fullyImplemented": false,
+        "id": 1661,
+        "linearizedBaseContracts": [
+          1661
+        ],
+        "name": "ADOInterface",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": null,
+            "documentation": null,
+            "id": 1660,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "resultFor",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 1652,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 1651,
+                  "name": "Id",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1660,
+                  "src": "74:10:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 1650,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "74:7:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "73:12:5"
+            },
+            "returnParameters": {
+              "id": 1659,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 1654,
+                  "name": "timestamp",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1660,
+                  "src": "109:17:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 1653,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "109:7:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 1656,
+                  "name": "outcome",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1660,
+                  "src": "128:14:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_int256",
+                    "typeString": "int256"
+                  },
+                  "typeName": {
+                    "id": 1655,
+                    "name": "int256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "128:6:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_int256",
+                      "typeString": "int256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 1658,
+                  "name": "status",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1660,
+                  "src": "144:13:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_int256",
+                    "typeString": "int256"
+                  },
+                  "typeName": {
+                    "id": 1657,
+                    "name": "int256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "144:6:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_int256",
+                      "typeString": "int256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "108:50:5"
+            },
+            "scope": 1661,
+            "src": "55:104:5",
+            "stateMutability": "view",
+            "superFunction": null,
+            "visibility": "external"
+          }
+        ],
+        "scope": 1662,
+        "src": "27:135:5"
+      }
+    ],
+    "src": "0:166:5"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.5.8+commit.23d335f2.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.0.16",
+  "updatedAt": "2019-12-16T18:23:10.305Z",
+  "devdoc": {
+    "methods": {}
+  },
+  "userdoc": {
+    "methods": {}
+  }
+}

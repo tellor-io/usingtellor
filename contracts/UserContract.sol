@@ -2,6 +2,8 @@ pragma solidity ^0.5.0;
 
 import "../contracts/testContracts/TellorMaster.sol";
 import "../contracts/testContracts/Tellor.sol";
+import "./OracleIDDescriptions.sol";
+import "../contracts/interfaces/ADOInterface.sol";
 
 /**
 * @title UserContract
@@ -11,16 +13,18 @@ import "../contracts/testContracts/Tellor.sol";
 * Once the tellor system is running, this can be set properly.
 * Note deploy through centralized 'Tellor Master contract'
 */
-contract UserContract {
+contract UserContract is ADOInterface{
     //in Loyas per ETH.  so at 200$ ETH price and 3$ Trib price -- (3/200 * 1e18)
     uint256 public tributePrice;
     address payable public owner;
     address payable public tellorStorageAddress;
     Tellor _tellor;
     TellorMaster _tellorm;
+    OracleIDDescriptions descriptions;
 
     event OwnershipTransferred(address _previousOwner, address _newOwner);
     event NewPriceSet(uint256 _newPrice);
+    event NewDescriptorSet(address _descriptorSet);
 
     /*Constructor*/
     /**
@@ -32,6 +36,12 @@ contract UserContract {
         _tellor = Tellor(tellorStorageAddress); //we should delcall here
         _tellorm = TellorMaster(tellorStorageAddress);
         owner = msg.sender;
+    }
+
+    function setOracleIDDescriptors(address _oracleDescriptors) external {
+        require(msg.sender == owner, "Sender is not owner");
+        descriptions = OracleIDDescriptions(_oracleDescriptors);
+        emit NewDescriptorSet(_oracleDescriptors);
     }
 
     /*Functions*/
@@ -110,20 +120,21 @@ contract UserContract {
     /**
     * @dev Allows the user to get the latest value for the requestId specified
     */
-    function resultFor(bytes32 Id) view external returns (uint256 timestamp, uint256 outcome, int status) {
-        //how do we go from bytes 32 to uint requestID....
-        uint _requestId = _tellorm.getRequestIdByQueryHash(Id);
-        require (_requestId > 0, "request Id does not exist in Tellor");
-        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
-        if (_count > 0) {
-            timestamp = _tellorm.getTimestampbyRequestIDandIndex(_requestId, _count - 1); //will this work with a zero index? (or insta hit?)
-            //define and check status--should it be defined in the mappings contract?
-            status = 1;
-            return ( timestamp, _tellorm.retrieveData(_requestId, timestamp), status);
+    function resultFor(bytes32 _bytesId) view external returns (uint256 timestamp, int outcome, int status) {
+        uint _id = descriptions.getTellorIdFromBytes(_bytesId);
+        if (_id > 0){
+            bool _didGet;
+            uint256 _returnedValue;
+            uint256 _timestampRetrieved;
+            (_didGet,_returnedValue,_timestampRetrieved) = getCurrentValue(_id);
+            if(_didGet){
+                return (_timestampRetrieved, int(_returnedValue),descriptions.getStatusFromTellorStatus(1));
+            }
+            else{
+                return (0,0,descriptions.getStatusFromTellorStatus(2));
+            }
         }
-        //define check status
-        status = 404;
-        return (0, 0, 404);
+        return (0, 0, descriptions.getStatusFromTellorStatus(0));
     }
     /**
     * @dev Allows the user to get the first verified value for the requestId after the specified timestamp

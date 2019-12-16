@@ -3,11 +3,12 @@ pragma solidity ^0.5.0;
 import "../contracts/testContracts/TellorMaster.sol";
 import "../contracts/testContracts/Tellor.sol";
 import "./UserContract.sol";
+import "../contracts/interfaces/ADOInterface.sol";
 /**
 * @title UsingTellor
 * This contracts creates for easy integration to the Tellor Tellor System
 */
-contract UsingTellor {
+contract UsingTellor is ADOInterface{
     UserContract tellorUserContract;
     address payable public owner;
 
@@ -33,7 +34,7 @@ contract UsingTellor {
         return tellorUserContract.getCurrentValue(_requestId);
     }
 
-    function resultFor(bytes32 Id) view external returns (uint256 timestamp, uint256 outcome, int status){
+    function resultFor(bytes32 Id) view external returns (uint256 timestamp,int256 outcome, int256 status){
         return tellorUserContract.resultFor(Id);
     }
 

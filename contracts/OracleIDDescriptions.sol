@@ -6,59 +6,67 @@ pragma solidity ^0.5.0;
 
 contract OracleIDDescriptions {
 
-/*Variables*/
-mapping(bytes32 =>string) bytesToString;
-mapping(string=>bytes32) stringToBytes;
+    /*Variables*/
+    mapping(uint=>bytes32) tellorIDtoBytesID;
+    mapping(bytes32 => uint) bytesIDtoTellorID;
+    mapping(uint => int) tellorCodeToStatusCode;
+    mapping(int => uint) statusCodeToTellorCode;
+    address public owner;
 
-//should status enum be defined here too?
-
-/*Events*/
-event NewIDAdded(bytes32 _id, string _description);
-event newhash(bytes32 _hash);
-event newString(string _string);
-
-/*Functions*/
-//whitelist function for adding or open?
-
-function defineBytes32ID (string memory description, uint256 granularity) 
-public 
-returns(bytes32 _id)
-{
-    require(granularity > 0, "Too few decimal places");
-    string memory _description = description;
-	_id = keccak256(abi.encodePacked(_description, granularity));
-    emit newhash(_id);
-    //_id = keccak256(_description)];
-    string memory _desc = string(abi.encodePacked(_description, _id));
-    emit newString(_desc);
-    bytesToString[_id] = _desc;
-    stringToBytes[_description]= _id;
-    emit NewIDAdded(_id, _description);
-    return(_id);
-}
-
-
-function whatIsIdDescription (bytes32 _id) 
-public
-view
-returns(string memory _description) 
-{
-   _description = bytesToString[_id];
-   return(_description);
-}
-
-
-function whatIsStringID (string memory description, uint granularity) 
-public 
-view
-returns(bytes32 _id)
-{
-    require(granularity > 0, "Too few decimal places");
-    string memory _description = description;
-    string memory _desc = string(abi.encodePacked(_description, granularity));
+    /*Events*/
+    event TellorIdMappedToBytes(uint _requestID, bytes32 _id);
+    event StatusMapped(uint _tellorStatus, int _status);
     
-    _id = stringToBytes[_desc];
-    return(_id);
-}
+
+    /*Functions*/
+    constructor() public{
+        owner =msg.sender;
+    }
+
+
+    function transferOwnership(address payable newOwner) external {
+        require(msg.sender == owner, "Sender is not owner");
+        owner = newOwner;
+    }
+
+    function defineTellorCodeToStatusCode(uint _tellorStatus, int _status) external{
+        require(msg.sender == owner, "Sender is not owner");
+        tellorCodeToStatusCode[_tellorStatus] = _status;
+        statusCodeToTellorCode[_status] = _tellorStatus;
+        emit StatusMapped(_tellorStatus, _status);
+    }
+
+    function defineTellorIdToBytesID(uint _requestID, bytes32 _id) external{
+        require(msg.sender == owner, "Sender is not owner");
+        tellorIDtoBytesID[_requestID] = _id;
+        bytesIDtoTellorID[_id] = _requestID;
+        emit TellorIdMappedToBytes(_requestID,_id);
+    }
+
+    function getTellorStatusFromStatus(int _status) public view returns(uint _tellorStatus){
+        return statusCodeToTellorCode[_status];
+    }
+
+    function getStatusFromTellorStatus (uint _tellorStatus) public view returns(int _status) {
+        return tellorCodeToStatusCode[_tellorStatus];
+    }
+    
+
+    function getTellorIdFromBytes(bytes32 _id) 
+        public
+        view
+        returns(uint _requestId) 
+    {
+       return bytesIDtoTellorID[_id];
+    }
+
+
+    function getBytesFromTellorID(uint _requestId) 
+        public 
+        view
+        returns(bytes32 _id)
+    {
+        return tellorIDtoBytesID[_requestId];
+    }
 
 }
