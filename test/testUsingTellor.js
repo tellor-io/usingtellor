@@ -12,6 +12,8 @@ const TellorMaster = artifacts.require("..testContracts/TellorMaster.sol");
 const Tellor = artifacts.require("./Tellor.sol"); // globally injected artifacts helper
 var masterAbi = TellorMaster.abi;
 const oracleAbi = Tellor.abi;
+const Mappings = artifacts.require("./OracleIDDescriptions");
+var bytes = "0x0d7effefdb084dfeb1621348c8c70cc4e871eba4000000000000000000000000";
 
 var api = "json(https://api.gdax.com/products/BTC-USD/ticker).price";
 var api3 = "json(https://api.gdax.com/products/ETH-BTC/ticker).price";
@@ -26,6 +28,7 @@ contract('UsingTellor Tests', function(accounts) {
   let master;
   let userContract;
   let newOracle;
+  let mappings;
 
     beforeEach('Setup contract for each test', async function () {
         oracleBase = await Tellor.new()
@@ -42,6 +45,12 @@ contract('UsingTellor Tests', function(accounts) {
         newOracle = await Tellor.new();
         await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:master.methods.changeTellorContract(newOracle.address).encodeABI()})
         await userContract.setPrice(web3.utils.toWei("1","ether"))
+                mappings = await Mappings.new();
+        await mappings.defineTellorCodeToStatusCode(0,400);
+        await mappings.defineTellorCodeToStatusCode(1,200);
+        await mappings.defineTellorCodeToStatusCode(2,404);
+        await mappings.defineTellorIdToBytesID(1,bytes);
+        await userContract.setOracleIDDescriptors(mappings.address);
     })
 
     it("Test getCurrentValue", async function(){
@@ -54,15 +63,14 @@ contract('UsingTellor Tests', function(accounts) {
     })
 
     it("Test resultFor", async function(){
-        let queryhash = await oracle.getRequestVars(1);
-        console.log("queryhash id = 1", queryhash[2]);
         for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
          }
         let _id = web3.utils.keccak256(api, 1000)
-        let vars = await usingTellor.resultFor.call(_id)
-        assert(vars[0] == true, "ifRetreive is not true")
-        assert(vars[1] == 1200, "Get last value should work")
+        let vars = await usingTellor.resultFor(bytes)
+        assert(vars[0]> 0 , "timestamp works")
+        assert(vars[1] == 1200, "Get value should work")
+        assert(vars[2] == 200, "Get status should work")
     })
 
     it("Test getFirstVerifiedDataAfter", async function(){
@@ -189,4 +197,5 @@ contract('UsingTellor Tests', function(accounts) {
         assert(vars[0] == true, "ifRetreive is not true")
         assert(vars[1] == 1200, "Get last value should work")
     })
+    
  });
