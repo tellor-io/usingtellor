@@ -29,15 +29,15 @@
       "type": "function"
     }
   ],
-  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":true,\"inputs\":[{\"name\":\"Id\",\"type\":\"bytes32\"}],\"name\":\"resultFor\",\"outputs\":[{\"name\":\"timestamp\",\"type\":\"uint256\"},{\"name\":\"outcome\",\"type\":\"int256\"},{\"name\":\"status\",\"type\":\"int256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/company/code/usingTellor/contracts/interfaces/ADOInterface.sol\":\"ADOInterface\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/company/code/usingTellor/contracts/interfaces/ADOInterface.sol\":{\"keccak256\":\"0xeb68f4d3dbd5ec3864995eaf777e7939191482196f519bbd2c846a63c640ae4c\",\"urls\":[\"bzzr://beb24faf173ba6101a767148ee386493c6f15f1b77f49df1a69c793863b9f1f6\"]}},\"version\":1}",
+  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":true,\"inputs\":[{\"name\":\"Id\",\"type\":\"bytes32\"}],\"name\":\"resultFor\",\"outputs\":[{\"name\":\"timestamp\",\"type\":\"uint256\"},{\"name\":\"outcome\",\"type\":\"int256\"},{\"name\":\"status\",\"type\":\"int256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol\":\"ADOInterface\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol\":{\"keccak256\":\"0x15519cdb9554f578756a95bfde02d8b054030cf9af7817d15e238f4cc67b9b13\",\"urls\":[\"bzzr://8639e456720416cefba5b0f0be290485251fb45ab467c7f6c548b7ff8f9ea039\"]}},\"version\":1}",
   "bytecode": "0x",
   "deployedBytecode": "0x",
   "sourceMap": "",
   "deployedSourceMap": "",
-  "source": "pragma solidity ^0.5.0;\r\n\r\ninterface ADOInterface {\r\n\t\tfunction resultFor(bytes32 Id) view external returns (uint256 timestamp, int256 outcome, int256 status);\r\n}\r\n\r\n",
-  "sourcePath": "C:\\company\\code\\usingTellor\\contracts\\interfaces\\ADOInterface.sol",
+  "source": "pragma solidity ^0.5.0;\r\n\r\n/*\r\n@title ADOInterface \r\n@notice This inteface is the standard interface for price oracles\r\n*/\r\n\r\ninterface ADOInterface {\r\n\t\tfunction resultFor(bytes32 Id) view external returns (uint256 timestamp, int256 outcome, int256 status);\r\n}\r\n\r\n",
+  "sourcePath": "C:\\users\\lloya\\documents\\dda\\1tellor\\tellor\\projects\\tellornpm\\usingtellor\\contracts\\interfaces\\ADOInterface.sol",
   "ast": {
-    "absolutePath": "/C/company/code/usingTellor/contracts/interfaces/ADOInterface.sol",
+    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol",
     "exportedSymbols": {
       "ADOInterface": [
         1661
@@ -89,7 +89,7 @@
                   "name": "Id",
                   "nodeType": "VariableDeclaration",
                   "scope": 1660,
-                  "src": "74:10:5",
+                  "src": "173:10:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -100,7 +100,7 @@
                     "id": 1650,
                     "name": "bytes32",
                     "nodeType": "ElementaryTypeName",
-                    "src": "74:7:5",
+                    "src": "173:7:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_bytes32",
                       "typeString": "bytes32"
@@ -110,7 +110,7 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "73:12:5"
+              "src": "172:12:5"
             },
             "returnParameters": {
               "id": 1659,
@@ -122,7 +122,7 @@
                   "name": "timestamp",
                   "nodeType": "VariableDeclaration",
                   "scope": 1660,
-                  "src": "109:17:5",
+                  "src": "208:17:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -133,7 +133,7 @@
                     "id": 1653,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "109:7:5",
+                    "src": "208:7:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -148,7 +148,7 @@
                   "name": "outcome",
                   "nodeType": "VariableDeclaration",
                   "scope": 1660,
-                  "src": "128:14:5",
+                  "src": "227:14:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -159,7 +159,7 @@
                     "id": 1655,
                     "name": "int256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "128:6:5",
+                    "src": "227:6:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_int256",
                       "typeString": "int256"
@@ -174,7 +174,7 @@
                   "name": "status",
                   "nodeType": "VariableDeclaration",
                   "scope": 1660,
-                  "src": "144:13:5",
+                  "src": "243:13:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -185,7 +185,7 @@
                     "id": 1657,
                     "name": "int256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "144:6:5",
+                    "src": "243:6:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_int256",
                       "typeString": "int256"
@@ -195,23 +195,23 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "108:50:5"
+              "src": "207:50:5"
             },
             "scope": 1661,
-            "src": "55:104:5",
+            "src": "154:104:5",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
         "scope": 1662,
-        "src": "27:135:5"
+        "src": "126:135:5"
       }
     ],
-    "src": "0:166:5"
+    "src": "0:265:5"
   },
   "legacyAST": {
-    "absolutePath": "/C/company/code/usingTellor/contracts/interfaces/ADOInterface.sol",
+    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol",
     "exportedSymbols": {
       "ADOInterface": [
         1661
@@ -263,7 +263,7 @@
                   "name": "Id",
                   "nodeType": "VariableDeclaration",
                   "scope": 1660,
-                  "src": "74:10:5",
+                  "src": "173:10:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -274,7 +274,7 @@
                     "id": 1650,
                     "name": "bytes32",
                     "nodeType": "ElementaryTypeName",
-                    "src": "74:7:5",
+                    "src": "173:7:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_bytes32",
                       "typeString": "bytes32"
@@ -284,7 +284,7 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "73:12:5"
+              "src": "172:12:5"
             },
             "returnParameters": {
               "id": 1659,
@@ -296,7 +296,7 @@
                   "name": "timestamp",
                   "nodeType": "VariableDeclaration",
                   "scope": 1660,
-                  "src": "109:17:5",
+                  "src": "208:17:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -307,7 +307,7 @@
                     "id": 1653,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "109:7:5",
+                    "src": "208:7:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -322,7 +322,7 @@
                   "name": "outcome",
                   "nodeType": "VariableDeclaration",
                   "scope": 1660,
-                  "src": "128:14:5",
+                  "src": "227:14:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -333,7 +333,7 @@
                     "id": 1655,
                     "name": "int256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "128:6:5",
+                    "src": "227:6:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_int256",
                       "typeString": "int256"
@@ -348,7 +348,7 @@
                   "name": "status",
                   "nodeType": "VariableDeclaration",
                   "scope": 1660,
-                  "src": "144:13:5",
+                  "src": "243:13:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -359,7 +359,7 @@
                     "id": 1657,
                     "name": "int256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "144:6:5",
+                    "src": "243:6:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_int256",
                       "typeString": "int256"
@@ -369,28 +369,28 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "108:50:5"
+              "src": "207:50:5"
             },
             "scope": 1661,
-            "src": "55:104:5",
+            "src": "154:104:5",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
         "scope": 1662,
-        "src": "27:135:5"
+        "src": "126:135:5"
       }
     ],
-    "src": "0:166:5"
+    "src": "0:265:5"
   },
   "compiler": {
     "name": "solc",
     "version": "0.5.8+commit.23d335f2.Emscripten.clang"
   },
   "networks": {},
-  "schemaVersion": "3.0.16",
-  "updatedAt": "2019-12-16T18:23:10.305Z",
+  "schemaVersion": "3.0.11",
+  "updatedAt": "2019-12-17T14:54:18.578Z",
   "devdoc": {
     "methods": {}
   },

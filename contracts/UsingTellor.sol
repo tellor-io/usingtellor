@@ -34,11 +34,16 @@ contract UsingTellor is ADOInterface{
         return tellorUserContract.getCurrentValue(_requestId);
     }
 
-    function resultFor(bytes32 Id) view external returns (uint256 timestamp,int256 outcome, int256 status){
-        return tellorUserContract.resultFor(Id);
+    /**
+    * @dev Allows the user to get the latest value for the requestId specified using the 
+    * ADO specification for the standard inteface for price oracles
+    * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
+    * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
+    */
+    function resultFor(bytes32 _bytesId) view external returns (uint256 timestamp,int256 outcome, int256 status){
+        return tellorUserContract.resultFor(_bytesId);
     }
 
-    //How can we make this one more efficient?
     /**
     * @dev Allows the user to get the first verified value for the requestId after the specified timestamp
     * @param _requestId is the requestId to look up the value for

@@ -3,6 +3,7 @@ pragma solidity ^0.5.0;
 /**
  * @title Tellor Oracle Storage Library
  * @dev Contains all the variables/structs used by Tellor
+ * This test file is exactly the same as the production/mainnet file. 
  */
 
 library TellorStorage {

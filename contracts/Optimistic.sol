@@ -1,14 +1,14 @@
 pragma solidity ^0.5.0;
 
 import "./UsingTellor.sol";
-// import "../contracts/testContracts/TellorMaster.sol";
-// import "../contracts/testContracts/Tellor.sol";
+
 /**
-* @title UsingTellor
-* This contracts creates for easy integration to the Tellor Tellor System
+* @title Optimistic
+* This contracts allows users to use Tellor as a fallback oracle. It allows two parties to centrally 
+* enter the data used to settle a contract but allows either party to dispute the data. If a dispute is
+* initiated their contract will settle to Tellor's value.  
 */
 contract Optimistic is UsingTellor {
-    //Can we rework soem of these mappings into a struct?
     mapping(uint256 => bool) public isValue; //mapping for timestamp to bool where it's true if the value as been set
     mapping(uint256 => uint256) valuesByTimestamp; //mapping of timestamp to value
     mapping(uint256 => bool) public disputedValues; //maping of timestamp to bool where it's true if the value has been disputed

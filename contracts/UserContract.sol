@@ -38,13 +38,18 @@ contract UserContract is ADOInterface{
         owner = msg.sender;
     }
 
+    /*Functions*/
+    /*
+    * @dev Allows the owner to set the address for the oracleID descriptors
+    * used by the ADO members for price key value pairs standarization 
+    * _oracleDescriptos is the address for the OracleIDDescptions contract
+    */
     function setOracleIDDescriptors(address _oracleDescriptors) external {
         require(msg.sender == owner, "Sender is not owner");
         descriptions = OracleIDDescriptions(_oracleDescriptors);
         emit NewDescriptorSet(_oracleDescriptors);
     }
 
-    /*Functions*/
     /**
     * @dev Allows the current owner to transfer control of the contract to a newOwner.
     * @param newOwner The address to transfer ownership to.
@@ -118,7 +123,10 @@ contract UserContract is ADOInterface{
     }
 
     /**
-    * @dev Allows the user to get the latest value for the requestId specified
+    * @dev Allows the user to get the latest value for the requestId specified using the 
+    * ADO specification for the standard inteface for price oracles
+    * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
+    * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
     function resultFor(bytes32 _bytesId) view external returns (uint256 timestamp, int outcome, int status) {
         uint _id = descriptions.getTellorIdFromBytes(_bytesId);

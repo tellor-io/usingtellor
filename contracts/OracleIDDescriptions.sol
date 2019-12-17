@@ -23,12 +23,18 @@ contract OracleIDDescriptions {
         owner =msg.sender;
     }
 
-
+    /*
+    * @dev This fucntion allows for ownership transfer
+    * @param newOwner is the address for the new owner
+    */
     function transferOwnership(address payable newOwner) external {
         require(msg.sender == owner, "Sender is not owner");
         owner = newOwner;
     }
 
+    /*
+    * @dev 
+    */
     function defineTellorCodeToStatusCode(uint _tellorStatus, int _status) external{
         require(msg.sender == owner, "Sender is not owner");
         tellorCodeToStatusCode[_tellorStatus] = _status;

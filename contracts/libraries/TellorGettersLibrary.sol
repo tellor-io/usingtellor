@@ -1,9 +1,11 @@
 pragma solidity ^0.5.0;
 
 /**
+***********************************TEST LIBRARY***************************************
 * @title Tellor Getters Library
-* @dev This is the getter library for all variables in the Tellor Tributes system. TellorGetters references this 
-* libary for the getters logic
+* @dev This is the test getter library for all variables in the Tellor Tributes system. TellorGetters references this 
+* libary for the getters logic. 
+* Many of the functions have been commented out for simplicity. 
 */
 
 import "./SafeMath.sol";

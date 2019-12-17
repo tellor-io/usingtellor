@@ -9,9 +9,11 @@ import "./TellorTransfer.sol";
 import "./TellorGettersLibrary.sol";
 
 /**
+ ***********************************TEST LIBRARY***************************************
  * @title Tellor Oracle System Library
- * @dev Contains the functions' logic for the Tellor contract where miners can submit the proof of work
+ * @dev Contains the functions' logic for the Test Tellor contract where miners can submit the proof of work
  * along with the value and smart contracts can requestData and tip miners.
+ * Many of the functions have been commented out for simplicity. 
  */
 library TellorLibrary {
     using SafeMath for uint256;
