@@ -3953,7 +3953,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2019-12-17T15:30:44.301Z",
+  "updatedAt": "2019-12-17T17:29:54.141Z",
   "devdoc": {
     "methods": {
       "addTip(uint256,uint256)": {

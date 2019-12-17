@@ -2,7 +2,8 @@ require('dotenv').config()
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
 const mnemonic = process.env.ETH_MNEMONIC;
-const accessToken = process.env.INFURA_ACCESS_TOKEN;
+//console.log("mnemonic1", mnemonic1)
+const accessToken = process.env.WEB3_INFURA_PROJECT_ID;
 
 module.exports = {
   networks: {
@@ -14,7 +15,7 @@ module.exports = {
     },
     rinkeby: {
       provider: () =>
-        new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/${accessToken}`),
+        new HDWalletProvider(`${mnemonic}`, `https://rinkeby.infura.io/v3/${accessToken}`),
       network_id: 4,
     },
     mainnet: {

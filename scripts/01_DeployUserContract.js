@@ -4,6 +4,12 @@
 * @dev This allows Tellor deploy the community sale contract
 */
 
+console.log("test")
+// require('dotenv').config()
+
+// const mnemonic = process.env.ETH_MNEMONIC;
+// console.log("mnemonic", mnemonic)
+// const accessToken = process.env.INFURA_ACCESS_TOKEN;
 /*Imports*/
 var UserContract = artifacts.require("UserContract");
 var UsingTellor = artifacts.require("UsingTellor");
@@ -16,7 +22,7 @@ function sleep_s(secs) {
 
 const Web3 = require('web3')
 var HDWalletProvider = require("@truffle/hdwallet-provider");
-var web3 = new Web3(new HDWalletProvider('4bdc16637633fa4b4854670fbb83fa254756798009f52a1d3add27fb5f5a8e16',"https://rinkeby.infura.io/v3/7f11ed6df93946658bf4c817620fbced"));
+var web3 = new Web3(new HDWalletProvider('',"https://rinkeby.infura.io/v3/7f11ed6df93946658bf4c817620fbced"));
 //var web3 = new Web3(new HDWalletProvider("","https://mainnet.infura.io/v3/bc3e399903ae407fa477aa0854a00cdc"));
 
 /*notes for validating contract
@@ -27,7 +33,7 @@ var web3 = new Web3(new HDWalletProvider('4bdc16637633fa4b4854670fbb83fa25475679
 /*Variables*/
 //rinkeby
 tellorMaster = '0x724D1B69a7Ba352F11D73fDBdEB7fF869cB22E19';
-
+console.log("tellorMaster", tellorMaster)
 //mainnet
 //tellorMaster = '0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5';
 
