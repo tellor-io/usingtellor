@@ -7611,7 +7611,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2019-12-17T14:54:18.658Z",
+  "updatedAt": "2019-12-17T15:30:44.288Z",
   "devdoc": {
     "details": "This is the Master contract with all tellor getter functions and delegate call to Tellor. \r The logic for the functions on this contract is saved on the TellorGettersLibrary, TellorTransfer, \r TellorGettersLibrary, and TellorStake\r",
     "methods": {

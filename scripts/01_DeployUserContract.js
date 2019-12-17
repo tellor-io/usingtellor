@@ -42,5 +42,9 @@ module.exports =async function(callback) {
     
     console.log("userContract address:", userContract.address);
 
+    //set price 
+    //deploy oracleiddescription
+    //make up a description
+
 process.exit()
 }
