@@ -1,4 +1,3 @@
-
 <p align="center">
   <a href='https://twitter.com/WeAreTellor'>
     <img src= 'https://img.shields.io/twitter/url/http/shields.io.svg?style=social' alt='Twitter WeAreTellor' />
