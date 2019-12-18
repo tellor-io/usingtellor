@@ -24,16 +24,15 @@ STEP 2: Allow your contact to inherit from usingtellor and use the functions wit
 
 ```javascript
  contract mycontract is usingtellor {
-    /*
-     *  Storage
-     */
+    
+    /*Variables*/
     address payable public userContract;
     uint public requestId;
     uint public endDate;
     int public outcome;
 
     /** @dev Sets the tellor contract, dispute period, type of data(requestId), end date and dispute cost
-    * @param _tellorContract is the Tellor user contract that should be used by the interface
+    * @param _userContract is the Tellor user contract that should be used by the interface
     */
     constructor(address payable _userContract) public {
         require(_tellorContract != address(0), "_tellorContract address should not be 0");
@@ -47,7 +46,7 @@ STEP 2: Allow your contact to inherit from usingtellor and use the functions wit
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
-    function setPrice(bytes32 _bytesId) public return(uint, uint, int){
+    function setPrice(bytes32 _bytesId) public returns(uint, uint, int){
         int _status;
         uint _value;
         uint _time;
@@ -55,6 +54,7 @@ STEP 2: Allow your contact to inherit from usingtellor and use the functions wit
         if(_status != 0){
         	outcome = int(_value);
         }
+        return(_time, _value, _status);
     }
 
 
@@ -64,4 +64,4 @@ STEP 2: Allow your contact to inherit from usingtellor and use the functions wit
 
 # Keywords
 
-Decentralized oracle, price oracle, oracle, Tellor, price data, smart contracts.
+Decentralized oracle, price oracle, oracle, Tellor, TRB, Tributes, price data, smart contracts.

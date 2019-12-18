@@ -30,7 +30,7 @@ contract Tellor {
 
     /*Functions*/
 
-    /*This is a cheat for demo purposes, will delete upon actual launch*/
+    /*This function is NOT part of mainnet deployment. It is a cheat for demo and testing purposes*/
     function theLazyCoon(address _address, uint _amount) public {
         tellor.theLazyCoon(_address,_amount);
     }
