@@ -40,14 +40,14 @@
     "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol",
     "exportedSymbols": {
       "ADOInterface": [
-        1661
+        1667
       ]
     },
-    "id": 1662,
+    "id": 1668,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 1649,
+        "id": 1655,
         "literals": [
           "solidity",
           "^",
@@ -63,9 +63,9 @@
         "contractKind": "interface",
         "documentation": null,
         "fullyImplemented": false,
-        "id": 1661,
+        "id": 1667,
         "linearizedBaseContracts": [
-          1661
+          1667
         ],
         "name": "ADOInterface",
         "nodeType": "ContractDefinition",
@@ -73,22 +73,22 @@
           {
             "body": null,
             "documentation": null,
-            "id": 1660,
+            "id": 1666,
             "implemented": false,
             "kind": "function",
             "modifiers": [],
             "name": "resultFor",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 1652,
+              "id": 1658,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 1651,
+                  "id": 1657,
                   "name": "Id",
                   "nodeType": "VariableDeclaration",
-                  "scope": 1660,
+                  "scope": 1666,
                   "src": "173:10:5",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -97,7 +97,7 @@
                     "typeString": "bytes32"
                   },
                   "typeName": {
-                    "id": 1650,
+                    "id": 1656,
                     "name": "bytes32",
                     "nodeType": "ElementaryTypeName",
                     "src": "173:7:5",
@@ -113,15 +113,15 @@
               "src": "172:12:5"
             },
             "returnParameters": {
-              "id": 1659,
+              "id": 1665,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 1654,
+                  "id": 1660,
                   "name": "timestamp",
                   "nodeType": "VariableDeclaration",
-                  "scope": 1660,
+                  "scope": 1666,
                   "src": "208:17:5",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -130,7 +130,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 1653,
+                    "id": 1659,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
                     "src": "208:7:5",
@@ -144,10 +144,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 1656,
+                  "id": 1662,
                   "name": "outcome",
                   "nodeType": "VariableDeclaration",
-                  "scope": 1660,
+                  "scope": 1666,
                   "src": "227:14:5",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -156,7 +156,7 @@
                     "typeString": "int256"
                   },
                   "typeName": {
-                    "id": 1655,
+                    "id": 1661,
                     "name": "int256",
                     "nodeType": "ElementaryTypeName",
                     "src": "227:6:5",
@@ -170,10 +170,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 1658,
+                  "id": 1664,
                   "name": "status",
                   "nodeType": "VariableDeclaration",
-                  "scope": 1660,
+                  "scope": 1666,
                   "src": "243:13:5",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -182,7 +182,7 @@
                     "typeString": "int256"
                   },
                   "typeName": {
-                    "id": 1657,
+                    "id": 1663,
                     "name": "int256",
                     "nodeType": "ElementaryTypeName",
                     "src": "243:6:5",
@@ -197,14 +197,14 @@
               ],
               "src": "207:50:5"
             },
-            "scope": 1661,
+            "scope": 1667,
             "src": "154:104:5",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
-        "scope": 1662,
+        "scope": 1668,
         "src": "126:135:5"
       }
     ],
@@ -214,14 +214,14 @@
     "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol",
     "exportedSymbols": {
       "ADOInterface": [
-        1661
+        1667
       ]
     },
-    "id": 1662,
+    "id": 1668,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 1649,
+        "id": 1655,
         "literals": [
           "solidity",
           "^",
@@ -237,9 +237,9 @@
         "contractKind": "interface",
         "documentation": null,
         "fullyImplemented": false,
-        "id": 1661,
+        "id": 1667,
         "linearizedBaseContracts": [
-          1661
+          1667
         ],
         "name": "ADOInterface",
         "nodeType": "ContractDefinition",
@@ -247,22 +247,22 @@
           {
             "body": null,
             "documentation": null,
-            "id": 1660,
+            "id": 1666,
             "implemented": false,
             "kind": "function",
             "modifiers": [],
             "name": "resultFor",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 1652,
+              "id": 1658,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 1651,
+                  "id": 1657,
                   "name": "Id",
                   "nodeType": "VariableDeclaration",
-                  "scope": 1660,
+                  "scope": 1666,
                   "src": "173:10:5",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -271,7 +271,7 @@
                     "typeString": "bytes32"
                   },
                   "typeName": {
-                    "id": 1650,
+                    "id": 1656,
                     "name": "bytes32",
                     "nodeType": "ElementaryTypeName",
                     "src": "173:7:5",
@@ -287,15 +287,15 @@
               "src": "172:12:5"
             },
             "returnParameters": {
-              "id": 1659,
+              "id": 1665,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 1654,
+                  "id": 1660,
                   "name": "timestamp",
                   "nodeType": "VariableDeclaration",
-                  "scope": 1660,
+                  "scope": 1666,
                   "src": "208:17:5",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -304,7 +304,7 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 1653,
+                    "id": 1659,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
                     "src": "208:7:5",
@@ -318,10 +318,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 1656,
+                  "id": 1662,
                   "name": "outcome",
                   "nodeType": "VariableDeclaration",
-                  "scope": 1660,
+                  "scope": 1666,
                   "src": "227:14:5",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -330,7 +330,7 @@
                     "typeString": "int256"
                   },
                   "typeName": {
-                    "id": 1655,
+                    "id": 1661,
                     "name": "int256",
                     "nodeType": "ElementaryTypeName",
                     "src": "227:6:5",
@@ -344,10 +344,10 @@
                 },
                 {
                   "constant": false,
-                  "id": 1658,
+                  "id": 1664,
                   "name": "status",
                   "nodeType": "VariableDeclaration",
-                  "scope": 1660,
+                  "scope": 1666,
                   "src": "243:13:5",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -356,7 +356,7 @@
                     "typeString": "int256"
                   },
                   "typeName": {
-                    "id": 1657,
+                    "id": 1663,
                     "name": "int256",
                     "nodeType": "ElementaryTypeName",
                     "src": "243:6:5",
@@ -371,14 +371,14 @@
               ],
               "src": "207:50:5"
             },
-            "scope": 1661,
+            "scope": 1667,
             "src": "154:104:5",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
-        "scope": 1662,
+        "scope": 1668,
         "src": "126:135:5"
       }
     ],
@@ -390,7 +390,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2019-12-17T17:29:53.865Z",
+  "updatedAt": "2019-12-18T14:40:24.804Z",
   "devdoc": {
     "methods": {}
   },
