@@ -4,9 +4,11 @@ import "./SafeMath.sol";
 import "./TellorStorage.sol";
 
 /**
+***********************************TEST LIBRARY***************************************
 * @title Tellor Transfer
 * @dev Contais the methods related to transfers and ERC20. Tellor.sol and TellorGetters.sol
 * reference this library for function's logic.
+* Many of the functions have been commented out for simplicity. 
 */
 library TellorTransfer {
     using SafeMath for uint256;

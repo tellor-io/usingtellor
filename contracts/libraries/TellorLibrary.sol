@@ -9,9 +9,11 @@ import "./TellorTransfer.sol";
 import "./TellorGettersLibrary.sol";
 
 /**
+ ***********************************TEST LIBRARY***************************************
  * @title Tellor Oracle System Library
- * @dev Contains the functions' logic for the Tellor contract where miners can submit the proof of work
+ * @dev Contains the functions' logic for the Test Tellor contract where miners can submit the proof of work
  * along with the value and smart contracts can requestData and tip miners.
+ * Many of the functions have been commented out for simplicity. 
  */
 library TellorLibrary {
     using SafeMath for uint256;
@@ -46,7 +48,7 @@ library TellorLibrary {
 
     /*Functions*/
 
-    /*This is a cheat for demo purposes, will delete upon actual launch*/
+    /*This function is NOT part of mainnet deployment. It is a cheat for demo and testing purposes*/
     function theLazyCoon(TellorStorage.TellorStorageStruct storage self,address _address, uint _amount) public {
         self.uintVars[keccak256("total_supply")] += _amount;
         TellorTransfer.updateBalanceAtNow(self.balances[_address],_amount);

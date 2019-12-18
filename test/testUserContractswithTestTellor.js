@@ -12,6 +12,8 @@ const TellorMaster = artifacts.require("..testContracts/TellorMaster.sol");
 const Tellor = artifacts.require("./Tellor.sol"); // globally injected artifacts helper
 var masterAbi = TellorMaster.abi;
 const oracleAbi = Tellor.abi;
+const Mappings = artifacts.require("./OracleIDDescriptions");
+var bytes = "0x0d7effefdb084dfeb1621348c8c70cc4e871eba4000000000000000000000000";
 
 var api = "json(https://api.gdax.com/products/BTC-USD/ticker).price";
 var api3 = "json(https://api.gdax.com/products/ETH-BTC/ticker).price";
@@ -27,10 +29,16 @@ contract('UserContract Tests', function(accounts) {
   let master;
   let userContract;
   let newOracle;
+  let mappings;
 
     beforeEach('Setup contract for each test', async function () {
         //oracleBase = await OldTellor.new();
         oracleBase = await Tellor.new();
+        mappings = await Mappings.new();
+        await mappings.defineTellorCodeToStatusCode(0,400);
+        await mappings.defineTellorCodeToStatusCode(1,200);
+        await mappings.defineTellorCodeToStatusCode(2,404);
+        await mappings.defineTellorIdToBytesID(1,bytes);
         oracle = await TellorMaster.new(web3.utils.toChecksumAddress(oracleBase.address));
         master = await new web3.eth.Contract(masterAbi,oracle.address);
         oa = (web3.utils.toChecksumAddress(oracle.address))
@@ -38,6 +46,7 @@ contract('UserContract Tests', function(accounts) {
         //intitial data request:
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
         userContract = await UserContract.new(oa);//deploy userContract
+        await userContract.setOracleIDDescriptors(mappings.address);
         //deploy user contract or your contract:
         testContract = await TestContract.new(userContract.address,10,86400*3,[1],86400)
         //set the userContract on the testContract or your contract:
@@ -49,7 +58,7 @@ contract('UserContract Tests', function(accounts) {
         newOracle = await Tellor.new();
         await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:master.methods.changeTellorContract(newOracle.address).encodeABI()})
     });
-
+    
     it("Test Base Derivative Contract - Optimistic Up Move", async function(){
       await testContract.setContractDetails(7 * 86400)
       var startTime = await testContract.startDateTime.call()
@@ -332,5 +341,15 @@ contract('UserContract Tests', function(accounts) {
 
       assert(await testContract.endValue.call() < avg, 'value should be an average')
        });
-
+  
+    it("Test Result For", async function(){
+        for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         }
+        let _id = web3.utils.keccak256(api, 1000)
+        let vars = await userContract.resultFor(bytes)
+        assert(vars[0] > 0 , "timestamp works")
+        assert(vars[1] == 1200, "Get value should work")
+        assert(vars[2] == 200, "Get status should work")
+    });
 });
