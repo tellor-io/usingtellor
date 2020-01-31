@@ -40,7 +40,7 @@ contract UsingTellor is ADOInterface{
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
-    function resultFor(bytes32 _bytesId) view external returns (uint256 timestamp,int256 outcome, int256 status){
+    function resultFor(bytes32 _bytesId) view public returns (uint256 timestamp,int256 outcome, int256 status){
         return tellorUserContract.resultFor(_bytesId);
     }
 
@@ -79,7 +79,7 @@ contract UsingTellor is ADOInterface{
     * @param _tip amount the requester is willing to pay to be get on queue. Miners
     * mine the onDeckQueryHash, or the api with the highest payout pool
     */
-    function requestData(string calldata _request, string calldata _symbol, uint256 _granularity, uint256 _tip) external {
+    function requestData(string memory _request, string memory _symbol, uint256 _granularity, uint256 _tip) public {
         Tellor _tellor = Tellor(tellorUserContract.tellorStorageAddress());
         if (_tip > 0) {
             require(_tellor.transferFrom(msg.sender, address(this), _tip), "Transfer failed");
@@ -93,7 +93,7 @@ contract UsingTellor is ADOInterface{
     * @param _symbol is the short string symbol for the api request
     * @param _granularity is the number of decimals miners should include on the submitted value
     */
-    function requestDataWithEther(string calldata _request, string calldata _symbol, uint256 _granularity) external payable {
+    function requestDataWithEther(string memory _request, string memory _symbol, uint256 _granularity) public payable {
         tellorUserContract.requestDataWithEther.value(msg.value)(_request, _symbol, _granularity);
     }
 
