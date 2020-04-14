@@ -4409,7 +4409,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2020-01-31T16:06:53.392Z",
+  "updatedAt": "2020-04-14T18:01:36.681Z",
   "devdoc": {
     "methods": {
       "defineTellorCodeToStatusCode(uint256,int256)": {

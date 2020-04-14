@@ -34379,7 +34379,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2020-01-31T16:06:53.436Z",
+  "updatedAt": "2020-04-14T18:01:36.731Z",
   "devdoc": {
     "details": "Contains the functions' logic for the Test Tellor contract where miners can submit the proof of work\r along with the value and smart contracts can requestData and tip miners.\r Many of the functions have been commented out for simplicity. \r",
     "methods": {

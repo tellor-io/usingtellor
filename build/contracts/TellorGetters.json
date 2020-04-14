@@ -4109,7 +4109,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2020-01-31T16:06:53.491Z",
+  "updatedAt": "2020-04-14T18:01:36.828Z",
   "devdoc": {
     "details": "Oracle contract with all tellor getter functions. The logic for the functions on this contract \r is saved on the TellorGettersLibrary, TellorTransfer, TellorGettersLibrary, and TellorStake\r",
     "methods": {

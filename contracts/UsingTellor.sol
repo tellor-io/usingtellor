@@ -3,12 +3,12 @@ pragma solidity ^0.5.0;
 import "../contracts/testContracts/TellorMaster.sol";
 import "../contracts/testContracts/Tellor.sol";
 import "./UserContract.sol";
-import "../contracts/interfaces/ADOInterface.sol";
+import "../contracts/interfaces/EIP2362Interface.sol";
 /**
 * @title UsingTellor
 * This contracts creates for easy integration to the Tellor Tellor System
 */
-contract UsingTellor is ADOInterface{
+contract UsingTellor is EIP2362Interface{
     UserContract tellorUserContract;
     address payable public owner;
 
@@ -40,8 +40,8 @@ contract UsingTellor is ADOInterface{
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
-    function resultFor(bytes32 _bytesId) view public returns (uint256 timestamp,int256 outcome, int256 status){
-        return tellorUserContract.resultFor(_bytesId);
+    function valueFor(bytes32 _bytesId) view public returns (int value, uint256 timestamp, uint256 status){
+        return tellorUserContract.valueFor(_bytesId);
     }
 
     /**

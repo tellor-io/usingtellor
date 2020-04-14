@@ -3512,7 +3512,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2020-01-31T16:06:53.486Z",
+  "updatedAt": "2020-04-14T18:01:36.823Z",
   "devdoc": {
     "details": "Oracle contract where miners can submit the proof of work along with the value.\r The logic for this contract is in TellorLibrary.sol, TellorDispute.sol, TellorStake.sol,\r and TellorTransfer.sol\r",
     "methods": {

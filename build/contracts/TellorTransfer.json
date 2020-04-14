@@ -13739,7 +13739,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2020-01-31T16:06:53.470Z",
+  "updatedAt": "2020-04-14T18:01:36.808Z",
   "devdoc": {
     "details": "Contais the methods related to transfers and ERC20. Tellor.sol and TellorGetters.sol\r reference this library for function's logic.\r Many of the functions have been commented out for simplicity. \r",
     "methods": {

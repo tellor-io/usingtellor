@@ -1,27 +1,27 @@
 {
-  "contractName": "ADOInterface",
+  "contractName": "EIP2362Interface",
   "abi": [
     {
       "constant": true,
       "inputs": [
         {
-          "name": "Id",
+          "name": "_id",
           "type": "bytes32"
         }
       ],
-      "name": "resultFor",
+      "name": "valueFor",
       "outputs": [
         {
-          "name": "timestamp",
+          "name": "",
+          "type": "int256"
+        },
+        {
+          "name": "",
           "type": "uint256"
         },
         {
-          "name": "outcome",
-          "type": "int256"
-        },
-        {
-          "name": "status",
-          "type": "int256"
+          "name": "",
+          "type": "uint256"
         }
       ],
       "payable": false,
@@ -29,17 +29,17 @@
       "type": "function"
     }
   ],
-  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":true,\"inputs\":[{\"name\":\"Id\",\"type\":\"bytes32\"}],\"name\":\"resultFor\",\"outputs\":[{\"name\":\"timestamp\",\"type\":\"uint256\"},{\"name\":\"outcome\",\"type\":\"int256\"},{\"name\":\"status\",\"type\":\"int256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol\":\"ADOInterface\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol\":{\"keccak256\":\"0x15519cdb9554f578756a95bfde02d8b054030cf9af7817d15e238f4cc67b9b13\",\"urls\":[\"bzzr://8639e456720416cefba5b0f0be290485251fb45ab467c7f6c548b7ff8f9ea039\"]}},\"version\":1}",
+  "metadata": "{\"compiler\":{\"version\":\"0.5.8+commit.23d335f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":true,\"inputs\":[{\"name\":\"_id\",\"type\":\"bytes32\"}],\"name\":\"valueFor\",\"outputs\":[{\"name\":\"\",\"type\":\"int256\"},{\"name\":\"\",\"type\":\"uint256\"},{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"EIP2362 Interface for pull oracles\\r https://github.com/tellor-io/EIP-2362\\r\",\"methods\":{\"valueFor(bytes32)\":{\"details\":\"Exposed function pertaining to EIP standards\\r\",\"params\":{\"_id\":\"bytes32 ID of the query\\r\"},\"return\":\"int,uint,uint returns the value, timestamp, and status code of query\\r\"}}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/EIP2362Interface.sol\":\"EIP2362Interface\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/EIP2362Interface.sol\":{\"keccak256\":\"0xe934d1ed8c39cd8031f49ac06297f397556dbe0c82cfd7ba523b27b578c9588f\",\"urls\":[\"bzzr://734510a13f375fea0e4a264ab81e8c30d43dfc9bc354489d2cd82b877210208c\"]}},\"version\":1}",
   "bytecode": "0x",
   "deployedBytecode": "0x",
   "sourceMap": "",
   "deployedSourceMap": "",
-  "source": "pragma solidity ^0.5.0;\r\n\r\n/*\r\n@title ADOInterface \r\n@notice This inteface is the standard interface for price oracles\r\n*/\r\n\r\ninterface ADOInterface {\r\n\t\tfunction resultFor(bytes32 Id) view external returns (uint256 timestamp, int256 outcome, int256 status);\r\n}\r\n\r\n",
-  "sourcePath": "C:\\users\\lloya\\documents\\dda\\1tellor\\tellor\\projects\\tellornpm\\usingtellor\\contracts\\interfaces\\ADOInterface.sol",
+  "source": "pragma solidity >=0.5.0 <0.7.0;\r\n\r\n/**\r\n    * @dev EIP2362 Interface for pull oracles\r\n    * https://github.com/tellor-io/EIP-2362\r\n*/\r\ninterface EIP2362Interface{\r\n\t/**\r\n    \t* @dev Exposed function pertaining to EIP standards\r\n    \t* @param _id bytes32 ID of the query\r\n    \t* @return int,uint,uint returns the value, timestamp, and status code of query\r\n\t*/\r\n  \tfunction valueFor(bytes32 _id) external view returns(int256,uint256,uint256);\r\n}\r\n",
+  "sourcePath": "C:\\users\\lloya\\documents\\dda\\1tellor\\tellor\\projects\\tellornpm\\usingtellor\\contracts\\interfaces\\EIP2362Interface.sol",
   "ast": {
-    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol",
+    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/EIP2362Interface.sol",
     "exportedSymbols": {
-      "ADOInterface": [
+      "EIP2362Interface": [
         1667
       ]
     },
@@ -50,34 +50,37 @@
         "id": 1655,
         "literals": [
           "solidity",
-          "^",
+          ">=",
           "0.5",
+          ".0",
+          "<",
+          "0.7",
           ".0"
         ],
         "nodeType": "PragmaDirective",
-        "src": "0:23:5"
+        "src": "0:31:5"
       },
       {
         "baseContracts": [],
         "contractDependencies": [],
         "contractKind": "interface",
-        "documentation": null,
+        "documentation": "@dev EIP2362 Interface for pull oracles\r\nhttps://github.com/tellor-io/EIP-2362\r",
         "fullyImplemented": false,
         "id": 1667,
         "linearizedBaseContracts": [
           1667
         ],
-        "name": "ADOInterface",
+        "name": "EIP2362Interface",
         "nodeType": "ContractDefinition",
         "nodes": [
           {
             "body": null,
-            "documentation": null,
+            "documentation": "@dev Exposed function pertaining to EIP standards\r\n@param _id bytes32 ID of the query\r\n@return int,uint,uint returns the value, timestamp, and status code of query\r",
             "id": 1666,
             "implemented": false,
             "kind": "function",
             "modifiers": [],
-            "name": "resultFor",
+            "name": "valueFor",
             "nodeType": "FunctionDefinition",
             "parameters": {
               "id": 1658,
@@ -86,10 +89,10 @@
                 {
                   "constant": false,
                   "id": 1657,
-                  "name": "Id",
+                  "name": "_id",
                   "nodeType": "VariableDeclaration",
                   "scope": 1666,
-                  "src": "173:10:5",
+                  "src": "383:11:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -100,7 +103,7 @@
                     "id": 1656,
                     "name": "bytes32",
                     "nodeType": "ElementaryTypeName",
-                    "src": "173:7:5",
+                    "src": "383:7:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_bytes32",
                       "typeString": "bytes32"
@@ -110,7 +113,7 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "172:12:5"
+              "src": "382:13:5"
             },
             "returnParameters": {
               "id": 1665,
@@ -119,10 +122,36 @@
                 {
                   "constant": false,
                   "id": 1660,
-                  "name": "timestamp",
+                  "name": "",
                   "nodeType": "VariableDeclaration",
                   "scope": 1666,
-                  "src": "208:17:5",
+                  "src": "418:6:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_int256",
+                    "typeString": "int256"
+                  },
+                  "typeName": {
+                    "id": 1659,
+                    "name": "int256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "418:6:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_int256",
+                      "typeString": "int256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 1662,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1666,
+                  "src": "425:7:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -130,10 +159,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 1659,
+                    "id": 1661,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "208:7:5",
+                    "src": "425:7:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -144,76 +173,50 @@
                 },
                 {
                   "constant": false,
-                  "id": 1662,
-                  "name": "outcome",
-                  "nodeType": "VariableDeclaration",
-                  "scope": 1666,
-                  "src": "227:14:5",
-                  "stateVariable": false,
-                  "storageLocation": "default",
-                  "typeDescriptions": {
-                    "typeIdentifier": "t_int256",
-                    "typeString": "int256"
-                  },
-                  "typeName": {
-                    "id": 1661,
-                    "name": "int256",
-                    "nodeType": "ElementaryTypeName",
-                    "src": "227:6:5",
-                    "typeDescriptions": {
-                      "typeIdentifier": "t_int256",
-                      "typeString": "int256"
-                    }
-                  },
-                  "value": null,
-                  "visibility": "internal"
-                },
-                {
-                  "constant": false,
                   "id": 1664,
-                  "name": "status",
+                  "name": "",
                   "nodeType": "VariableDeclaration",
                   "scope": 1666,
-                  "src": "243:13:5",
+                  "src": "433:7:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_int256",
-                    "typeString": "int256"
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
                   },
                   "typeName": {
                     "id": 1663,
-                    "name": "int256",
+                    "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "243:6:5",
+                    "src": "433:7:5",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_int256",
-                      "typeString": "int256"
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
                     }
                   },
                   "value": null,
                   "visibility": "internal"
                 }
               ],
-              "src": "207:50:5"
+              "src": "417:24:5"
             },
             "scope": 1667,
-            "src": "154:104:5",
+            "src": "365:77:5",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
         "scope": 1668,
-        "src": "126:135:5"
+        "src": "136:309:5"
       }
     ],
-    "src": "0:265:5"
+    "src": "0:447:5"
   },
   "legacyAST": {
-    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/ADOInterface.sol",
+    "absolutePath": "/C/users/lloya/documents/dda/1tellor/tellor/projects/tellornpm/usingtellor/contracts/interfaces/EIP2362Interface.sol",
     "exportedSymbols": {
-      "ADOInterface": [
+      "EIP2362Interface": [
         1667
       ]
     },
@@ -224,34 +227,37 @@
         "id": 1655,
         "literals": [
           "solidity",
-          "^",
+          ">=",
           "0.5",
+          ".0",
+          "<",
+          "0.7",
           ".0"
         ],
         "nodeType": "PragmaDirective",
-        "src": "0:23:5"
+        "src": "0:31:5"
       },
       {
         "baseContracts": [],
         "contractDependencies": [],
         "contractKind": "interface",
-        "documentation": null,
+        "documentation": "@dev EIP2362 Interface for pull oracles\r\nhttps://github.com/tellor-io/EIP-2362\r",
         "fullyImplemented": false,
         "id": 1667,
         "linearizedBaseContracts": [
           1667
         ],
-        "name": "ADOInterface",
+        "name": "EIP2362Interface",
         "nodeType": "ContractDefinition",
         "nodes": [
           {
             "body": null,
-            "documentation": null,
+            "documentation": "@dev Exposed function pertaining to EIP standards\r\n@param _id bytes32 ID of the query\r\n@return int,uint,uint returns the value, timestamp, and status code of query\r",
             "id": 1666,
             "implemented": false,
             "kind": "function",
             "modifiers": [],
-            "name": "resultFor",
+            "name": "valueFor",
             "nodeType": "FunctionDefinition",
             "parameters": {
               "id": 1658,
@@ -260,10 +266,10 @@
                 {
                   "constant": false,
                   "id": 1657,
-                  "name": "Id",
+                  "name": "_id",
                   "nodeType": "VariableDeclaration",
                   "scope": 1666,
-                  "src": "173:10:5",
+                  "src": "383:11:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -274,7 +280,7 @@
                     "id": 1656,
                     "name": "bytes32",
                     "nodeType": "ElementaryTypeName",
-                    "src": "173:7:5",
+                    "src": "383:7:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_bytes32",
                       "typeString": "bytes32"
@@ -284,7 +290,7 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "172:12:5"
+              "src": "382:13:5"
             },
             "returnParameters": {
               "id": 1665,
@@ -293,10 +299,36 @@
                 {
                   "constant": false,
                   "id": 1660,
-                  "name": "timestamp",
+                  "name": "",
                   "nodeType": "VariableDeclaration",
                   "scope": 1666,
-                  "src": "208:17:5",
+                  "src": "418:6:5",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_int256",
+                    "typeString": "int256"
+                  },
+                  "typeName": {
+                    "id": 1659,
+                    "name": "int256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "418:6:5",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_int256",
+                      "typeString": "int256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 1662,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 1666,
+                  "src": "425:7:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -304,10 +336,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 1659,
+                    "id": 1661,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "208:7:5",
+                    "src": "425:7:5",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -318,71 +350,45 @@
                 },
                 {
                   "constant": false,
-                  "id": 1662,
-                  "name": "outcome",
-                  "nodeType": "VariableDeclaration",
-                  "scope": 1666,
-                  "src": "227:14:5",
-                  "stateVariable": false,
-                  "storageLocation": "default",
-                  "typeDescriptions": {
-                    "typeIdentifier": "t_int256",
-                    "typeString": "int256"
-                  },
-                  "typeName": {
-                    "id": 1661,
-                    "name": "int256",
-                    "nodeType": "ElementaryTypeName",
-                    "src": "227:6:5",
-                    "typeDescriptions": {
-                      "typeIdentifier": "t_int256",
-                      "typeString": "int256"
-                    }
-                  },
-                  "value": null,
-                  "visibility": "internal"
-                },
-                {
-                  "constant": false,
                   "id": 1664,
-                  "name": "status",
+                  "name": "",
                   "nodeType": "VariableDeclaration",
                   "scope": 1666,
-                  "src": "243:13:5",
+                  "src": "433:7:5",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_int256",
-                    "typeString": "int256"
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
                   },
                   "typeName": {
                     "id": 1663,
-                    "name": "int256",
+                    "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "243:6:5",
+                    "src": "433:7:5",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_int256",
-                      "typeString": "int256"
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
                     }
                   },
                   "value": null,
                   "visibility": "internal"
                 }
               ],
-              "src": "207:50:5"
+              "src": "417:24:5"
             },
             "scope": 1667,
-            "src": "154:104:5",
+            "src": "365:77:5",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
         "scope": 1668,
-        "src": "126:135:5"
+        "src": "136:309:5"
       }
     ],
-    "src": "0:265:5"
+    "src": "0:447:5"
   },
   "compiler": {
     "name": "solc",
@@ -390,9 +396,18 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2020-01-31T16:06:53.419Z",
+  "updatedAt": "2020-04-14T18:01:36.711Z",
   "devdoc": {
-    "methods": {}
+    "details": "EIP2362 Interface for pull oracles\r https://github.com/tellor-io/EIP-2362\r",
+    "methods": {
+      "valueFor(bytes32)": {
+        "details": "Exposed function pertaining to EIP standards\r",
+        "params": {
+          "_id": "bytes32 ID of the query\r"
+        },
+        "return": "int,uint,uint returns the value, timestamp, and status code of query\r"
+      }
+    }
   },
   "userdoc": {
     "methods": {}

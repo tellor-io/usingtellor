@@ -3,7 +3,7 @@ pragma solidity ^0.5.0;
 import "../contracts/testContracts/TellorMaster.sol";
 import "../contracts/testContracts/Tellor.sol";
 import "./OracleIDDescriptions.sol";
-import "../contracts/interfaces/ADOInterface.sol";
+import "../contracts/interfaces/EIP2362Interface.sol";
 
 /**
 * @title UserContract
@@ -13,7 +13,7 @@ import "../contracts/interfaces/ADOInterface.sol";
 * Once the tellor system is running, this can be set properly.
 * Note deploy through centralized 'Tellor Master contract'
 */
-contract UserContract is ADOInterface{
+contract UserContract is EIP2362Interface{
     //in Loyas per ETH.  so at 200$ ETH price and 3$ Trib price -- (3/200 * 1e18)
     uint256 public tributePrice;
     address payable public owner;
@@ -130,7 +130,7 @@ contract UserContract is ADOInterface{
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
-    function resultFor(bytes32 _bytesId) view external returns (uint256 timestamp, int outcome, int status) {
+    function resultFor(bytes32 _bytesId) view external returns (int value, uint256 timestamp, uint status) {
         uint _id = descriptions.getTellorIdFromBytes(_bytesId);
         if (_id > 0){
             bool _didGet;
@@ -138,7 +138,7 @@ contract UserContract is ADOInterface{
             uint256 _timestampRetrieved;
             (_didGet,_returnedValue,_timestampRetrieved) = getCurrentValue(_id);
             if(_didGet){
-                return (_timestampRetrieved, int(_returnedValue),descriptions.getStatusFromTellorStatus(1));
+                return (int(_returnedValue),_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
             }
             else{
                 return (0,0,descriptions.getStatusFromTellorStatus(2));

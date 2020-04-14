@@ -3556,7 +3556,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2020-01-31T16:06:53.466Z",
+  "updatedAt": "2020-04-14T18:01:36.763Z",
   "devdoc": {
     "details": "Contains all the variables/structs used by Tellor\r This test file is exactly the same as the production/mainnet file. \r",
     "methods": {},
