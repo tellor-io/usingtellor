@@ -9,13 +9,13 @@ contract OracleIDDescriptions {
     /*Variables*/
     mapping(uint=>bytes32) tellorIDtoBytesID;
     mapping(bytes32 => uint) bytesIDtoTellorID;
-    mapping(uint => int) tellorCodeToStatusCode;
-    mapping(int => uint) statusCodeToTellorCode;
+    mapping(uint => uint) tellorCodeToStatusCode;
+    mapping(uint => uint) statusCodeToTellorCode;
     address public owner;
 
     /*Events*/
     event TellorIdMappedToBytes(uint _requestID, bytes32 _id);
-    event StatusMapped(uint _tellorStatus, int _status);
+    event StatusMapped(uint _tellorStatus, uint _status);
     
 
     /*Functions*/
@@ -34,11 +34,11 @@ contract OracleIDDescriptions {
 
     /**
     * @dev This fuction allows the owner to map the tellor uint data status code to the standarized 
-    * ADO int status code such as null, retreived etc...
+    * ADO uint status code such as null, retreived etc...
     * _tellorStatus uint the tellor status
-    * _status the data ADO standarized int status
+    * _status the data ADO standarized uint status
     */
-    function defineTellorCodeToStatusCode(uint _tellorStatus, int _status) external{
+    function defineTellorCodeToStatusCode(uint _tellorStatus, uint _status) external{
         require(msg.sender == owner, "Sender is not owner");
         tellorCodeToStatusCode[_tellorStatus] = _status;
         statusCodeToTellorCode[_status] = _tellorStatus;
@@ -59,20 +59,20 @@ contract OracleIDDescriptions {
     }
 
     /**
-    * @dev Getter function for the uint Tellor status code from the specified int ADO standarized status code
-    * @param _status the int ADO standarized status
+    * @dev Getter function for the uint Tellor status code from the specified uint ADO standarized status code
+    * @param _status the uint ADO standarized status
     * @return _tellorStatus uint 
     */ 
-    function getTellorStatusFromStatus(int _status) public view returns(uint _tellorStatus){
+    function getTellorStatusFromStatus(uint _status) public view returns(uint _tellorStatus){
         return statusCodeToTellorCode[_status];
     }
 
     /**
-    * @dev Getter function of the int ADO standarized status code from the specified Tellor uint status
+    * @dev Getter function of the uint ADO standarized status code from the specified Tellor uint status
     * @param _tellorStatus uint 
-    * @return _status the int ADO standarized status
+    * @return _status the uint ADO standarized status
     */ 
-    function getStatusFromTellorStatus (uint _tellorStatus) public view returns(int _status) {
+    function getStatusFromTellorStatus (uint _tellorStatus) public view returns(uint _status) {
         return tellorCodeToStatusCode[_tellorStatus];
     }
     

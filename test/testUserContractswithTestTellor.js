@@ -342,14 +342,15 @@ contract('UserContract Tests', function(accounts) {
       assert(await testContract.endValue.call() < avg, 'value should be an average')
        });
   
-    it("Test Result For", async function(){
+    it("Test value For", async function(){
         for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
          }
         let _id = web3.utils.keccak256(api, 1000)
-        let vars = await userContract.resultFor(bytes)
-        assert(vars[0] > 0 , "timestamp works")
-        assert(vars[1] == 1200, "Get value should work")
+        let vars = await userContract.valueFor(bytes)
+        console.log("vars", vars)
+        assert(vars[0] == 1200, "Get value should work")
+        assert(vars[1] > 0 , "timestamp works")
         assert(vars[2] == 200, "Get status should work")
     });
 });

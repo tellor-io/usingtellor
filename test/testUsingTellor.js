@@ -62,14 +62,15 @@ contract('UsingTellor Tests', function(accounts) {
         assert(vars[1] == 1200, "Get last value should work")
     })
 
-    it("Test resultFor", async function(){
+    it("Test valueFor", async function(){
         for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
          }
         let _id = web3.utils.keccak256(api, 1000)
-        let vars = await usingTellor.resultFor(bytes)
-        assert(vars[0]> 0 , "timestamp works")
-        assert(vars[1] == 1200, "Get value should work")
+        let vars = await usingTellor.valueFor(bytes)
+        
+        assert(vars[0] == 1200, "Get value should work")
+        assert(vars[1]> 0 , "timestamp works")
         assert(vars[2] == 200, "Get status should work")
     })
 
