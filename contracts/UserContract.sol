@@ -130,7 +130,7 @@ contract UserContract is EIP2362Interface{
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
-    function resultFor(bytes32 _bytesId) view external returns (int value, uint256 timestamp, uint status) {
+    function valueFor(bytes32 _bytesId) view external returns (int value, uint256 timestamp, uint status) {
         uint _id = descriptions.getTellorIdFromBytes(_bytesId);
         if (_id > 0){
             bool _didGet;
