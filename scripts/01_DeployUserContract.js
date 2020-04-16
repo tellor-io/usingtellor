@@ -17,8 +17,8 @@ function sleep_s(secs) {
 
 const Web3 = require('web3')
 var HDWalletProvider = require("@truffle/hdwallet-provider");
-//var web3 = new Web3(new HDWalletProvider('4bdc16637633fa4b4854670fbb83fa254756798009f52a1d3add27fb5f5a8e16',"https://rinkeby.infura.io/v3/7f11ed6df93946658bf4c817620fbced"));
-var web3 = new Web3(new HDWalletProvider("","https://mainnet.infura.io/v3/bc3e399903ae407fa477aa0854a00cdc"));
+var web3 = new Web3(new HDWalletProvider('3a10b4bc1258e8bfefb95b498fb8c0f0cd6964a811eabca87df5630bcacd7216',"https://rinkeby.infura.io/v3/7f11ed6df93946658bf4c817620fbced"));
+//var web3 = new Web3(new HDWalletProvider("","https://mainnet.infura.io/v3/bc3e399903ae407fa477aa0854a00cdc"));
 
 /*notes for validating contract
 //solc: 0.5.8+commit.23d335f2.Emscripten.clang
@@ -27,10 +27,10 @@ var web3 = new Web3(new HDWalletProvider("","https://mainnet.infura.io/v3/bc3e39
 
 /*Variables*/
 //rinkeby
-//tellorMaster = '0x724D1B69a7Ba352F11D73fDBdEB7fF869cB22E19';
+tellorMaster = '0xFe41Cb708CD98C5B20423433309E55b53F79134a';
 
 //mainnet
-tellorMaster = '0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5';
+//tellorMaster = '0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5';
 
 var api = "json(https://api.gdax.com/products/BTC-USD/ticker).price";
 var bytes = web3.utils.keccak256(api, 1000);
@@ -44,12 +44,12 @@ module.exports =async function(callback) {
     // oa = (web3.utils.toChecksumAddress(tellorMaster));
     // // tm = (web3.utils.toChecksumAddress(tellorMaster));
     // // console.log("tm", tm);
-    // userContract = await UserContract.new(oa);
-    // console.log("userContract address:", userContract.address);
-    // sleep_s(30)
+    userContract = await UserContract.new(oa);
+    console.log("userContract address:", userContract.address);
+    sleep_s(30)
 
-a = '0x09459fdafD6Fdce14E04B3487A656FBca0b953ea'
-userContract = await UserContract.at(a);
+//a = '0x09459fdafD6Fdce14E04B3487A656FBca0b953ea'
+//userContract = await UserContract.at(a);
     usingTellor = await UsingTellor.new(userContract.address)
 
     console.log("using tellor", usingTellor.address);
