@@ -28,32 +28,44 @@ var web3 = new Web3(new HDWalletProvider('3a10b4bc1258e8bfefb95b498fb8c0f0cd6964
 /*Variables*/
 //rinkeby
 tellorMaster = '0xFe41Cb708CD98C5B20423433309E55b53F79134a';
-var bytes = '0x2ecc80a3401165e1a04561d6ffe93662a31815d89cd63b00f248efd1cce47894'
+
+
+
+
+var tellorEthid = 1; 
+var adoEthid = '28f03153ea1b458348adcbca7c93d5063b0bd35b469f55ba2a02bb7e598a09fd';
+var adoDecimals = 8;
+var tellorDecimals = 3;
+
+var tellorid = 2; 
+var adoBtcid = '0x2ecc80a3401165e1a04561d6ffe93662a31815d89cd63b00f248efd1cce47894';
+var adoDecimals = 18;
+var tellorDecimals = 3;
+
 //mainnet
 //tellorMaster = '0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5';
 
 var api = "json(https://api.gdax.com/products/BTC-USD/ticker).price";
 //var bytes = web3.utils.keccak256(api, 1000);
 console.log("bytes", bytes);
-
 console.log("start");
+
+
 module.exports =async function(callback) {
     let userContract;
     let oracleIDDescriptions;
    console.log("1")
-/*    oa = (web3.utils.toChecksumAddress(tellorMaster));
-    // // tm = (web3.utils.toChecksumAddress(tellorMaster));
-    // // console.log("tm", tm);
+
+    oa = (web3.utils.toChecksumAddress(tellorMaster));
     userContract = await UserContract.new(oa);
     console.log("userContract address:", userContract.address);
-    sleep_s(30)*/
+    sleep_s(30)
 
-/*userContract address: 0x7aa2801D2635221D8bCd7161e6f8ce754E55BDbe
-using tellor 0x27C4E97b2319D72E0Be359d2245B95e1C12909CA
-oracleIDDesc address: 0x5523943013224927b68798163938E4A2254Ae990*/
-a = '0x7aa2801D2635221D8bCd7161e6f8ce754E55BDbe'
-userContract = await UserContract.at(a);
-/*    usingTellor = await UsingTellor.new(userContract.address)
+
+//a = ''
+//userContract = await UserContract.at(a);
+
+    usingTellor = await UsingTellor.new(userContract.address)
 
     console.log("using tellor", usingTellor.address);
     sleep_s(30)
@@ -67,9 +79,8 @@ userContract = await UserContract.at(a);
     sleep_s(30)
     
 
-*/
-/*    let ad = "0x5523943013224927b68798163938E4A2254Ae990"
-    let oracleIDDesc = await OracleIDDescriptions.at(ad);
+    //let ad = ""
+    //let oracleIDDesc = await OracleIDDescriptions.at(ad);
     await oracleIDDesc.defineTellorCodeToStatusCode(0,400);
     console.log("status code 0")
     sleep_s(30)
@@ -81,12 +92,17 @@ userContract = await UserContract.at(a);
     sleep_s(30)
 
 
-    await oracleIDDesc.defineTellorIdToBytesID(1,bytes);
-    console.log("defineTellorIdtoBytesId");*/
+    await oracleIDDesc.defineTellorIdToBytesID(1,bytes, adoDecimals);
+    console.log("defineTellorIdtoBytesId");
+    await oracleIDDesc.defineTellorIdtoTellorGranularity(1, tellorDecimals)
 
-/*    await userContract.setPrice(web3.utils.toWei(.03,'ether'));
+
+    await userContract.setPrice(web3.utils.toWei(.03,'ether'));
     console.log("userContract set Price ")
-    sleep_s(30)*/
+    sleep_s(30)
+
+
+
     await userContract.setPrice(30000000000000000);
     console.log("userContract set Price ")
 

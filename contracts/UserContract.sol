@@ -132,13 +132,15 @@ contract UserContract is EIP2362Interface{
     */
     function valueFor(bytes32 _bytesId) view external returns (int value, uint256 timestamp, uint status) {
         uint _id = descriptions.getTellorIdFromBytes(_bytesId);
+        uint n = descriptions.getGranularityAdjFactor(_bytesId);
+        int t = int(1en);
         if (_id > 0){
             bool _didGet;
             uint256 _returnedValue;
             uint256 _timestampRetrieved;
             (_didGet,_returnedValue,_timestampRetrieved) = getCurrentValue(_id);
             if(_didGet){
-                return (int(_returnedValue),_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
+                return (int(_returnedValue)*t,_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
             }
             else{
                 return (0,0,descriptions.getStatusFromTellorStatus(2));
@@ -146,6 +148,8 @@ contract UserContract is EIP2362Interface{
         }
         return (0, 0, descriptions.getStatusFromTellorStatus(0));
     }
+
+
     /**
     * @dev Allows the user to get the first verified value for the requestId after the specified timestamp
     * @param _requestId is the requestId to look up the value for

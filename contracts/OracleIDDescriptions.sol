@@ -11,6 +11,8 @@ contract OracleIDDescriptions {
     mapping(bytes32 => uint) bytesIDtoTellorID;
     mapping(uint => uint) tellorCodeToStatusCode;
     mapping(uint => uint) statusCodeToTellorCode;
+    mapping(uint => uint) tellorIdtoTellorGranularity;
+    mapping(uint => uint) tellorIdtoADOGranularity;
     address public owner;
 
     /*Events*/
@@ -32,11 +34,24 @@ contract OracleIDDescriptions {
         owner = newOwner;
     }
 
+
+    /**
+    * @dev This fuction allows the owner to map the tellor's Id to it's granularity and
+    * to match the standarized granularity
+    * @param _tellorId uint the tellor status
+    * @param _granularity the nunber of decimals
+    */
+    function defineTellorIdtoTellorGranularity(uint _tellorId, uint _granularity) external{
+        require(msg.sender == owner, "Sender is not owner");
+        tellorIdtoTellorGranularity[_tellorId] = _granularity;
+        emit GranularityMapped(_tellorId, _granularity);
+    }
+
     /**
     * @dev This fuction allows the owner to map the tellor uint data status code to the standarized 
     * ADO uint status code such as null, retreived etc...
-    * _tellorStatus uint the tellor status
-    * _status the data ADO standarized uint status
+    * @param _tellorStatus uint the tellor status
+    * @param _status the ADO standarized uint status
     */
     function defineTellorCodeToStatusCode(uint _tellorStatus, uint _status) external{
         require(msg.sender == owner, "Sender is not owner");
@@ -48,12 +63,14 @@ contract OracleIDDescriptions {
     /**
     * @dev Allows owner to map the standarized bytes32 Id to a specific requestID from Tellor
     * The dev should ensure the _requestId exists otherwise request the data on Tellor to get a requestId
-    * _requestID is the existing Tellor RequestID 
-    * _id is the descption of the ID in bytes 
+    * @param _requestID is the existing Tellor RequestID 
+    * @param _id is the descption of the ID in bytes 
+    * @param _granularity is the number of decimals in required in the ADO specs 
     */ 
-    function defineTellorIdToBytesID(uint _requestID, bytes32 _id) external{
+    function defineTellorIdToBytesID(uint _requestID, bytes32 _id, uint _granularity) external{
         require(msg.sender == owner, "Sender is not owner");
         tellorIDtoBytesID[_requestID] = _id;
+        tellorIdtoADOGranularity[_requestID] = _granularity;
         bytesIDtoTellorID[_id] = _requestID;
         emit TellorIdMappedToBytes(_requestID,_id);
     }
@@ -83,6 +100,18 @@ contract OracleIDDescriptions {
     */ 
     function getTellorIdFromBytes(bytes32 _id) public view  returns(uint _requestId)  {
        return bytesIDtoTellorID[_id];
+    }
+
+    /**
+    * @dev Getter function of the Tellor RequestID based on the specified bytes32 ADO standaraized _id
+    * @param _id is the bytes32 descriptor mapped to an existing Tellor's requestId
+    * @return _requestId is Tellor's requestID corresnpoding to _id
+    */ 
+    function getGranularityAdjFactor(bytes32 _id) public view  returns(uint _adjFactor)  {
+       uint requestID = bytesIDtoTellorID[_id];
+       uint adjFactor = tellorIdtoADOGranularity[_requestID] - tellorIdtoTellorGranularity[_tellorId];
+       
+       return adjFactor;
     }
 
     /**
