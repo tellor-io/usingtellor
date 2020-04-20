@@ -13,7 +13,7 @@ const Tellor = artifacts.require("./Tellor.sol"); // globally injected artifacts
 var masterAbi = TellorMaster.abi;
 const oracleAbi = Tellor.abi;
 const Mappings = artifacts.require("./OracleIDDescriptions");
-var bytes = "0x0d7effefdb084dfeb1621348c8c70cc4e871eba4000000000000000000000000";
+var bytes = "0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5";
 
 var api = "json(https://api.gdax.com/products/BTC-USD/ticker).price";
 var api3 = "json(https://api.gdax.com/products/ETH-BTC/ticker).price";
@@ -39,6 +39,7 @@ contract('UserContract Tests', function(accounts) {
         await mappings.defineTellorCodeToStatusCode(1,200);
         await mappings.defineTellorCodeToStatusCode(2,404);
         await mappings.defineTellorIdToBytesID(1,bytes);
+        await mappings.defineTellorIdtoAdjFactor(1, 1e0);
         oracle = await TellorMaster.new(web3.utils.toChecksumAddress(oracleBase.address));
         master = await new web3.eth.Contract(masterAbi,oracle.address);
         oa = (web3.utils.toChecksumAddress(oracle.address))
@@ -342,14 +343,18 @@ contract('UserContract Tests', function(accounts) {
       assert(await testContract.endValue.call() < avg, 'value should be an average')
        });
   
-    it("Test Result For", async function(){
+    it("Test value For", async function(){
         for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
          }
         let _id = web3.utils.keccak256(api, 1000)
-        let vars = await userContract.resultFor(bytes)
-        assert(vars[0] > 0 , "timestamp works")
-        assert(vars[1] == 1200, "Get value should work")
+        let vars = await userContract.valueFor(bytes)
+        // console.log("vars", vars)
+        // console.log("vars0",  web3.utils.hexToNumberString(vars[0]))
+        // console.log("vars1",  web3.utils.hexToNumberString(vars[1]))
+        // console.log("vars2",  web3.utils.hexToNumberString(vars[2]))
+        assert(vars[0] == 1200, "Get value should work")
+        assert(vars[1] > 0 , "timestamp works")
         assert(vars[2] == 200, "Get status should work")
     });
 });
