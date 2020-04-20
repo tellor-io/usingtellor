@@ -132,15 +132,14 @@ contract UserContract is EIP2362Interface{
     */
     function valueFor(bytes32 _bytesId) view external returns (int value, uint256 timestamp, uint status) {
         uint _id = descriptions.getTellorIdFromBytes(_bytesId);
-        uint n = descriptions.getGranularityAdjFactor(_bytesId);
-        int t = int(1en);
+        int n = descriptions.getGranularityAdjFactor(_bytesId);
         if (_id > 0){
             bool _didGet;
             uint256 _returnedValue;
             uint256 _timestampRetrieved;
             (_didGet,_returnedValue,_timestampRetrieved) = getCurrentValue(_id);
             if(_didGet){
-                return (int(_returnedValue)*t,_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
+                return (int(_returnedValue)*n,_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
             }
             else{
                 return (0,0,descriptions.getStatusFromTellorStatus(2));

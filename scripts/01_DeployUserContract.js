@@ -29,18 +29,13 @@ var web3 = new Web3(new HDWalletProvider('3a10b4bc1258e8bfefb95b498fb8c0f0cd6964
 //rinkeby
 tellorMaster = '0xFe41Cb708CD98C5B20423433309E55b53F79134a';
 
-
-
-
 var tellorEthid = 1; 
-var adoEthid = '28f03153ea1b458348adcbca7c93d5063b0bd35b469f55ba2a02bb7e598a09fd';
-var adoDecimals = 8;
-var tellorDecimals = 3;
+var adoEthid = '0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5';
+var adjFactor1 = 1e0;
 
-var tellorid = 2; 
-var adoBtcid = '0x2ecc80a3401165e1a04561d6ffe93662a31815d89cd63b00f248efd1cce47894';
-var adoDecimals = 18;
-var tellorDecimals = 3;
+var tellorBtcid = 2; 
+var adoBtcid = '0x637b7efb6b620736c247aaa282f3898914c0bef6c12faff0d3fe9d4bea783020';
+var adjFactor2 = 1e0;
 
 //mainnet
 //tellorMaster = '0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5';
@@ -92,19 +87,20 @@ module.exports =async function(callback) {
     sleep_s(30)
 
 
-    await oracleIDDesc.defineTellorIdToBytesID(1,bytes, adoDecimals);
+    await oracleIDDesc.defineTellorIdToBytesID(tellorEthid,adoEthid);
     console.log("defineTellorIdtoBytesId");
-    await oracleIDDesc.defineTellorIdtoTellorGranularity(1, tellorDecimals)
+    await oracleIDDesc.defineTellorIdToBytesID(tellorBtcid,adoBtcid);
+    console.log("defineTellorIdtoBytesId");
 
+    await oracleIDDesc.defineTellorIdtoAdjFactor(tellorEthid, adjFactor1)
+    console.log("defineTellorIdtoGranularity");
 
-    await userContract.setPrice(web3.utils.toWei(.03,'ether'));
+    await oracleIDDesc.defineTellorIdtoAdjFactor(tellorBtcid, adjFactor2)
+    console.log("defineTellorIdtoGranularity");
+
+    await userContract.setPrice(web3.utils.toWei(".03","ether"));
     console.log("userContract set Price ")
-    sleep_s(30)
 
-
-
-    await userContract.setPrice(30000000000000000);
-    console.log("userContract set Price ")
 
 process.exit()
 }
