@@ -42,7 +42,7 @@ var adjFactor2 = 1e0;
 
 var api = "json(https://api.gdax.com/products/BTC-USD/ticker).price";
 //var bytes = web3.utils.keccak256(api, 1000);
-console.log("bytes", bytes);
+//console.log("bytes", bytes);
 console.log("start");
 
 

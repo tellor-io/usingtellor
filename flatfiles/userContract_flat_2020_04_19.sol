@@ -2176,6 +2176,8 @@ contract Tellor {
 
 }
 
+
+
 /*
  * @title Price/numberic Pull Oracle mapping contract
 */
@@ -2185,14 +2187,16 @@ contract OracleIDDescriptions {
     /*Variables*/
     mapping(uint=>bytes32) tellorIDtoBytesID;
     mapping(bytes32 => uint) bytesIDtoTellorID;
-    mapping(uint => int) tellorCodeToStatusCode;
-    mapping(int => uint) statusCodeToTellorCode;
+    mapping(uint => uint) tellorCodeToStatusCode;
+    mapping(uint => uint) statusCodeToTellorCode;
+    mapping(uint => int) tellorIdtoAdjFactor;
+
     address public owner;
 
     /*Events*/
     event TellorIdMappedToBytes(uint _requestID, bytes32 _id);
-    event StatusMapped(uint _tellorStatus, int _status);
-    
+    event StatusMapped(uint _tellorStatus, uint _status);
+    event AdjFactorMapped(uint _requestID, int _adjFactor);
 
     /*Functions*/
     constructor() public{
@@ -2208,13 +2212,26 @@ contract OracleIDDescriptions {
         owner = newOwner;
     }
 
+
+    /**
+    * @dev This fuction allows the owner to map the tellor's Id to it's _adjFactor and
+    * to match the standarized granularity
+    * @param _tellorId uint the tellor status
+    * @param _adjFactor is 1eN where N is the number of decimals to convert to ADO standard
+    */
+    function defineTellorIdtoAdjFactor(uint _tellorId, int _adjFactor) external{
+        require(msg.sender == owner, "Sender is not owner");
+        tellorIdtoAdjFactor[_tellorId] = _adjFactor;
+        emit AdjFactorMapped(_tellorId, _adjFactor);
+    }
+
     /**
     * @dev This fuction allows the owner to map the tellor uint data status code to the standarized 
-    * ADO int status code such as null, retreived etc...
-    * _tellorStatus uint the tellor status
-    * _status the data ADO standarized int status
+    * ADO uint status code such as null, retreived etc...
+    * @param _tellorStatus uint the tellor status
+    * @param _status the ADO standarized uint status
     */
-    function defineTellorCodeToStatusCode(uint _tellorStatus, int _status) external{
+    function defineTellorCodeToStatusCode(uint _tellorStatus, uint _status) external{
         require(msg.sender == owner, "Sender is not owner");
         tellorCodeToStatusCode[_tellorStatus] = _status;
         statusCodeToTellorCode[_status] = _tellorStatus;
@@ -2224,8 +2241,8 @@ contract OracleIDDescriptions {
     /**
     * @dev Allows owner to map the standarized bytes32 Id to a specific requestID from Tellor
     * The dev should ensure the _requestId exists otherwise request the data on Tellor to get a requestId
-    * _requestID is the existing Tellor RequestID 
-    * _id is the descption of the ID in bytes 
+    * @param _requestID is the existing Tellor RequestID 
+    * @param _id is the descption of the ID in bytes 
     */ 
     function defineTellorIdToBytesID(uint _requestID, bytes32 _id) external{
         require(msg.sender == owner, "Sender is not owner");
@@ -2235,20 +2252,20 @@ contract OracleIDDescriptions {
     }
 
     /**
-    * @dev Getter function for the uint Tellor status code from the specified int ADO standarized status code
-    * @param _status the int ADO standarized status
+    * @dev Getter function for the uint Tellor status code from the specified uint ADO standarized status code
+    * @param _status the uint ADO standarized status
     * @return _tellorStatus uint 
     */ 
-    function getTellorStatusFromStatus(int _status) public view returns(uint _tellorStatus){
+    function getTellorStatusFromStatus(uint _status) public view returns(uint _tellorStatus){
         return statusCodeToTellorCode[_status];
     }
 
     /**
-    * @dev Getter function of the int ADO standarized status code from the specified Tellor uint status
+    * @dev Getter function of the uint ADO standarized status code from the specified Tellor uint status
     * @param _tellorStatus uint 
-    * @return _status the int ADO standarized status
+    * @return _status the uint ADO standarized status
     */ 
-    function getStatusFromTellorStatus (uint _tellorStatus) public view returns(int _status) {
+    function getStatusFromTellorStatus (uint _tellorStatus) public view returns(uint _status) {
         return tellorCodeToStatusCode[_tellorStatus];
     }
     
@@ -2259,6 +2276,17 @@ contract OracleIDDescriptions {
     */ 
     function getTellorIdFromBytes(bytes32 _id) public view  returns(uint _requestId)  {
        return bytesIDtoTellorID[_id];
+    }
+
+    /**
+    * @dev Getter function of the Tellor RequestID based on the specified bytes32 ADO standaraized _id
+    * @param _id is the bytes32 descriptor mapped to an existing Tellor's requestId
+    * @return _requestId is Tellor's requestID corresnpoding to _id
+    */ 
+    function getGranularityAdjFactor(bytes32 _id) public view  returns(int adjFactor)  {
+       uint requestID = bytesIDtoTellorID[_id];
+       adjFactor = tellorIdtoAdjFactor[requestID];
+       return adjFactor;
     }
 
     /**
@@ -2273,14 +2301,19 @@ contract OracleIDDescriptions {
 }
 
 
+pragma solidity >=0.5.0 <0.7.0;
 
-/*
-@title ADOInterface 
-@notice This inteface is the standard interface for price oracles
+/**
+    * @dev EIP2362 Interface for pull oracles
+    * https://github.com/tellor-io/EIP-2362
 */
-
-interface ADOInterface {
-        function resultFor(bytes32 Id) view external returns (uint256 timestamp, int256 outcome, int256 status);
+interface EIP2362Interface{
+    /**
+        * @dev Exposed function pertaining to EIP standards
+        * @param _id bytes32 ID of the query
+        * @return int,uint,uint returns the value, timestamp, and status code of query
+    */
+    function valueFor(bytes32 _id) external view returns(int256,uint256,uint256);
 }
 
 
@@ -2293,7 +2326,7 @@ interface ADOInterface {
 * Once the tellor system is running, this can be set properly.
 * Note deploy through centralized 'Tellor Master contract'
 */
-contract UserContract is ADOInterface{
+contract UserContract is EIP2362Interface{
     //in Loyas per ETH.  so at 200$ ETH price and 3$ Trib price -- (3/200 * 1e18)
     uint256 public tributePrice;
     address payable public owner;
@@ -2319,18 +2352,6 @@ contract UserContract is ADOInterface{
         owner = msg.sender;
     }
 
-    /**
-    * @dev This function allows the owner to update
-    * Tellor's address
-    * @param _storage is the TellorMaster address
-    */
-    function updateTellorAddress(address payable _storage) public {
-        require(msg.sender == owner, "Sender is not owner");
-        tellorStorageAddress = _storage;
-        _tellor = Tellor(tellorStorageAddress); //we should delcall here
-        _tellorm = TellorMaster(tellorStorageAddress);
-    }
-    
     /*Functions*/
     /*
     * @dev Allows the owner to set the address for the oracleID descriptors
@@ -2422,15 +2443,16 @@ contract UserContract is ADOInterface{
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
-    function resultFor(bytes32 _bytesId) view external returns (uint256 timestamp, int outcome, int status) {
+    function valueFor(bytes32 _bytesId) view external returns (int value, uint256 timestamp, uint status) {
         uint _id = descriptions.getTellorIdFromBytes(_bytesId);
+        int n = descriptions.getGranularityAdjFactor(_bytesId);
         if (_id > 0){
             bool _didGet;
             uint256 _returnedValue;
             uint256 _timestampRetrieved;
             (_didGet,_returnedValue,_timestampRetrieved) = getCurrentValue(_id);
             if(_didGet){
-                return (_timestampRetrieved, int(_returnedValue),descriptions.getStatusFromTellorStatus(1));
+                return (int(_returnedValue)*n,_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
             }
             else{
                 return (0,0,descriptions.getStatusFromTellorStatus(2));
@@ -2438,6 +2460,8 @@ contract UserContract is ADOInterface{
         }
         return (0, 0, descriptions.getStatusFromTellorStatus(0));
     }
+
+
     /**
     * @dev Allows the user to get the first verified value for the requestId after the specified timestamp
     * @param _requestId is the requestId to look up the value for
