@@ -2,36 +2,62 @@ pragma solidity ^0.5.0;
 
 import "../contracts/testContracts/TellorMaster.sol";
 import "../contracts/testContracts/Tellor.sol";
-import "./UserContract.sol";
+import "./OracleIDDescriptions.sol";
 import "../contracts/interfaces/EIP2362Interface.sol";
+
 /**
-* @title UsingTellor
+* @title UserContract
 * This contracts creates for easy integration to the Tellor Tellor System
+* This contract holds the Ether and Tributes for interacting with the system
+* Note it is centralized (we can set the price of Tellor Tributes)
+* Once the tellor system is running, this can be set properly.
+* Note deploy through centralized 'Tellor Master contract'
 */
 contract UsingTellor is EIP2362Interface{
-    UserContract tellorUserContract;
-    address payable public owner;
+    address payable public tellorStorageAddress;
+    address public oracleIDDescriptionsAddress;
+    Tellor _tellor;
+    TellorMaster _tellorm;
+    OracleIDDescriptions descriptions;
 
-    event OwnershipTransferred(address _previousOwner, address _newOwner);
+    event NewDescriptorSet(address _descriptorSet);
 
     /*Constructor*/
     /**
-    * @dev This function sents the owner and userContract address
-    * @param _userContract is the UserContract.sol address
+    * @dev the constructor sets the storage address and owner
+    * @param _storage is the TellorMaster address ???
     */
-    constructor(address _userContract) public {
-        tellorUserContract = UserContract(_userContract);
-        owner = msg.sender;
+    constructor(address payable _storage) public {
+        tellorStorageAddress = _storage;
+        _tellor = Tellor(tellorStorageAddress); //we should delcall here
+        _tellorm = TellorMaster(tellorStorageAddress);
     }
 
     /*Functions*/
+    /*
+    * @dev Allows the owner to set the address for the oracleID descriptors
+    * used by the ADO members for price key value pairs standarization 
+    * _oracleDescriptos is the address for the OracleIDDescptions contract
+    */
+    function setOracleIDDescriptors(address _oracleDescriptors) external {
+        require(_oracleDescriptors == address(0), "Already Set");
+        oracleIDDescriptionsAddress = _oracleDescriptors;
+        descriptions = OracleIDDescriptions(_oracleDescriptors);
+        emit NewDescriptorSet(_oracleDescriptors);
+    }
+
     /**
     * @dev Allows the user to get the latest value for the requestId specified
     * @param _requestId is the requestId to look up the value for
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
     */
     function getCurrentValue(uint256 _requestId) public view returns (bool ifRetrieve, uint256 value, uint256 _timestampRetrieved) {
-        return tellorUserContract.getCurrentValue(_requestId);
+        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
+        if (_count > 0) {
+            _timestampRetrieved = _tellorm.getTimestampbyRequestIDandIndex(_requestId, _count - 1); //will this work with a zero index? (or insta hit?)
+            return (true, _tellorm.retrieveData(_requestId, _timestampRetrieved), _timestampRetrieved);
+        }
+        return (false, 0, 0);
     }
 
     /**
@@ -40,19 +66,22 @@ contract UsingTellor is EIP2362Interface{
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
-    function valueFor(bytes32 _bytesId) view public returns (int value, uint256 timestamp, uint256 status){
-        return tellorUserContract.valueFor(_bytesId);
-    }
-
-    /**
-    * @dev Allows the user to get the first verified value for the requestId after the specified timestamp
-    * @param _requestId is the requestId to look up the value for
-    * @param _timestamp after which to search for first verified value
-    * @return bool true if it is able to retreive a value, the value, and the value's timestamp, the timestamp after
-    * which it searched for the first verified value
-    */
-    function getFirstVerifiedDataAfter(uint256 _requestId, uint256 _timestamp) public view returns (bool, uint256, uint256 _timestampRetrieved) {
-        return tellorUserContract.getFirstVerifiedDataAfter(_requestId, _timestamp);
+    function valueFor(bytes32 _bytesId) view external returns (int value, uint256 timestamp, uint status) {
+        uint _id = descriptions.getTellorIdFromBytes(_bytesId);
+        int n = descriptions.getGranularityAdjFactor(_bytesId);
+        if (_id > 0){
+            bool _didGet;
+            uint256 _returnedValue;
+            uint256 _timestampRetrieved;
+            (_didGet,_returnedValue,_timestampRetrieved) = getCurrentValue(_id);
+            if(_didGet){
+                return (int(_returnedValue)*n,_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
+            }
+            else{
+                return (0,0,descriptions.getStatusFromTellorStatus(2));
+            }
+        }
+        return (0, 0, descriptions.getStatusFromTellorStatus(0));
     }
 
     /**
@@ -61,78 +90,23 @@ contract UsingTellor is EIP2362Interface{
     * @param _timestamp after which to search for first verified value
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
     */
-    function getAnyDataAfter(uint256 _requestId, uint256 _timestamp)
+    function getDataAfter(uint256 _requestId, uint256 _timestamp)
         public
         view
         returns (bool _ifRetrieve, uint256 _value, uint256 _timestampRetrieved)
     {
-        return tellorUserContract.getAnyDataAfter(_requestId, _timestamp);
-    }
-
-    /**
-    * @dev Allows the user to submit a request for data to the oracle using Tributes
-    * Allowing this prevents us from increasing spread too high (since if we set the price too hight
-    * users will just go to an exchange and get tokens from there)
-    * @param _request string API being requested to be mined
-    * @param _symbol is the short string symbol for the api request
-    * @param _granularity is the number of decimals miners should include on the submitted value
-    * @param _tip amount the requester is willing to pay to be get on queue. Miners
-    * mine the onDeckQueryHash, or the api with the highest payout pool
-    */
-    function requestData(string memory _request, string memory _symbol, uint256 _granularity, uint256 _tip) public {
-        Tellor _tellor = Tellor(tellorUserContract.tellorStorageAddress());
-        if (_tip > 0) {
-            require(_tellor.transferFrom(msg.sender, address(this), _tip), "Transfer failed");
+        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
+        if (_count > 0) {
+            for (uint256 i = _count; i > 0; i--) {
+                if (_tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1) >= _timestamp) {
+                    _timestampRetrieved = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1); //will this work with a zero index? (or insta hit?)
+                }
+            }
+            if (_timestampRetrieved > 0) {
+                return (true, _tellorm.retrieveData(_requestId, _timestampRetrieved), _timestampRetrieved);
+            }
         }
-        _tellor.requestData(_request, _symbol, _granularity, _tip);
+        return (false, 0, 0);
     }
 
-    /**
-    * @dev Allows the user to submit a request for data to the oracle using ETH
-    * @param _request string API being requested to be mined
-    * @param _symbol is the short string symbol for the api request
-    * @param _granularity is the number of decimals miners should include on the submitted value
-    */
-    function requestDataWithEther(string memory _request, string memory _symbol, uint256 _granularity) public payable {
-        tellorUserContract.requestDataWithEther.value(msg.value)(_request, _symbol, _granularity);
-    }
-
-    /**
-    * @dev Allows the user to tip miners for the specified request using Tributes
-    * @param _requestId to tip
-    * @param _tip amount
-    */
-    function addTip(uint256 _requestId, uint256 _tip) public {
-        Tellor _tellor = Tellor(tellorUserContract.tellorStorageAddress());
-        require(_tellor.transferFrom(msg.sender, address(this), _tip), "Transfer failed");
-        _tellor.addTip(_requestId, _tip);
-    }
-
-    /**
-    * @dev Allows user to add tip with Ether by sending the ETH to the userContract and exchanging it for Tributes
-    * at the price specified by the userContract owner.
-    * @param _requestId to tip
-    */
-    function addTipWithEther(uint256 _requestId) public payable {
-        UserContract(tellorUserContract).addTipWithEther.value(msg.value)(_requestId);
-    }
-
-    /**
-    * @dev allows owner to set the user contract address
-    * @param _userContract address
-    */
-    function setUserContract(address _userContract) public {
-        require(msg.sender == owner, "Sender is not owner"); //who should this be?
-        tellorUserContract = UserContract(_userContract);
-    }
-
-    /**
-    * @dev allows owner to transfer ownership
-    * @param _newOwner address
-    */
-    function transferOwnership(address payable _newOwner) external {
-        require(msg.sender == owner, "Sender is not owner");
-        emit OwnershipTransferred(owner, _newOwner);
-        owner = _newOwner;
-    }
 }

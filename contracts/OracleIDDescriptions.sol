@@ -13,26 +13,10 @@ contract OracleIDDescriptions {
     mapping(uint => uint) statusCodeToTellorCode;
     mapping(uint => int) tellorIdtoAdjFactor;
 
-    address public owner;
-
     /*Events*/
     event TellorIdMappedToBytes(uint _requestID, bytes32 _id);
     event StatusMapped(uint _tellorStatus, uint _status);
     event AdjFactorMapped(uint _requestID, int _adjFactor);
-
-    /*Functions*/
-    constructor() public{
-        owner =msg.sender;
-    }
-
-    /**
-    * @dev This fucntion allows for ownership transfer
-    * @param newOwner is the address for the new owner
-    */
-    function transferOwnership(address payable newOwner) external {
-        require(msg.sender == owner, "Sender is not owner");
-        owner = newOwner;
-    }
 
 
     /**
@@ -42,7 +26,7 @@ contract OracleIDDescriptions {
     * @param _adjFactor is 1eN where N is the number of decimals to convert to ADO standard
     */
     function defineTellorIdtoAdjFactor(uint _tellorId, int _adjFactor) external{
-        require(msg.sender == owner, "Sender is not owner");
+        require(tellorIdtoAdjFactor[_tellorId] = 0, "Already Set");
         tellorIdtoAdjFactor[_tellorId] = _adjFactor;
         emit AdjFactorMapped(_tellorId, _adjFactor);
     }
@@ -54,7 +38,7 @@ contract OracleIDDescriptions {
     * @param _status the ADO standarized uint status
     */
     function defineTellorCodeToStatusCode(uint _tellorStatus, uint _status) external{
-        require(msg.sender == owner, "Sender is not owner");
+        require(tellorCodeToStatusCode[_tellorStatus] == 0, "Already Set");
         tellorCodeToStatusCode[_tellorStatus] = _status;
         statusCodeToTellorCode[_status] = _tellorStatus;
         emit StatusMapped(_tellorStatus, _status);
@@ -67,7 +51,7 @@ contract OracleIDDescriptions {
     * @param _id is the descption of the ID in bytes 
     */ 
     function defineTellorIdToBytesID(uint _requestID, bytes32 _id) external{
-        require(msg.sender == owner, "Sender is not owner");
+        require(tellorIDtoBytesID[_requestID] == bytes32(0), "Already Set");
         tellorIDtoBytesID[_requestID] = _id;
         bytesIDtoTellorID[_id] = _requestID;
         emit TellorIdMappedToBytes(_requestID,_id);
