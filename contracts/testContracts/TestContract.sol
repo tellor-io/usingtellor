@@ -16,17 +16,15 @@ contract TestContract is Optimistic {
     /**
     * @dev This constructor function is used to pass variables to the optimistic contract's constructor
     * and the function is blank
-    * @param _userContract address for UserContract
+    * @param _tellorContract address for UserContract
     * @param _disputeFeeRequired the fee to dispute the optimistic price(price sumbitted by known trusted party)
     * @param _disputePeriod is the time frame a value can be disputed after being imputed
-    * @param _requestIds are the requests Id's on the Tellor System corresponding to the data types used on this contract.
-    * It is recommended to use several requestId's that pull from several API's. If requestsId's don't exist in the Tellor
-    * System be sure to create some.
+    * @param _requestId are the requests Id's on the Tellor System corresponding to the data types used on this contract.
     * @param _granularity is the amount of decimals desired on the requested value
     */
-    constructor(address _userContract, uint256 _disputeFeeRequired, uint256 _disputePeriod, uint256[] memory _requestIds, uint256 _granularity)
+    constructor(address payable _tellorContract, uint256 _disputeFeeRequired, uint256 _disputePeriod, uint256 _requestId, uint256 _granularity)
         public
-        Optimistic(_userContract, _disputeFeeRequired, _disputePeriod, _requestIds, _granularity)
+        Optimistic(_tellorContract, _disputeFeeRequired, _disputePeriod, _requestId, _granularity)
     {}
 
     /**

@@ -26,7 +26,7 @@ contract OracleIDDescriptions {
     * @param _adjFactor is 1eN where N is the number of decimals to convert to ADO standard
     */
     function defineTellorIdtoAdjFactor(uint _tellorId, int _adjFactor) external{
-        require(tellorIdtoAdjFactor[_tellorId] = 0, "Already Set");
+        require(tellorIdtoAdjFactor[_tellorId] == 0, "Already Set");
         tellorIdtoAdjFactor[_tellorId] = _adjFactor;
         emit AdjFactorMapped(_tellorId, _adjFactor);
     }

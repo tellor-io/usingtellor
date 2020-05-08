@@ -4,9 +4,7 @@
 */
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.WebsocketProvider('ws://localhost:8545'));
-const BN = require('bn.js');  
 const helper = require("./helpers/test_helpers");
-const UserContract = artifacts.require("./UserContract.sol");
 const TestContract = artifacts.require("..testContracts/TestContract.sol");
 const TellorMaster = artifacts.require("..testContracts/TellorMaster.sol");
 const Tellor = artifacts.require("./Tellor.sol"); // globally injected artifacts helper
@@ -20,7 +18,7 @@ var api3 = "json(https://api.gdax.com/products/ETH-BTC/ticker).price";
 var api2 = "json(https://api.gdax.com/products/ETH-USD/ticker).price";
 
 
-contract('UserContract Tests', function(accounts) {
+contract('Using Tellor Sample Tests', function(accounts) {
   let oracle;
   let oracle2;
   let logMineWatcher;
@@ -28,11 +26,9 @@ contract('UserContract Tests', function(accounts) {
   let oa;
   let master;
   let userContract;
-  let newOracle;
   let mappings;
 
     beforeEach('Setup contract for each test', async function () {
-        //oracleBase = await OldTellor.new();
         oracleBase = await Tellor.new();
         mappings = await Mappings.new();
         await mappings.defineTellorCodeToStatusCode(0,400);
@@ -46,19 +42,13 @@ contract('UserContract Tests', function(accounts) {
         oracle2 = await new web3.eth.Contract(oracleAbi,oa);
         //intitial data request:
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-        userContract = await UserContract.new(oa);//deploy userContract
-        await userContract.setOracleIDDescriptors(mappings.address);
         //deploy user contract or your contract:
-        testContract = await TestContract.new(userContract.address,10,86400*3,[1],86400)
-        //set the userContract on the testContract or your contract:
-        await testContract.setUserContract(userContract.address);
+        testContract = await TestContract.new(oas,10,86400*3,[1],86400)
         //This function gives Tellor tributes to acct 2--however this function does not 
         //exist in the production/mainnet Tellor contract, it's a shortcut to avoid the
         //mining functions for testing reads
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.theLazyCoon(accounts[2],web3.utils.toWei('5000', 'ether')).encodeABI()})
-        newOracle = await Tellor.new();
-        await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:master.methods.changeTellorContract(newOracle.address).encodeABI()})
-    });
+   });
     
     it("Test Base Derivative Contract - Optimistic Up Move", async function(){
       await testContract.setContractDetails(7 * 86400)
