@@ -43,7 +43,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
         //intitial data request:
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
         //deploy user contract or your contract:
-        testContract = await TestContract.new(oas,10,86400*3,[1],86400)
+        testContract = await TestContract.new(oa,10,86400*3,[1],86400)
         //This function gives Tellor tributes to acct 2--however this function does not 
         //exist in the production/mainnet Tellor contract, it's a shortcut to avoid the
         //mining functions for testing reads
@@ -85,14 +85,6 @@ contract('Using Tellor Sample Tests', function(accounts) {
       let vars = await testContract.getTimestamps()
       assert(vars[0] * 1 == startTime * 1 , "Start time should be correct");
       assert(await testContract.getCurrentValue() == 500, "endValue should be currentValue")
-    })
-    it("Test Ownership Transfer", async function(){
-      assert(await testContract.owner.call() == accounts[0]);
-      await testContract.transferOwnership(accounts[1]);
-      assert(await testContract.owner.call() == accounts[1]);
-      assert(await userContract.owner.call() == accounts[0])
-      await userContract.transferOwnership(accounts[1]);
-      assert(await userContract.owner.call() == accounts[1]);
     })
 
     it("Test Base Derivative Contract - Disputed Up Move", async function(){
@@ -149,22 +141,24 @@ contract('Using Tellor Sample Tests', function(accounts) {
       let mydata = oracle2.methods.approve(testContract.address,10).encodeABI()
       let x = await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:mydata})
       assert(await oracle.getNewValueCountbyRequestId(1) == 1, "should have a newValue count")
-      await testContract.disputeOptimisticValue(endTime,{from:accounts[2],value:10})
-      await helper.advanceTime(86400 * 10);
-      
+
       //Initiate dispute on Tellor System
       let _c = await oracle.getNewValueCountbyRequestId(1)
+      console.log("_c", _c)
       let _time = await oracle.getTimestampbyRequestIDandIndex(1, _c - 1)
-      await oracle2.methods.beginDispute(1,_time,1, from:accounts[0]);
+      console.log("_time", _c)
+      await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.beginDispute(1,_time,1).encodeABI()})
 
       /*************************************************************/
 
+      await testContract.disputeOptimisticValue(endTime,{from:accounts[2],value:10})
+      await helper.advanceTime(86400 * 10);  
       out = await testContract.getTellorValues(endTime);
-      console.log(out);
+      console.log("check the contract does not have a value set");
       vars = await testContract.getFirstUndisputedValueAfter(startTime*1 + 1);
       await testContract.settleContracts();
-      assert(await testContract.longWins.call(),"Long should Win")
-      assert(await testContract.contractEnded.call(), "Contract should be ended")
+      //assert(await testContract.longWins.call(),"Long should Win")
+      //assert(await testContract.contractEnded.call(), "Contract should be ended")
     });
 
      it("Test Base Derivative Contract - Disputed Down Move", async function(){
@@ -183,7 +177,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
          //console.log(i)
          }
 
-      res = await testContract.getAnyDataAfter(1,startTime*1 + 1)
+      res = await testContract.getDataAfter(1,startTime*1 + 1)
       //console.log("new price", res[1])
 
       await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
@@ -195,7 +189,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
       assert(await testContract.longWins.call() == false)
       assert(await testContract.contractEnded.call(), "Contract should be ended")
       
-      var mynum = await testContract.getAnyDataAfter.call(1,startTime*1 + 1) 
+      var mynum = await testContract.getDataAfter.call(1,startTime*1 + 1) 
       //console.log("mynum", web3.utils.hexToNumberString(mynum[1]))
       assert(web3.utils.hexToNumberString(mynum[1]) == 1200, "get any data should work");
       assert(await testContract.getNumberOfDisputedValues() == 1);
@@ -233,7 +227,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
       await testContract.settleContracts();
       assert(await testContract.longWins.call() == false, "long should not win")
       assert(await testContract.contractEnded.call(), "Contract should be ended")
-      var mynum = await testContract.getAnyDataAfter.call(1,startTime*1 + 86400*9)
+      var mynum = await testContract.getDataAfter.call(1,startTime*1 + 86400*9)
       assert(web3.utils.hexToNumberString(mynum[1]) == 1200,"getAnyDataAfter should work");
       assert(await testContract.getNumberOfDisputedValues() == 2, "there should be two disputed value");
       assert(await testContract.isDisputed(web3.utils.hexToNumberString(myend)) == true, "value should be disputed");
@@ -245,67 +239,10 @@ contract('Using Tellor Sample Tests', function(accounts) {
       assert(web3.utils.hexToNumberString(mynum[1]) - myend == 0, "disputed value timestamp")
     })
 
-    it("Test No Tributes in User Contract w/Solution", async function(){
-      await testContract.setContractDetails(7 * 86400)
-      var startTime = await testContract.startDateTime.call();
-      await testContract.setValue(startTime, 1000);
-      await helper.advanceTime(86400 * 10);
-      await testContract.setValue(await testContract.endDateTime.call(), 2000);
-
-      //launch and mine one on Tellor
-      //set up the contracts to handle getting the value
-  
-      await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-      await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:oracle2.methods.approve(testContract.address,10).encodeABI()})
-      await testContract.disputeOptimisticValue(await testContract.endDateTime.call(),{from:accounts[2],value:10})
-      await userContract.setPrice(web3.utils.toWei("1","ether"));
-      assert(await userContract.tributePrice.call() == web3.utils.toWei("1","ether"), "Tribute Price should be correct");
-      
-      await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.transfer(userContract.address,web3.utils.toWei("1","ether")).encodeABI()})
-      await testContract.addTipWithEther(1,{value:web3.utils.toWei("1","ether"),from:accounts[3]})
-      
-      for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 3000).encodeABI()})
-         
-         }
-
-      await helper.advanceTime(86400 * 8);
-      await testContract.getTellorValues(await testContract.endDateTime.call());
-      await testContract.settleContracts();
-      await testContract.setContractDetails(7 * 86400)
-      assert(await testContract.longWins.call() == true, "long should win")
-      assert(await testContract.contractEnded.call(), "contract should be ended")
-      var bal1 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[0]), 'ether');
-      await userContract.withdrawEther();
-      var bal2 = await web3.utils.fromWei(await web3.eth.getBalance(accounts[0]), 'ether');
-      assert(bal2 - bal1 -1 < .01, "balance should change correctly");
-
-    })
-
-    it("Lots of Stuff", async function(){
-      for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 2000).encodeABI()})
-         }
-      await userContract.setPrice(web3.utils.toWei("1","ether"));
-       await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.transfer(userContract.address,web3.utils.toWei("1","ether")).encodeABI()})
-      await userContract.requestDataWithEther(api2,"ETH-USD",1000,{from:accounts[1], value:web3.utils.toWei('1','ether')});
-      for(var j = 0;j <=4 ;j++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[j],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",2, 3000).encodeABI()})
-         }
-      await web3.eth.sendTransaction({to: oa,from:accounts[2],gas:4000000,data:oracle2.methods.transfer(userContract.address,web3.utils.toWei("5","ether")).encodeABI()})
-      await userContract.addTipWithEther(1,{value:web3.utils.toWei("5","ether"),from:accounts[2]});
-      await web3.eth.sendTransaction({to: oa,from:accounts[1],gas:4000000,data:oracle2.methods.approve(testContract.address,web3.utils.toWei("5","ether")).encodeABI()})
-      await testContract.addTip(2,web3.utils.toWei("5","ether"),{from:accounts[1]});
-      vars = await oracle.getVariablesOnDeck();
-      let apiOnQ = web3.utils.hexToNumberString(vars['0']);
-      assert(apiOnQ == 2,"ApiID on Q should be 2");
-      await testContract.requestData(api2,"ETH-USD",1000,0);
-    })
-
 
     it("Test 3 request ID avearge for Optimistic disputed Value", async function(){
-      testContract = await TestContract.new(userContract.address,10,86400*3,[1,2,3],86400)
-      await testContract.setUserContract(userContract.address);
+      testContract = await TestContract.new(oa,10,86400*3,[1,2,3],86400)
+      
       await testContract.setContractDetails(7 * 86400)
       var startTime = await testContract.startDateTime.call();
       var endTime = await testContract.endDateTime.call();
@@ -316,7 +253,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
       for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 10000).encodeABI()})
          }
-      var price = await testContract.getAnyDataAfter(1,endTime)
+      var price = await testContract.getDataAfter(1,endTime)
       var p1 = web3.utils.hexToNumberString(price[1])
       //console.log("price1", web3.utils.hexToNumberString(price[1]))
 
@@ -326,7 +263,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",2, 11000).encodeABI()})
          //console.log(i)
          }
-      var price2 = await testContract.getAnyDataAfter(2,endTime)
+      var price2 = await testContract.getDataAfter(2,endTime)
       var p2 = web3.utils.hexToNumberString(price2[1])
       //console.log("price2", web3.utils.hexToNumberString(price2[1]))
 
@@ -336,7 +273,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",3, 12100).encodeABI()})
 
          }
-      var price3 = await testContract.getAnyDataAfter(3,endTime)
+      var price3 = await testContract.getDataAfter(3,endTime)
       var p3 = web3.utils.hexToNumberString(price3[1])
       //console.log("price3", web3.utils.hexToNumberString(price3[1]))
 
@@ -345,7 +282,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
       for(var i = 0;i <=4 ;i++){
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",3, 13310).encodeABI()})
          }
-      var price4 = await testContract.getAnyDataAfter(3,endTime)
+      var price4 = await testContract.getDataAfter(3,endTime)
       var p4 = web3.utils.hexToNumberString(price4[1])
       //console.log("price4", web3.utils.hexToNumberString(price4[1]))
 
@@ -379,7 +316,7 @@ contract('Using Tellor Sample Tests', function(accounts) {
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
          }
         let _id = web3.utils.keccak256(api, 1000)
-        let vars = await userContract.valueFor(bytes)
+        let vars = await testContract.valueFor(bytes)
         // console.log("vars", vars)
         // console.log("vars0",  web3.utils.hexToNumberString(vars[0]))
         // console.log("vars1",  web3.utils.hexToNumberString(vars[1]))

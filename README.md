@@ -9,7 +9,7 @@
 
 Use this package to install the Tellor User Contracts to test the implementation of Tellor in your contracts.
 
-Once installed this will allow your contracts to inherit the functions from the Tellor UserContract. 
+Once installed this will allow your contracts to inherit the functions from the Tellor UserTellor. 
 
 # Quick Start
 
@@ -19,23 +19,30 @@ STEP 1: Install usingtellor
   npm install usingtellor
 ```
 
-STEP 2: Allow your contact to inherit from usingtellor and use the functions within to get data for the corresponding request ID. For example: 
+STEP 2: Allow your contact to inherit from usingtellor and use the functions within to get data for the corresponding request ID. 
+
+For the tellorContract use the TellorMaster address:
+Rinkeby 0xFe41Cb708CD98C5B20423433309E55b53F79134a
+Mainnet 0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5
+
+For example: 
 
 ```javascript
  contract mycontract is usingtellor {
     
     /*Variables*/
-    address payable public userContract;
+    address payable public tellorContract;
     uint public requestId;
     uint public endDate;
     int public outcome;
 
-    /** @dev Sets the tellor contract, dispute period, type of data(requestId), end date and dispute cost
-    * @param _userContract is the Tellor user contract that should be used by the interface
+    /** 
+    * @dev Sets the tellor contract
+    * @param _tellorContract is the Tellor user contract that should be used by the interface
     */
-    constructor(address payable _userContract) public {
-        require(_tellorContract != address(0), "_tellorContract address should not be 0");
-        userContract = _userContract;
+    constructor(address payable _tellorContract) public {
+        require(_tellorContract != address(0), "_usingTelloraddress should not be 0");
+        tellorContract = _tellorContract;
        }
 
     
@@ -49,7 +56,7 @@ STEP 2: Allow your contact to inherit from usingtellor and use the functions wit
         int _status;
         uint _value;
         uint _time;
-        (_status,_value,_time) = ADOInterface(userContract).resultFor(_bytesId);
+        (_status,_value,_time) = ADOInterface(tellorContract).valueFor(_bytesId);
         if(_status != 0){
         	outcome = int(_value);
         }

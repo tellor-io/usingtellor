@@ -24,7 +24,6 @@ contract('UsingTellor Tests', function(accounts) {
   let usingTellor;
   let oa;
   let master;
-  let userContract;
   let mappings;
 
     beforeEach('Setup contract for each test', async function () {
@@ -37,14 +36,13 @@ contract('UsingTellor Tests', function(accounts) {
         var varsid = await oracle.getVariablesOnDeck()
         usingTellor = await UsingTellor.new(oa)
         await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.theLazyCoon(accounts[2],web3.utils.toWei('10000', 'ether')).encodeABI()})
-        await userContract.setPrice(web3.utils.toWei("1","ether"))
         mappings = await Mappings.new();
         await mappings.defineTellorCodeToStatusCode(0,400);
         await mappings.defineTellorCodeToStatusCode(1,200);
         await mappings.defineTellorCodeToStatusCode(2,404);
         await mappings.defineTellorIdToBytesID(1,bytes);
         await mappings.defineTellorIdtoAdjFactor(1, 1e0);
-        await userContract.setOracleIDDescriptors(mappings.address);
+        await usingTellor.setOracleIDDescriptors(mappings.address);
     })
 
     it("Test getCurrentValue", async function(){

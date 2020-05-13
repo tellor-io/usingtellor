@@ -4,7 +4,7 @@ import "./SafeMath.sol";
 import "./Utilities.sol";
 import "./TellorStorage.sol";
 import "./TellorTransfer.sol";
-//import "./TellorDispute.sol";
+import "./TellorDispute.sol";
 //import "./TellorStake.sol";
 import "./TellorGettersLibrary.sol";
 

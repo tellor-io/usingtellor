@@ -22,8 +22,6 @@ contract('Mapping Tests', function(accounts) {
     	await mappings.defineTellorIdToBytesID(1,bytes);
     	assert(await mappings.getTellorIdFromBytes(bytes) == 1, "getting TellorID should work")
     	assert(await mappings.getBytesFromTellorID(1) == bytes, "getting bytes should work")
-        await mappings.transferOwnership(accounts[1])
-        assert(await mappings.owner.call() == accounts[1], "owner transferred successfully")
     });
 
 });
