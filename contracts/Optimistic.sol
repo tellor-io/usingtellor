@@ -97,7 +97,9 @@ contract Optimistic is UsingTellor {
         uint256 _retrievedTimestamp;
         //Check if any is after your given timestamp
         (_didGet, _value, _retrievedTimestamp) = getDataAfter(requestId, _timestamp);
-        if (_didGet) {
+        bool disputed;
+        disputed = isInDispute(requestId, _timestamp);
+        if (_didGet == true && disputed == false) {
             uint256 _newTime = _retrievedTimestamp - (_retrievedTimestamp % granularity); //why are we using the mod granularity???
             //provides the average of the requests Ids' associated with this price feed
             valuesByTimestamp[_newTime] = _value;
@@ -111,6 +113,8 @@ contract Optimistic is UsingTellor {
             } else if (disputedValues[_newTime] == true) {
                 disputedValues[_newTime] = false;
             }
+        } else {
+            return (0, false);
         }
     }
 

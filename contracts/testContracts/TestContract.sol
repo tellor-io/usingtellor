@@ -37,7 +37,7 @@ contract TestContract is Optimistic {
     }
 
     /**
-    * @dev testing fucntion that settles the contract by getting the first undisputed value after the startDateTime
+    * @dev testing function that settles the contract by getting the first undisputed value after the startDateTime
     * and the first undisputed value after the end time of the contract and settleling(payin off) it.
     */
     function settleContracts() external {

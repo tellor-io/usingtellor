@@ -126,6 +126,47 @@ contract('Using Tellor Sample Tests', function(accounts) {
       assert(await testContract.contractEnded.call(), "Contract should be ended")
     });
 
+    it("Test Disputed Up Move with Tellor's disputed requestID", async function(){
+      await testContract.setContractDetails(7 * 86400)
+      var startTime = await testContract.startDateTime.call();
+      var endTime = await testContract.endDateTime.call();
+      await testContract.setValue(startTime, 1000);
+      await helper.advanceTime(86400 * 10);
+      await testContract.setValue(await testContract.endDateTime.call(), 500);
+      let vars = await testContract.getTimestamps()
+      assert(vars[0] - startTime == 0, "getTimestamps should work");
+      assert(vars[1] - endTime == 0, "getTimestamps should work");
+      assert(await testContract.disputeFee.call() == 10);
+      assert(await testContract.disputePeriod.call() == 86400*3, "dispute Period should be correct");
+      assert(await testContract.granularity.call() == 86400);
+      //No MINING
+      //instead of mining, test submitminingsolution
+      for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         //console.log(i)
+         }
+
+      let mydata = oracle2.methods.approve(testContract.address,10).encodeABI()
+      let x = await web3.eth.sendTransaction({to:oa,from:accounts[2],gas:4000000,data:mydata})
+      assert(await oracle.getNewValueCountbyRequestId(1) == 1, "should have a newValue count")
+      await testContract.disputeOptimisticValue(endTime,{from:accounts[2],value:10})
+      await helper.advanceTime(86400 * 10);
+      
+      //Initiate dispute on Tellor System
+      let _c = await oracle.getNewValueCountbyRequestId(1)
+      let _time = await oracle.getTimestampbyRequestIDandIndex(1, _c - 1)
+      await oracle2.methods.beginDispute(1,_time,1, from:accounts[0]);
+
+      /*************************************************************/
+
+      out = await testContract.getTellorValues(endTime);
+      console.log(out);
+      vars = await testContract.getFirstUndisputedValueAfter(startTime*1 + 1);
+      await testContract.settleContracts();
+      assert(await testContract.longWins.call(),"Long should Win")
+      assert(await testContract.contractEnded.call(), "Contract should be ended")
+    });
+
      it("Test Base Derivative Contract - Disputed Down Move", async function(){
       await testContract.setContractDetails(7 * 86400)
       let startTime = await testContract.startDateTime.call();

@@ -86,7 +86,12 @@ contract('UsingTellor Tests', function(accounts) {
 
     it("Test three getters with no values", async function(){
         let vars = await usingTellor.getAnyDataAfter.call(1,startDate);
-        assert(0 == 1)
+        assert(0 == 1)//???
     })
     
+    it("Test isInDispute in Tellor getter", async function(){
+        let disp = await usingTellor.isInDispute(1,startDate);
+        assert(disp == false)
+    })
+
  });

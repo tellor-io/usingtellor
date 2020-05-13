@@ -7,11 +7,8 @@ import "../contracts/interfaces/EIP2362Interface.sol";
 
 /**
 * @title UserContract
-* This contracts creates for easy integration to the Tellor Tellor System
-* This contract holds the Ether and Tributes for interacting with the system
-* Note it is centralized (we can set the price of Tellor Tributes)
-* Once the tellor system is running, this can be set properly.
-* Note deploy through centralized 'Tellor Master contract'
+* This contracts creates for easy integration to the Tellor System
+* by allowing smart contracts to read data off Tellor
 */
 contract UsingTellor is EIP2362Interface{
     address payable public tellorStorageAddress;
@@ -25,7 +22,7 @@ contract UsingTellor is EIP2362Interface{
     /*Constructor*/
     /**
     * @dev the constructor sets the storage address and owner
-    * @param _storage is the TellorMaster address ???
+    * @param _storage is the TellorMaster address
     */
     constructor(address payable _storage) public {
         tellorStorageAddress = _storage;
@@ -37,7 +34,7 @@ contract UsingTellor is EIP2362Interface{
     /*
     * @dev Allows the owner to set the address for the oracleID descriptors
     * used by the ADO members for price key value pairs standarization 
-    * _oracleDescriptos is the address for the OracleIDDescptions contract
+    * _oracleDescriptors is the address for the OracleIDDescriptions contract
     */
     function setOracleIDDescriptors(address _oracleDescriptors) external {
         require(_oracleDescriptors == address(0), "Already Set");
@@ -108,5 +105,18 @@ contract UsingTellor is EIP2362Interface{
         }
         return (false, 0, 0);
     }
+
+    /* 
+    * @dev Checks that the requestId and timestamp specified are not under dispute in the Tellor System
+    * @param _requestId to look up
+    * @param _timestamp is the timestamp for requestId
+    * @return bool true if requestId/timestamp is under dispute
+    */
+    function isInDispute(uint256 _requestId, uint256 _timestamp)
+        public
+        view
+        returns (bool){
+            return _tellorm.isInDispute(_requestId, _timestamp);
+        }
 
 }

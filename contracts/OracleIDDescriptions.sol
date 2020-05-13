@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 
 /*
- * @title Price/numberic Pull Oracle mapping contract
+ * @title Price/numeric Pull Oracle mapping contract
 */
 
 contract OracleIDDescriptions {
@@ -20,7 +20,7 @@ contract OracleIDDescriptions {
 
 
     /**
-    * @dev This fuction allows the owner to map the tellor's Id to it's _adjFactor and
+    * @dev This function allows the user to map the tellor's Id to it's _adjFactor and
     * to match the standarized granularity
     * @param _tellorId uint the tellor status
     * @param _adjFactor is 1eN where N is the number of decimals to convert to ADO standard
@@ -32,7 +32,7 @@ contract OracleIDDescriptions {
     }
 
     /**
-    * @dev This fuction allows the owner to map the tellor uint data status code to the standarized 
+    * @dev This function allows the user to map the tellor uint data status code to the standarized 
     * ADO uint status code such as null, retreived etc...
     * @param _tellorStatus uint the tellor status
     * @param _status the ADO standarized uint status
@@ -45,7 +45,7 @@ contract OracleIDDescriptions {
     }
 
     /**
-    * @dev Allows owner to map the standarized bytes32 Id to a specific requestID from Tellor
+    * @dev Allows user to map the standarized bytes32 Id to a specific requestID from Tellor
     * The dev should ensure the _requestId exists otherwise request the data on Tellor to get a requestId
     * @param _requestID is the existing Tellor RequestID 
     * @param _id is the descption of the ID in bytes 
