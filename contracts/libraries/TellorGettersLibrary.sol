@@ -125,7 +125,7 @@ library TellorGettersLibrary{
     // }
 
 
-    // /**
+    // /*
     // * @dev Checks for uint variables in the disputeUintVars mapping based on the disuputeId
     // * @param _disputeId is the dispute id;
     // * @param _data the variable to pull from the mapping. _data = keccak256("variable_name") where variable_name is 
@@ -354,15 +354,15 @@ library TellorGettersLibrary{
     }
 
 
-    // /**
-    // * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp 
-    // * @param _requestId to look up
-    // * @param _timestamp is the timestamp to look up miners for
-    // * @return bool true if requestId/timestamp is under dispute
-    // */
-    // function isInDispute(TellorStorage.TellorStorageStruct storage self, uint _requestId, uint _timestamp) internal view returns(bool){
-    //     return self.requestDetails[_requestId].inDispute[_timestamp];
-    // }
+    /**
+    * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp 
+    * @param _requestId to look up
+    * @param _timestamp is the timestamp to look up miners for
+    * @return bool true if requestId/timestamp is under dispute
+    */
+    function isInDispute(TellorStorage.TellorStorageStruct storage self, uint _requestId, uint _timestamp) internal view returns(bool){
+        return self.requestDetails[_requestId].inDispute[_timestamp];
+    }
 
 
     /**

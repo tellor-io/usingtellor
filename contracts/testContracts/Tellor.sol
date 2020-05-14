@@ -8,7 +8,7 @@ pragma solidity ^0.5.0;
 import "../libraries/SafeMath.sol";
 import "../libraries/TellorStorage.sol";
 import "../libraries/TellorTransfer.sol";
-//import "./libraries/TellorDispute.sol";
+import "../libraries/TellorDispute.sol";
 //import "./libraries/TellorStake.sol";
 import "../libraries/TellorLibrary.sol";
 
@@ -21,7 +21,7 @@ import "../libraries/TellorLibrary.sol";
 contract Tellor {
     using SafeMath for uint256;
 
-    //using TellorDispute for TellorStorage.TellorStorageStruct;
+    using TellorDispute for TellorStorage.TellorStorageStruct;
     using TellorLibrary for TellorStorage.TellorStorageStruct;
     //using TellorStake for TellorStorage.TellorStorageStruct;
     using TellorTransfer for TellorStorage.TellorStorageStruct;
@@ -35,18 +35,18 @@ contract Tellor {
         tellor.theLazyCoon(_address,_amount);
     }
 
-    // /**
-    // * @dev Helps initialize a dispute by assigning it a disputeId
-    // * when a miner returns a false on the validate array(in Tellor.ProofOfWork) it sends the
-    // * invalidated value information to POS voting
-    // * @param _requestId being disputed
-    // * @param _timestamp being disputed
-    // * @param _minerIndex the index of the miner that submitted the value being disputed. Since each official value
-    // * requires 5 miners to submit a value.
-    // */
-    // function beginDispute(uint256 _requestId, uint256 _timestamp, uint256 _minerIndex) external {
-    //     tellor.beginDispute(_requestId, _timestamp, _minerIndex);
-    // }
+    /**
+    * @dev Helps initialize a dispute by assigning it a disputeId
+    * when a miner returns a false on the validate array(in Tellor.ProofOfWork) it sends the
+    * invalidated value information to POS voting
+    * @param _requestId being disputed
+    * @param _timestamp being disputed
+    * @param _minerIndex the index of the miner that submitted the value being disputed. Since each official value
+    * requires 5 miners to submit a value.
+    */
+    function beginDispute(uint256 _requestId, uint256 _timestamp, uint256 _minerIndex) external {
+        tellor.beginDispute(_requestId, _timestamp, _minerIndex);
+    }
 
     // *
     // * @dev Allows token holders to vote

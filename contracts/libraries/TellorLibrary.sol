@@ -4,7 +4,7 @@ import "./SafeMath.sol";
 import "./Utilities.sol";
 import "./TellorStorage.sol";
 import "./TellorTransfer.sol";
-//import "./TellorDispute.sol";
+import "./TellorDispute.sol";
 //import "./TellorStake.sol";
 import "./TellorGettersLibrary.sol";
 
@@ -140,10 +140,9 @@ library TellorLibrary {
     /**
     * @dev This fucntion is called by submitMiningSolution and adjusts the difficulty, sorts and stores the first
     * 5 values received, pays the miners, the dev share and assigns a new challenge
-    * @param _nonce or solution for the PoW  for the requestId====ALWAYS "nonce" for testing
     * @param _requestId for the current request being mined
     */
-    function newBlock(TellorStorage.TellorStorageStruct storage self, string memory _nonce, uint256 _requestId) internal {
+    function newBlock(TellorStorage.TellorStorageStruct storage self, uint256 _requestId) internal {
         TellorStorage.Request storage _request = self.requestDetails[_requestId];
         // If the difference between the timeTarget and how long it takes to solve the challenge this updates the challenge
         //difficulty up or donw by the difference between the target time and how long it took to solve the prevous challenge
@@ -301,10 +300,10 @@ library TellorLibrary {
         self.uintVars[keccak256("slotProgress")]++;
         //Update the miner status to true once they submit a value so they don't submit more than once
         self.minersByChallenge[self.currentChallenge][msg.sender] = true;
-        //emit NonceSubmitted(msg.sender, _nonce, _requestId, _value, self.currentChallenge);
+        emit NonceSubmitted(msg.sender, _nonce, _requestId, _value, self.currentChallenge);
         //If 5 values have been received, adjust the difficulty otherwise sort the values until 5 are received
         if (self.uintVars[keccak256("slotProgress")] == 5) {
-            newBlock(self, _nonce, _requestId);
+            newBlock(self, _requestId);
         }
        
     }

@@ -342,15 +342,15 @@ contract TellorGetters{
     }
 
     
-    // /**
-    // * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp 
-    // * @param _requestId to look up
-    // * @param _timestamp is the timestamp to look up miners for
-    // * @return bool true if requestId/timestamp is under dispute
-    // */
-    // function isInDispute(uint _requestId, uint _timestamp) external view returns(bool){
-    //     return tellor.isInDispute(_requestId,_timestamp);
-    // }
+    /**
+    * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp 
+    * @param _requestId to look up
+    * @param _timestamp is the timestamp to look up miners for
+    * @return bool true if requestId/timestamp is under dispute
+    */
+    function isInDispute(uint _requestId, uint _timestamp) external view returns(bool){
+        return tellor.isInDispute(_requestId,_timestamp);
+    }
     
 
     /**
