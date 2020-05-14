@@ -69,7 +69,7 @@ contract('UsingTellor Tests', function(accounts) {
         assert(vars[2] == 200, "Get status should work")
     })
 
-    it("Test getAnyDataAfter", async function(){
+    it("Test getAnyDataBefore", async function(){
     	var d = new Date()/1000;
         var startDate = d - (d % 86400);     
         await helper.advanceTime(86400 * 2);
@@ -81,6 +81,20 @@ contract('UsingTellor Tests', function(accounts) {
         assert(vars[1] == 1200, "Get last value should work")
         assert(vars[2] > startDate, "retreive time as greater than startDate")
     })
+        it("Test getAnyDataBefore -- most recent", async function(){
+        var d = new Date()/1000;
+        var startDate = d - (d % 86400);     
+        await helper.advanceTime(86400 * 2);
+        for(var i = 0;i <=4 ;i++){
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+         }
+        let vars = await usingTellor.getAnyDataAfter.call(1,startDate);
+        assert(vars[0] == true, "ifRetreive is not true")
+        assert(vars[1] == 1200, "Get last value should work")
+        assert(vars[2] > startDate, "retreive time as greater than startDate")
+        assert(0 == 1)
+    })
+
 
     it("Test three getters with no values", async function(){
         let vars = await usingTellor.getAnyDataAfter.call(1,startDate);

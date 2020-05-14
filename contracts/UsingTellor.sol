@@ -49,12 +49,7 @@ contract UsingTellor is EIP2362Interface{
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
     */
     function getCurrentValue(uint256 _requestId) public view returns (bool ifRetrieve, uint256 value, uint256 _timestampRetrieved) {
-        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
-        if (_count > 0) {
-            _timestampRetrieved = _tellorm.getTimestampbyRequestIDandIndex(_requestId, _count - 1); //will this work with a zero index? (or insta hit?)
-            return (true, _tellorm.retrieveData(_requestId, _timestampRetrieved), _timestampRetrieved);
-        }
-        return (false, 0, 0);
+        return getDataBefore(_requestId,now);
     }
 
     /**
@@ -70,7 +65,7 @@ contract UsingTellor is EIP2362Interface{
             bool _didGet;
             uint256 _returnedValue;
             uint256 _timestampRetrieved;
-            (_didGet,_returnedValue,_timestampRetrieved) = getCurrentValue(_id);
+            (_didGet,_returnedValue,_timestampRetrieved) = getDataBefore(_id,now);
             if(_didGet){
                 return (int(_returnedValue)*n,_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
             }
@@ -87,7 +82,7 @@ contract UsingTellor is EIP2362Interface{
     * @param _timestamp after which to search for first verified value
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
     */
-    function getDataAfter(uint256 _requestId, uint256 _timestamp)
+    function getDataBefore(uint256 _requestId, uint256 _timestamp)
         public
         view
         returns (bool _ifRetrieve, uint256 _value, uint256 _timestampRetrieved)
@@ -95,7 +90,8 @@ contract UsingTellor is EIP2362Interface{
         uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
         if (_count > 0) {
             for (uint256 i = _count; i > 0; i--) {
-                if (_tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1) >= _timestamp) {
+                uint256 _time = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1);
+                if (_time <= _timestamp && _tellorm.isInDispute(_requestId,_time) == false) {
                     _timestampRetrieved = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1); //will this work with a zero index? (or insta hit?)
                 }
             }
@@ -105,18 +101,4 @@ contract UsingTellor is EIP2362Interface{
         }
         return (false, 0, 0);
     }
-
-    /* 
-    * @dev Checks that the requestId and timestamp specified are not under dispute in the Tellor System
-    * @param _requestId to look up
-    * @param _timestamp is the timestamp for requestId
-    * @return bool true if requestId/timestamp is under dispute
-    */
-    function isInDispute(uint256 _requestId, uint256 _timestamp)
-        public
-        view
-        returns (bool){
-            return _tellorm.isInDispute(_requestId, _timestamp);
-        }
-
 }
