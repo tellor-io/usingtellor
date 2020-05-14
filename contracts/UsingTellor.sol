@@ -1,7 +1,6 @@
 pragma solidity ^0.5.0;
 
 import "../contracts/testContracts/TellorMaster.sol";
-import "../contracts/testContracts/Tellor.sol";
 import "./OracleIDDescriptions.sol";
 import "../contracts/interfaces/EIP2362Interface.sol";
 
@@ -13,7 +12,6 @@ import "../contracts/interfaces/EIP2362Interface.sol";
 contract UsingTellor is EIP2362Interface{
     address payable public tellorStorageAddress;
     address public oracleIDDescriptionsAddress;
-    Tellor _tellor;
     TellorMaster _tellorm;
     OracleIDDescriptions descriptions;
 
@@ -26,7 +24,6 @@ contract UsingTellor is EIP2362Interface{
     */
     constructor(address payable _storage) public {
         tellorStorageAddress = _storage;
-        _tellor = Tellor(tellorStorageAddress); //we should delcall here
         _tellorm = TellorMaster(tellorStorageAddress);
     }
 
@@ -37,7 +34,7 @@ contract UsingTellor is EIP2362Interface{
     * _oracleDescriptors is the address for the OracleIDDescriptions contract
     */
     function setOracleIDDescriptors(address _oracleDescriptors) external {
-        require(_oracleDescriptors == address(0), "Already Set");
+        require(oracleIDDescriptionsAddress == address(0), "Already Set");
         oracleIDDescriptionsAddress = _oracleDescriptors;
         descriptions = OracleIDDescriptions(_oracleDescriptors);
         emit NewDescriptorSet(_oracleDescriptors);
@@ -89,10 +86,10 @@ contract UsingTellor is EIP2362Interface{
     {
         uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
         if (_count > 0) {
-            for (uint256 i = _count; i > 0; i--) {
+            for (uint256 i = 1; i <= _count; i++) {
                 uint256 _time = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1);
                 if (_time <= _timestamp && _tellorm.isInDispute(_requestId,_time) == false) {
-                    _timestampRetrieved = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1); //will this work with a zero index? (or insta hit?)
+                    _timestampRetrieved = _time;
                 }
             }
             if (_timestampRetrieved > 0) {

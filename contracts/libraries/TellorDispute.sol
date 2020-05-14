@@ -34,49 +34,49 @@ library TellorDispute {
     * requires 5 miners to submit a value.
     */
     function beginDispute(TellorStorage.TellorStorageStruct storage self, uint256 _requestId, uint256 _timestamp, uint256 _minerIndex) public {
-        TellorStorage.Request storage _request = self.requestDetails[_requestId];
-        //require that no more than a day( (24 hours * 60 minutes)/10minutes=144 blocks) has gone by since the value was "mined"
-        require(now - _timestamp <= 1 days, "The value was mined more than a day ago");
-        require(_request.minedBlockNum[_timestamp] > 0, "Mined block is 0");
-        require(_minerIndex < 5, "Miner index is wrong");
+        // TellorStorage.Request storage _request = self.requestDetails[_requestId];
+        // //require that no more than a day( (24 hours * 60 minutes)/10minutes=144 blocks) has gone by since the value was "mined"
+        // require(now - _timestamp <= 1 days, "The value was mined more than a day ago");
+        // require(_request.minedBlockNum[_timestamp] > 0, "Mined block is 0");
+        // require(_minerIndex < 5, "Miner index is wrong");
 
-        //_miner is the miner being disputed. For every mined value 5 miners are saved in an array and the _minerIndex
-        //provided by the party initiating the dispute
-        address _miner = _request.minersByValue[_timestamp][_minerIndex];
-        bytes32 _hash = keccak256(abi.encodePacked(_miner, _requestId, _timestamp));
+        // //_miner is the miner being disputed. For every mined value 5 miners are saved in an array and the _minerIndex
+        // //provided by the party initiating the dispute
+        // address _miner = _request.minersByValue[_timestamp][_minerIndex];
+        // bytes32 _hash = keccak256(abi.encodePacked(_miner, _requestId, _timestamp));
 
-        //Ensures that a dispute is not already open for the that miner, requestId and timestamp
-        require(self.disputeIdByDisputeHash[_hash] == 0, "Dispute is already open");
-        TellorTransfer.doTransfer(self, msg.sender, address(this), self.uintVars[keccak256("disputeFee")]);
+        // //Ensures that a dispute is not already open for the that miner, requestId and timestamp
+        // require(self.disputeIdByDisputeHash[_hash] == 0, "Dispute is already open");
+        // TellorTransfer.doTransfer(self, msg.sender, address(this), self.uintVars[keccak256("disputeFee")]);
 
-        //Increase the dispute count by 1
-        self.uintVars[keccak256("disputeCount")] = self.uintVars[keccak256("disputeCount")] + 1;
+        // //Increase the dispute count by 1
+        // self.uintVars[keccak256("disputeCount")] = self.uintVars[keccak256("disputeCount")] + 1;
 
-        //Sets the new disputeCount as the disputeId
-        uint256 disputeId = self.uintVars[keccak256("disputeCount")];
+        // //Sets the new disputeCount as the disputeId
+        // uint256 disputeId = self.uintVars[keccak256("disputeCount")];
 
-        //maps the dispute hash to the disputeId
-        self.disputeIdByDisputeHash[_hash] = disputeId;
-        //maps the dispute to the Dispute struct
-        self.disputesById[disputeId] = TellorStorage.Dispute({
-            hash: _hash,
-            isPropFork: false,
-            reportedMiner: _miner,
-            reportingParty: msg.sender,
-            proposedForkAddress: address(0),
-            executed: false,
-            disputeVotePassed: false,
-            tally: 0
-        });
+        // //maps the dispute hash to the disputeId
+        // self.disputeIdByDisputeHash[_hash] = disputeId;
+        // //maps the dispute to the Dispute struct
+        // self.disputesById[disputeId] = TellorStorage.Dispute({
+        //     hash: _hash,
+        //     isPropFork: false,
+        //     reportedMiner: _miner,
+        //     reportingParty: msg.sender,
+        //     proposedForkAddress: address(0),
+        //     executed: false,
+        //     disputeVotePassed: false,
+        //     tally: 0
+        // });
 
-        //Saves all the dispute variables for the disputeId
-        self.disputesById[disputeId].disputeUintVars[keccak256("requestId")] = _requestId;
-        self.disputesById[disputeId].disputeUintVars[keccak256("timestamp")] = _timestamp;
-        self.disputesById[disputeId].disputeUintVars[keccak256("value")] = _request.valuesByTimestamp[_timestamp][_minerIndex];
-        self.disputesById[disputeId].disputeUintVars[keccak256("minExecutionDate")] = now + 7 days;
-        self.disputesById[disputeId].disputeUintVars[keccak256("blockNumber")] = block.number;
-        self.disputesById[disputeId].disputeUintVars[keccak256("minerSlot")] = _minerIndex;
-        self.disputesById[disputeId].disputeUintVars[keccak256("fee")] = self.uintVars[keccak256("disputeFee")];
+        // //Saves all the dispute variables for the disputeId
+        // self.disputesById[disputeId].disputeUintVars[keccak256("requestId")] = _requestId;
+        // self.disputesById[disputeId].disputeUintVars[keccak256("timestamp")] = _timestamp;
+        // self.disputesById[disputeId].disputeUintVars[keccak256("value")] = _request.valuesByTimestamp[_timestamp][_minerIndex];
+        // self.disputesById[disputeId].disputeUintVars[keccak256("minExecutionDate")] = now + 7 days;
+        // self.disputesById[disputeId].disputeUintVars[keccak256("blockNumber")] = block.number;
+        // self.disputesById[disputeId].disputeUintVars[keccak256("minerSlot")] = _minerIndex;
+        // self.disputesById[disputeId].disputeUintVars[keccak256("fee")] = self.uintVars[keccak256("disputeFee")];
 
         //Values are sorted as they come in and the official value is the median of the first five
         //So the "official value" miner is always minerIndex==2. If the official value is being
@@ -84,8 +84,8 @@ library TellorDispute {
         if (_minerIndex == 2) {
             self.requestDetails[_requestId].inDispute[_timestamp] = true;
         }
-        self.stakerDetails[_miner].currentStatus = 3;
-        emit NewDispute(disputeId, _requestId, _timestamp, _miner);
+        // self.stakerDetails[_miner].currentStatus = 3;
+        emit NewDispute(1, _requestId, _timestamp, msg.sender);
     }
 
     // /**
