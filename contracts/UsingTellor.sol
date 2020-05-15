@@ -1,10 +1,10 @@
 pragma solidity ^0.5.0;
 
 import "../contracts/testContracts/TellorMaster.sol";
-import "./OracleIDDescriptions.sol";
-import "../contracts/interfaces/EIP2362Interface.sol";
 import "../contracts/libraries/TellorLibrary.sol";//imported for testing ease
 import "../contracts/testContracts/Tellor.sol";//imported for testing ease
+import "./OracleIDDescriptions.sol";
+import "../contracts/interfaces/EIP2362Interface.sol";
 
 /**
 * @title UserContract
