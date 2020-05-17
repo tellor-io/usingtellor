@@ -57,7 +57,7 @@ contract UsingTellor is EIP2362Interface{
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
     */
-    function valueFor(bytes32 _bytesId) view external returns (int value, uint256 timestamp, uint status) {
+    function valueFor(bytes32 _bytesId) external view returns (int value, uint256 timestamp, uint status) {
         uint _id = descriptions.getTellorIdFromBytes(_bytesId);
         int n = descriptions.getGranularityAdjFactor(_bytesId);
         if (_id > 0){
@@ -88,14 +88,11 @@ contract UsingTellor is EIP2362Interface{
     {
         uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
         if (_count > 0) {
-            for (uint256 i = 1; i <= _count; i++) {
+            for (uint256 i = _count; i > 0; i--) {
                 uint256 _time = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1);
-                if (_time <= _timestamp && _tellorm.isInDispute(_requestId,_time) == false) {
-                    _timestampRetrieved = _time;
+                if (_time > 0 && _time <= _timestamp && _tellorm.isInDispute(_requestId,_time) == false) {
+                    return (true, _tellorm.retrieveData(_requestId, _time), _time);
                 }
-            }
-            if (_timestampRetrieved > 0) {
-                return (true, _tellorm.retrieveData(_requestId, _timestampRetrieved), _timestampRetrieved);
             }
         }
         return (false, 0, 0);
