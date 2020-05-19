@@ -16,7 +16,7 @@ Open two Git Bash terminals.
 
 On one terminal run this code: 
 ```bash
-ganache-cli -m "nick lucian brenda kevin sam fiscal patch fly damp ocean produce wish"
+ganache-cli
 ```
 
 On the second terminal run this code:
