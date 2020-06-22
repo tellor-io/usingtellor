@@ -32,7 +32,7 @@ contract UsingTellor is EIP2362Interface{
     /*Functions*/
     /*
     * @dev Allows the owner to set the address for the oracleID descriptors
-    * used by the ADO members for price key value pairs standarization 
+    * used by the ADO members for price key value pairs standarization
     * _oracleDescriptors is the address for the OracleIDDescriptions contract
     */
     function setOracleIDDescriptors(address _oracleDescriptors) external {
@@ -48,11 +48,11 @@ contract UsingTellor is EIP2362Interface{
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
     */
     function getCurrentValue(uint256 _requestId) public view returns (bool ifRetrieve, uint256 value, uint256 _timestampRetrieved) {
-        return getDataBefore(_requestId,now);
+        return getDataBefore(_requestId,now,1,0);
     }
 
     /**
-    * @dev Allows the user to get the latest value for the requestId specified using the 
+    * @dev Allows the user to get the latest value for the requestId specified using the
     * ADO specification for the standard inteface for price oracles
     * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
     * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
@@ -64,7 +64,7 @@ contract UsingTellor is EIP2362Interface{
             bool _didGet;
             uint256 _returnedValue;
             uint256 _timestampRetrieved;
-            (_didGet,_returnedValue,_timestampRetrieved) = getDataBefore(_id,now);
+            (_didGet,_returnedValue,_timestampRetrieved) = getDataBefore(_id,now,1,0);
             if(_didGet){
                 return (int(_returnedValue)*n,_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
             }
@@ -79,16 +79,18 @@ contract UsingTellor is EIP2362Interface{
     * @dev Allows the user to get the first value for the requestId after the specified timestamp
     * @param _requestId is the requestId to look up the value for
     * @param _timestamp after which to search for first verified value
+    * @param _limit a limit on the number of values to look at
+    * @param _offset the number of values to go back before looking for data values
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
     */
-    function getDataBefore(uint256 _requestId, uint256 _timestamp)
+    function getDataBefore(uint256 _requestId, uint256 _timestamp, uint256 _limit, uint256 _offset)
         public
         view
         returns (bool _ifRetrieve, uint256 _value, uint256 _timestampRetrieved)
     {
-        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
+        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId) - _offset;
         if (_count > 0) {
-            for (uint256 i = _count; i > 0; i--) {
+            for (uint256 i = _count; i > _count - _limit; i--) {
                 uint256 _time = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1);
                 if (_time > 0 && _time <= _timestamp && _tellorm.isInDispute(_requestId,_time) == false) {
                     return (true, _tellorm.retrieveData(_requestId, _time), _time);
