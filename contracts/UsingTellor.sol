@@ -76,9 +76,9 @@ contract UsingTellor is EIP2362Interface{
     }
 
     /**
-    * @dev Allows the user to get the first value for the requestId after the specified timestamp
+    * @dev Allows the user to get the first value for the requestId before the specified timestamp
     * @param _requestId is the requestId to look up the value for
-    * @param _timestamp after which to search for first verified value
+    * @param _timestamp before which to search for first verified value
     * @param _limit a limit on the number of values to look at
     * @param _offset the number of values to go back before looking for data values
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
