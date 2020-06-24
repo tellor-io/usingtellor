@@ -48,6 +48,10 @@ contract Tellor {
         tellor.beginDispute(_requestId, _timestamp, _minerIndex);
     }
 
+    function testAddData (uint256 _requestId, uint _startTime) external {
+        tellor.testAddData(_requestId, _startTime);
+    }
+    
     // *
     // * @dev Allows token holders to vote
     // * @param _disputeId is the dispute id

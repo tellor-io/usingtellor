@@ -55,89 +55,99 @@ contract('UsingTellor Tests', function(accounts) {
         await mappings.defineTellorIdtoAdjFactor(1, 1e0);
         await usingTellor.setOracleIDDescriptors(mappings.address);
     })
-    it("Test getCurrentValue", async function(){
-        for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+    it("Test add a lot of data to retreive old values", async function(){
+        for(var i = 0;i <=10 ;i++){
+            for (var j = 1; j<=10 ; j ++)
+          await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,j).encodeABI()})
          }
-        let vars = await usingTellor.getCurrentValue.call(1)
-        assert(vars[0] == true, "ifRetreive is not true")
-        assert(vars[1] == 1200, "Get last value should work")
+
+         let vars = await usingTellor.getDataBefore.call(1,20,1,0)
+         console.log(vars)
     })
-    it("Test valueFor", async function(){
-        for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-        }
-        let _id = web3.utils.keccak256(api, 1000)
-        let vars = await usingTellor.valueFor(bytes)
-        assert(vars[0] == 1200, "Get value should work")
-        assert(vars[1]> 0 , "timestamp works")
-        assert(vars[2] == 200, "Get status should work")
-    })
-    it("Test getDataBefore", async function(){
-        for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-         }
-        let vars = await usingTellor.getDataBefore.call(1,startDate,1,0)
-        assert(vars[0] == true, "ifRetreive is not true")
-        assert(vars[1] == 1200, "Get last value should work")
-    })
-    it("Test -- most recent", async function(){
-        for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 120).encodeABI()})
-        }
-        await advanceTime(1000)
-        await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-        for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-        }
-        let vars = await usingTellor.getDataBefore.call(1,startDate,1,0)
-        assert(vars[0] == true, "ifRetreive is not true")
-        assert(vars[1] == 1200, "Get last value should work")
-        vars = await usingTellor.getCurrentValue.call(1);
-        assert(vars[0] == true, "ifRetreive is not true (cv)")
-        assert(vars[1] == 1200, "Get last value should work (cv)")
-    })
-    it("Test three getters with no values", async function(){
-        let vars = await usingTellor.getDataBefore.call(1,startDate,1,0)
-        assert(vars[0] == false, "ifRetreive is not true")
-        assert(vars[1] == 0, "Get last value should work")
-        assert(vars[2] == 0, "timestamp should be 0")
-        vars = await usingTellor.getCurrentValue.call(1)
-        assert(vars[0] == false, "ifRetreive is not true")
-        assert(vars[1] == 0, "Get last value should work")
-        vars = await usingTellor.valueFor(bytes)
-        assert(vars[0] == 0, "Get value should work")
-        assert(vars[1] == 0 , "timestamp works")
-        assert(vars[2] == 404, "Get status should work")
-    })
-    it("Test isInDispute in Tellor getter", async function(){
-        for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 120).encodeABI()})
-        }
-        await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-        await advanceTime(1000)
-        for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-        }
-        let vars = await usingTellor.getCurrentValue.call(1)
-        await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.beginDispute(1,vars[2]-0,2).encodeABI()})
-        vars = await usingTellor.getDataBefore.call(1,startDate,2,0)
-        assert(vars[0] == true, "ifRetreive is not true")
-        assert(vars[1] == 120, "Get last value should work")
-    })
-    it("Test isInDispute in Tellor getter non 2 index", async function(){
-        for(var i = 0;i <=4 ;i++){
-          await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 120).encodeABI()})
-        }
-        await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
-        await advanceTime(1000)
-        for(var i = 0;i <=4 ;i++){
-          res = await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
-        }
-        let vars2 = await usingTellor.getCurrentValue.call(1)
-        await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.beginDispute(1,vars2[2]-0,0).encodeABI()})
-        let vars = await usingTellor.getCurrentValue.call(1)
-        assert(vars[0] == true, "ifRetreive is not true")
-        assert(vars[1] == 1200, "Get last value should work")
-    })
+
+    // it("Test getCurrentValue", async function(){
+    //     for(var i = 0;i <=100 ;i++){
+    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+    //      }
+    //     let vars = await usingTellor.getCurrentValue.call(1)
+    //     assert(vars[0] == true, "ifRetreive is not true")
+    //     assert(vars[1] == 1200, "Get last value should work")
+    // })
+    // it("Test valueFor", async function(){
+    //     for(var i = 0;i <=4 ;i++){
+    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+    //     }
+    //     let _id = web3.utils.keccak256(api, 1000)
+    //     let vars = await usingTellor.valueFor(bytes)
+    //     assert(vars[0] == 1200, "Get value should work")
+    //     assert(vars[1]> 0 , "timestamp works")
+    //     assert(vars[2] == 200, "Get status should work")
+    // })
+    // it("Test getDataBefore", async function(){
+    //     for(var i = 0;i <=4 ;i++){
+    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+    //      }
+    //     let vars = await usingTellor.getDataBefore.call(1,startDate,1,0)
+    //     assert(vars[0] == true, "ifRetreive is not true")
+    //     assert(vars[1] == 1200, "Get last value should work")
+    // })
+    // it("Test -- most recent", async function(){
+    //     for(var i = 0;i <=4 ;i++){
+    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 120).encodeABI()})
+    //     }
+    //     await advanceTime(1000)
+    //     await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
+    //     for(var i = 0;i <=4 ;i++){
+    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+    //     }
+    //     let vars = await usingTellor.getDataBefore.call(1,startDate,1,0)
+    //     assert(vars[0] == true, "ifRetreive is not true")
+    //     assert(vars[1] == 1200, "Get last value should work")
+    //     vars = await usingTellor.getCurrentValue.call(1);
+    //     assert(vars[0] == true, "ifRetreive is not true (cv)")
+    //     assert(vars[1] == 1200, "Get last value should work (cv)")
+    // })
+    // it("Test three getters with no values", async function(){
+    //     let vars = await usingTellor.getDataBefore.call(1,startDate,1,0)
+    //     assert(vars[0] == false, "ifRetreive is not true")
+    //     assert(vars[1] == 0, "Get last value should work")
+    //     assert(vars[2] == 0, "timestamp should be 0")
+    //     vars = await usingTellor.getCurrentValue.call(1)
+    //     assert(vars[0] == false, "ifRetreive is not true")
+    //     assert(vars[1] == 0, "Get last value should work")
+    //     vars = await usingTellor.valueFor(bytes)
+    //     assert(vars[0] == 0, "Get value should work")
+    //     assert(vars[1] == 0 , "timestamp works")
+    //     assert(vars[2] == 404, "Get status should work")
+    // })
+    // it("Test isInDispute in Tellor getter", async function(){
+    //     for(var i = 0;i <=4 ;i++){
+    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 120).encodeABI()})
+    //     }
+    //     await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
+    //     await advanceTime(1000)
+    //     for(var i = 0;i <=4 ;i++){
+    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+    //     }
+    //     let vars = await usingTellor.getCurrentValue.call(1)
+    //     await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.beginDispute(1,vars[2]-0,2).encodeABI()})
+    //     vars = await usingTellor.getDataBefore.call(1,startDate,2,0)
+    //     assert(vars[0] == true, "ifRetreive is not true")
+    //     assert(vars[1] == 120, "Get last value should work")
+    // })
+    // it("Test isInDispute in Tellor getter non 2 index", async function(){
+    //     for(var i = 0;i <=4 ;i++){
+    //       await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 120).encodeABI()})
+    //     }
+    //     await web3.eth.sendTransaction({to:oa,from:accounts[0],gas:4000000,data:oracle2.methods.requestData(api,"BTC/USD",1000,0).encodeABI()})
+    //     await advanceTime(1000)
+    //     for(var i = 0;i <=4 ;i++){
+    //       res = await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.submitMiningSolution("nonce",1, 1200).encodeABI()})
+    //     }
+    //     let vars2 = await usingTellor.getCurrentValue.call(1)
+    //     await web3.eth.sendTransaction({to: oracle.address,from:accounts[i],gas:4000000,data:oracle2.methods.beginDispute(1,vars2[2]-0,0).encodeABI()})
+    //     let vars = await usingTellor.getCurrentValue.call(1)
+    //     assert(vars[0] == true, "ifRetreive is not true")
+    //     assert(vars[1] == 1200, "Get last value should work")
+    // })
  });

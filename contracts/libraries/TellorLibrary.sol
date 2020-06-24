@@ -262,7 +262,15 @@ library TellorLibrary {
         }
     }
 
-    
+    function testAddData (TellorStorage.TellorStorageStruct storage self, uint256 _requestId, uint _startTime) public {
+        TellorStorage.Request storage _request = self.requestDetails[_requestId];
+        //loop 10 times
+        uint i;
+        for (i = 1; i < 10; i++) {
+        _request.requestTimestamps.push(_startTime + i);
+        _request.finalValues[_startTime+i];
+        }
+    }
 
 
     /**
