@@ -35,6 +35,11 @@ contract Tellor {
         tellor.theLazyCoon(_address,_amount);
     }
 
+    /*This function is NOT part of mainnet deployment. It is a cheat for testing purposes*/
+    function testAddData (uint256 _requestId, uint _startTime) external {
+        tellor.testAddData(_requestId, _startTime);
+    }
+
     /**
     * @dev Helps initialize a dispute by assigning it a disputeId
     * when a miner returns a false on the validate array(in Tellor.ProofOfWork) it sends the
@@ -48,6 +53,8 @@ contract Tellor {
         tellor.beginDispute(_requestId, _timestamp, _minerIndex);
     }
 
+
+    
     // *
     // * @dev Allows token holders to vote
     // * @param _disputeId is the dispute id
