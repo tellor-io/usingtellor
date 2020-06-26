@@ -59,7 +59,7 @@ library TellorLibrary {
         TellorStorage.Request storage _request = self.requestDetails[_requestId];
         //loop 10 times
         uint i;
-        for (i = 1; i < 10; i++) {
+        for (i = 1; i <= 10; i++) {
         _request.requestTimestamps.push(_startTime + i);
         _request.finalValues[_startTime+i]= _startTime+i;
         }

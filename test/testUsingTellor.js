@@ -55,13 +55,38 @@ contract('UsingTellor Tests', function(accounts) {
         await mappings.defineTellorIdtoAdjFactor(1, 1e0);
         await usingTellor.setOracleIDDescriptors(mappings.address);
     })
-    it("Test add a lot of data to retreive old values", async function(){
+
+    it("Test add a lot of data to retreive old values wrong loop", async function(){
         for(var i = 0;i <=10 ;i++){
             for (var j = 1; j<=10 ; j ++)
           await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,j).encodeABI()})
          }
+              let vars = await usingTellor.getDataBefore.call(1,20,1,0)
+         console.log(vars)
+    })
 
-         let vars = await usingTellor.getDataBefore.call(1,20,1,0)
+
+
+    it("Test add a lot of data to retreive old values", async function(){
+
+            for (var j = 0; j<=10 ; j++){
+                await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,j).encodeABI()})
+                console.log(j) 
+            }
+
+
+        await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,1).encodeABI()})
+        await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,2).encodeABI()})
+       await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,3).encodeABI()})
+        await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,4).encodeABI()})
+     await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,5).encodeABI()})
+       await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,6).encodeABI()})
+         await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,7).encodeABI()})
+         await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,8).encodeABI()})
+         await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,9).encodeABI()})
+         await web3.eth.sendTransaction({to: oracle.address,from:accounts[0],gas:4000000,data:oracle2.methods.testAddData(1,10).encodeABI()}) 
+    
+         let vars = await usingTellor.getDataBefore.call(1,10,1,0)
          console.log(vars)
     })
 
