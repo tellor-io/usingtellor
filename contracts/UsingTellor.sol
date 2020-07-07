@@ -88,12 +88,19 @@ contract UsingTellor is EIP2362Interface{
         view
         returns (bool _ifRetrieve, uint256 _value, uint256 _timestampRetrieved)
     {
-        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId) - _offset;
+        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
         if (_count > 0) {
-            for (uint256 i = _count; i > _count - _limit; i--) {
+            for (uint256 i = _count - _offset; i < _count -_offset + _limit; i++) {
                 uint256 _time = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1);
-                if (_time > 0 && _time <= _timestamp && _tellorm.isInDispute(_requestId,_time) == false) {
-                    return (true, _tellorm.retrieveData(_requestId, _time), _time);
+                if(_value > 0 && _time > _timestamp){
+                    return(true, _value, _timestampRetrieved);
+                }
+                else if (_time > 0 && _time <= _timestamp && _tellorm.isInDispute(_requestId,_time) == false) {
+                    _value = _tellorm.retrieveData(_requestId, _time);
+                    _timestampRetrieved = _time;
+                    if(i == _count){
+                        return(true, _value, _timestampRetrieved);
+                    }
                 }
             }
         }
