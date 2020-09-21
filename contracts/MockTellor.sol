@@ -1,4 +1,4 @@
-pragma solidity 0.7.0;
+pragma solidity 0.5.16;
 
 
 //Slightly modified SafeMath library - includes a min and max function, removes useless div function
@@ -65,7 +65,7 @@ contract MockTellor {
     mapping(address => uint) public balances;
     uint256 public totalSupply;
 
-    constructor(address[] memory _initialBalances, uint256[] memory _intialAmounts) {
+    constructor(address[] memory _initialBalances, uint256[] memory _intialAmounts) public {
         require(_initialBalances.length == _intialAmounts.length, "Arrays have different lengths");
         for(uint i = 0; i < _intialAmounts.length; i++){
             balances[_initialBalances[i]] = _intialAmounts[i];

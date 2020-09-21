@@ -1,4 +1,4 @@
-pragma solidity 0.5.13;
+pragma solidity 0.5.16;
 
 import "./MockTellor.sol";
 
@@ -7,34 +7,15 @@ import "./MockTellor.sol";
 * This contracts creates for easy integration to the Tellor System
 * by allowing smart contracts to read data off Tellor
 */
-contract UsingTellor is EIP2362Interface{
-    address payable public tellorStorageAddress;
-    address public oracleIDDescriptionsAddress;
+contract UsingTellor{
     MockTellor tellor;
-    OracleIDDescriptions descriptions;
-
-    event NewDescriptorSet(address _descriptorSet);
-
     /*Constructor*/
     /**
     * @dev the constructor sets the storage address and owner
-    * @param _storage is the TellorMaster address
+    * @param _tellor is the TellorMaster address
     */
     constructor(address payable _tellor) public {
         tellor = MockTellor(_tellor);
-    }
-
-    /*Functions*/
-    /*
-    * @dev Allows the owner to set the address for the oracleID descriptors
-    * used by the ADO members for price key value pairs standarization
-    * _oracleDescriptors is the address for the OracleIDDescriptions contract
-    */
-    function setOracleIDDescriptors(address _oracleDescriptors) external {
-        require(oracleIDDescriptionsAddress == address(0), "Already Set");
-        oracleIDDescriptionsAddress = _oracleDescriptors;
-        descriptions = OracleIDDescriptions(_oracleDescriptors);
-        emit NewDescriptorSet(_oracleDescriptors);
     }
 
     /**
