@@ -1,8 +1,6 @@
-pragma solidity 0.7.0;
+pragma solidity 0.5.13;
 
-import "./OracleIDDescriptions.sol";
 import "./MockTellor.sol";
-import "../contracts/interfaces/EIP2362Interface.sol";
 
 /**
 * @title UserContract
