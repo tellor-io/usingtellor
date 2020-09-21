@@ -1,4 +1,4 @@
-pragma solidity 0.6.0;
+pragma solidity 0.7.0;
 
 
 //Slightly modified SafeMath library - includes a min and max function, removes useless div function
@@ -56,23 +56,26 @@ library SafeMath {
 
 contract MockTellor {
 
-    mapping(uint256 => (mapping(uint256) => uint256)) public values; //requestId -> timestamp -> value
-    mapping(uint256 => (mapping(uint256) => bool)) public isDisputed; //requestId -> timestamp -> value
+    using SafeMath for uint256;
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);//ERC20 Transfer Event
+    
+    mapping(uint256 => mapping(uint256 => uint256)) public values; //requestId -> timestamp -> value
+    mapping(uint256 => mapping(uint256 => bool)) public isDisputed; //requestId -> timestamp -> value
     mapping(uint256 => uint256[]) public timestamps;
     mapping(address => uint) public balances;
     uint256 public totalSupply;
 
-    constructor(address[] _initialBalances, uint256[] _intialAmounts) public {
+    constructor(address[] memory _initialBalances, uint256[] memory _intialAmounts) {
         require(_initialBalances.length == _intialAmounts.length, "Arrays have different lengths");
         for(uint i = 0; i < _intialAmounts.length; i++){
             balances[_initialBalances[i]] = _intialAmounts[i];
-            total_supply = total_supply.add(_intialAmounts[i]);
+            totalSupply = totalSupply.add(_intialAmounts[i]);
         }
     }
 
     function mint(address _holder, uint256 _value) public {
         balances[_holder] = balances[_holder].add(_value);
-        totalSupply = totalSupply.add()
+        totalSupply = totalSupply.add(_value);
     }
 
     function transfer(address _to, uint256 _amount) public returns(bool) {
@@ -82,26 +85,19 @@ contract MockTellor {
     function transferFrom(address _from, address _to, uint256 _amount) public returns(bool){
         require(_amount != 0, "Tried to send non-positive amount");
         require(_to != address(0), "Receiver is 0 address");
-        balances[_from] = balances[_from].sub(amount);
-        balances[_to] = balances[_to].add(amount);
+        balances[_from] = balances[_from].sub(_amount);
+        balances[_to] = balances[_to].add(_amount);
         emit Transfer(_from, _to, _amount);
     }
 
     function submitValue(uint256 _requestId,uint256 _value) external {
-        values[_reqeuestId][now] = value;
-        timestamps[requestId].push(now);
+        values[_requestId][block.timestamp] = _value;
+        timestamps[_requestId].push(block.timestamp);
     }
 
     function disputeValue(uint256 _requestId, uint256 _timestamp) external {
         values[_requestId][_timestamp] = 0;
         isDisputed[_requestId][_timestamp] = true;
-    }
-
-    function getCurrentValue(uint256 _requestId) public view returns (bool ifRetrieve, uint256 value, uint256 _timestampRetrieved) {
-        uint256 lastTime = timestamps[reqeuestId][timestamps[requestId].length - 1]; 
-        uint256 val = values[_requestId][lastTime];
-        if(val == 0) return (false, 0, lastTime);
-        return (true, val, lastTime);
     }
 
     function retrieveData(uint256 _requestId, uint256 _timestamp) public view returns(uint256){
@@ -112,27 +108,12 @@ contract MockTellor {
         return isDisputed[_requestId][_timestamp];
     }
 
-    function getDataBefore(uint256 _requestId, uint256 _timestamp, uint256 _limit, uint256 _offset)
-        public
-        view
-        returns (bool _ifRetrieve, uint256 _value, uint256 _timestampRetrieved)
-    {
-        uint256 _count = timestamps[_requestId].length;
-        if (_count > 0) {
-            for (uint256 i = _count - _offset; i < _count -_offset + _limit; i++) {
-                uint256 _time = timestamps[_requestId][i - 1];
-                if(_value > 0 && _time > _timestamp){
-                    return(true, _value, _timestampRetrieved);
-                }
-                else if (_time > 0 && _time <= _timestamp && isInDispute(_requestId,_time) == false) {
-                    _value = _tellorm.retrieveData(_requestId, _time);
-                    _timestampRetrieved = _time;
-                    if(i == _count){
-                        return(true, _value, _timestampRetrieved);
-                    }
-                }
-            }
-        }
-        return (false, 0, 0);
+    function getNewValueCountbyRequestId(uint256 _requestId) public view returns(uint) {
+        return timestamps[_requestId].length;
+    }
+
+    function getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 index) public view returns(uint256) {
+        if(timestamps[_requestId].length < index - 1) return 0;
+        return timestamps[_requestId][index];
     }
 }

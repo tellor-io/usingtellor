@@ -1,4 +1,4 @@
-pragma solidity 0.6.0;
+pragma solidity 0.7.0;
 
 import "./OracleIDDescriptions.sol";
 import "./MockTellor.sol";
@@ -45,7 +45,11 @@ contract UsingTellor is EIP2362Interface{
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
     */
     function getCurrentValue(uint256 _requestId) public view returns (bool ifRetrieve, uint256 value, uint256 _timestampRetrieved) {
-        return tellor.getCurrentValue(_requestId);
+        uint256 _count = tellor.getNewValueCountbyRequestId(_requestId);
+        uint _time = tellor.getTimestampbyRequestIDandIndex(_requestId, _count - 1);
+        uint _value = tellor.retrieveData(_requestId, _time);
+        if(_value > 0) return (true, _value, _time);
+        return (false, 0 , _time);
     }
     
     /**
@@ -61,6 +65,22 @@ contract UsingTellor is EIP2362Interface{
         view
         returns (bool _ifRetrieve, uint256 _value, uint256 _timestampRetrieved)
     {
-        return tellor.getDataBefore(_requestId, _timestamp, uint256 _limit, uint256 _offset);
+        uint256 _count = tellor.getNewValueCountbyRequestId(_requestId);
+        if (_count > 0) {
+            for (uint256 i = _count - _offset; i < _count -_offset + _limit; i++) {
+                uint256 _time = tellor.getTimestampbyRequestIDandIndex(_requestId, i - 1);
+                if(_value > 0 && _time > _timestamp){
+                    return(true, _value, _timestampRetrieved);
+                }
+                else if (_time > 0 && _time <= _timestamp && tellor.isInDispute(_requestId,_time) == false) {
+                    _value = tellor.retrieveData(_requestId, _time);
+                    _timestampRetrieved = _time;
+                    if(i == _count){
+                        return(true, _value, _timestampRetrieved);
+                    }
+                }
+            }
+        }
+        return (false, 0, 0);
     }
 }
