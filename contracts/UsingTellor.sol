@@ -18,6 +18,45 @@ contract UsingTellor{
         tellor = MockTellor(_tellor);
     }
 
+     /**
+    * @dev Retreive value from oracle based on requestId/timestamp
+    * @param _requestId being requested
+    * @param _timestamp to retreive data/value from
+    * @return uint value for requestId/timestamp submitted
+    */
+    function retrieveData(uint256 _requestId, uint256 _timestamp) public view returns(uint256){
+        return tellor.retrieveData(_requestId,_timestamp);
+    }
+
+    /**
+    * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp
+    * @param _requestId to looku p
+    * @param _timestamp is the timestamp to look up miners for
+    * @return bool true if requestId/timestamp is under dispute
+    */
+    function isInDispute(uint256 _requestId, uint256 _timestamp) public view returns(bool){
+        return tellor.isInDispute(uint256 _requestId, uint256 _timestamp);
+    }
+
+    /**
+    * @dev Counts the number of values that have been submited for the request
+    * @param _requestId the requestId to look up
+    * @return uint count of the number of values received for the requestId
+    */
+    function getNewValueCountbyRequestId(uint256 _requestId) public view returns(uint) {
+        return tellor.getNewValueCountbyRequestId(uint256 _requestId);
+    }
+
+    /**
+    * @dev Gets the timestamp for the value based on their index
+    * @param _requestID is the requestId to look up
+    * @param _index is the value index to look up
+    * @return uint timestamp
+    */
+    function getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 index) public view returns(uint256) {
+        return tellor.getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 index);
+    }
+
     /**
     * @dev Allows the user to get the latest value for the requestId specified
     * @param _requestId is the requestId to look up the value for
