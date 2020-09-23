@@ -1,45 +1,60 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.16;
 
-import "../contracts/testContracts/TellorMaster.sol";
-import "../contracts/libraries/TellorLibrary.sol";//imported for testing ease
-import "../contracts/testContracts/Tellor.sol";//imported for testing ease
-import "./OracleIDDescriptions.sol";
-import "../contracts/interfaces/EIP2362Interface.sol";
+import "./MockTellor.sol";
 
 /**
 * @title UserContract
 * This contracts creates for easy integration to the Tellor System
 * by allowing smart contracts to read data off Tellor
 */
-contract UsingTellor is EIP2362Interface{
-    address payable public tellorStorageAddress;
-    address public oracleIDDescriptionsAddress;
-    TellorMaster _tellorm;
-    OracleIDDescriptions descriptions;
-
-    event NewDescriptorSet(address _descriptorSet);
-
+contract UsingTellor{
+    MockTellor tellor;
     /*Constructor*/
     /**
     * @dev the constructor sets the storage address and owner
-    * @param _storage is the TellorMaster address
+    * @param _tellor is the TellorMaster address
     */
-    constructor(address payable _storage) public {
-        tellorStorageAddress = _storage;
-        _tellorm = TellorMaster(tellorStorageAddress);
+    constructor(address payable _tellor) public {
+        tellor = MockTellor(_tellor);
     }
 
-    /*Functions*/
-    /*
-    * @dev Allows the owner to set the address for the oracleID descriptors
-    * used by the ADO members for price key value pairs standarization
-    * _oracleDescriptors is the address for the OracleIDDescriptions contract
+     /**
+    * @dev Retreive value from oracle based on requestId/timestamp
+    * @param _requestId being requested
+    * @param _timestamp to retreive data/value from
+    * @return uint value for requestId/timestamp submitted
     */
-    function setOracleIDDescriptors(address _oracleDescriptors) external {
-        require(oracleIDDescriptionsAddress == address(0), "Already Set");
-        oracleIDDescriptionsAddress = _oracleDescriptors;
-        descriptions = OracleIDDescriptions(_oracleDescriptors);
-        emit NewDescriptorSet(_oracleDescriptors);
+    function retrieveData(uint256 _requestId, uint256 _timestamp) public view returns(uint256){
+        return tellor.retrieveData(_requestId,_timestamp);
+    }
+
+    /**
+    * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp
+    * @param _requestId to looku p
+    * @param _timestamp is the timestamp to look up miners for
+    * @return bool true if requestId/timestamp is under dispute
+    */
+    function isInDispute(uint256 _requestId, uint256 _timestamp) public view returns(bool){
+        return tellor.isInDispute(_requestId, _timestamp);
+    }
+
+    /**
+    * @dev Counts the number of values that have been submited for the request
+    * @param _requestId the requestId to look up
+    * @return uint count of the number of values received for the requestId
+    */
+    function getNewValueCountbyRequestId(uint256 _requestId) public view returns(uint) {
+        return tellor.getNewValueCountbyRequestId(_requestId);
+    }
+
+    /**
+    * @dev Gets the timestamp for the value based on their index
+    * @param _requestId is the requestId to look up
+    * @param _index is the value index to look up
+    * @return uint timestamp
+    */
+    function getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 _index) public view returns(uint256) {
+        return tellor.getTimestampbyRequestIDandIndex( _requestId,_index);
     }
 
     /**
@@ -48,33 +63,13 @@ contract UsingTellor is EIP2362Interface{
     * @return bool true if it is able to retreive a value, the value, and the value's timestamp
     */
     function getCurrentValue(uint256 _requestId) public view returns (bool ifRetrieve, uint256 value, uint256 _timestampRetrieved) {
-        return getDataBefore(_requestId,now,1,0);
+        uint256 _count = tellor.getNewValueCountbyRequestId(_requestId);
+        uint _time = tellor.getTimestampbyRequestIDandIndex(_requestId, _count - 1);
+        uint _value = tellor.retrieveData(_requestId, _time);
+        if(_value > 0) return (true, _value, _time);
+        return (false, 0 , _time);
     }
-
-    /**
-    * @dev Allows the user to get the latest value for the requestId specified using the
-    * ADO specification for the standard inteface for price oracles
-    * @param _bytesId is the ADO standarized bytes32 price/key value pair identifier
-    * @return the timestamp, outcome or value/ and the status code (for retreived, null, etc...)
-    */
-    function valueFor(bytes32 _bytesId) external view returns (int value, uint256 timestamp, uint status) {
-        uint _id = descriptions.getTellorIdFromBytes(_bytesId);
-        int n = descriptions.getGranularityAdjFactor(_bytesId);
-        if (_id > 0){
-            bool _didGet;
-            uint256 _returnedValue;
-            uint256 _timestampRetrieved;
-            (_didGet,_returnedValue,_timestampRetrieved) = getDataBefore(_id,now,1,0);
-            if(_didGet){
-                return (int(_returnedValue)*n,_timestampRetrieved, descriptions.getStatusFromTellorStatus(1));
-            }
-            else{
-                return (0,0,descriptions.getStatusFromTellorStatus(2));
-            }
-        }
-        return (0, 0, descriptions.getStatusFromTellorStatus(0));
-    }
-
+    
     /**
     * @dev Allows the user to get the first value for the requestId before the specified timestamp
     * @param _requestId is the requestId to look up the value for
@@ -88,15 +83,15 @@ contract UsingTellor is EIP2362Interface{
         view
         returns (bool _ifRetrieve, uint256 _value, uint256 _timestampRetrieved)
     {
-        uint256 _count = _tellorm.getNewValueCountbyRequestId(_requestId);
+        uint256 _count = tellor.getNewValueCountbyRequestId(_requestId);
         if (_count > 0) {
             for (uint256 i = _count - _offset; i < _count -_offset + _limit; i++) {
-                uint256 _time = _tellorm.getTimestampbyRequestIDandIndex(_requestId, i - 1);
+                uint256 _time = tellor.getTimestampbyRequestIDandIndex(_requestId, i - 1);
                 if(_value > 0 && _time > _timestamp){
                     return(true, _value, _timestampRetrieved);
                 }
-                else if (_time > 0 && _time <= _timestamp && _tellorm.isInDispute(_requestId,_time) == false) {
-                    _value = _tellorm.retrieveData(_requestId, _time);
+                else if (_time > 0 && _time <= _timestamp && tellor.isInDispute(_requestId,_time) == false) {
+                    _value = tellor.retrieveData(_requestId, _time);
                     _timestampRetrieved = _time;
                     if(i == _count){
                         return(true, _value, _timestampRetrieved);
