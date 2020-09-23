@@ -35,7 +35,7 @@ contract UsingTellor{
     * @return bool true if requestId/timestamp is under dispute
     */
     function isInDispute(uint256 _requestId, uint256 _timestamp) public view returns(bool){
-        return tellor.isInDispute(uint256 _requestId, uint256 _timestamp);
+        return tellor.isInDispute(_requestId, _timestamp);
     }
 
     /**
@@ -44,17 +44,17 @@ contract UsingTellor{
     * @return uint count of the number of values received for the requestId
     */
     function getNewValueCountbyRequestId(uint256 _requestId) public view returns(uint) {
-        return tellor.getNewValueCountbyRequestId(uint256 _requestId);
+        return tellor.getNewValueCountbyRequestId(_requestId);
     }
 
     /**
     * @dev Gets the timestamp for the value based on their index
-    * @param _requestID is the requestId to look up
+    * @param _requestId is the requestId to look up
     * @param _index is the value index to look up
     * @return uint timestamp
     */
-    function getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 index) public view returns(uint256) {
-        return tellor.getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 index);
+    function getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 _index) public view returns(uint256) {
+        return tellor.getTimestampbyRequestIDandIndex( _requestId,_index);
     }
 
     /**

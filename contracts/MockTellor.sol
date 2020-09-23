@@ -113,7 +113,8 @@ contract MockTellor {
     }
 
     function getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 index) public view returns(uint256) {
-        if(timestamps[_requestId].length < index - 1) return 0;
+        uint len = timestamps[_requestId].length;
+        if(len == 0 || len <= index) return 0; 
         return timestamps[_requestId][index];
     }
 }
