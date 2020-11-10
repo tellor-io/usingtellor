@@ -1,6 +1,6 @@
-pragma solidity 0.5.16;
+pragma solidity >0.5.16;
 
-import "./MockTellor.sol";
+import "./TellorPlayground.sol";
 
 /**
 * @title UserContract
@@ -8,14 +8,14 @@ import "./MockTellor.sol";
 * by allowing smart contracts to read data off Tellor
 */
 contract UsingTellor{
-    MockTellor tellor;
+    TellorPlayground tellor;
     /*Constructor*/
     /**
     * @dev the constructor sets the storage address and owner
     * @param _tellor is the TellorMaster address
     */
     constructor(address payable _tellor) public {
-        tellor = MockTellor(_tellor);
+        tellor = TellorPlayground(_tellor);
     }
 
      /**
@@ -60,7 +60,9 @@ contract UsingTellor{
     /**
     * @dev Allows the user to get the latest value for the requestId specified
     * @param _requestId is the requestId to look up the value for
-    * @return bool true if it is able to retreive a value, the value, and the value's timestamp
+    * @return ifRetrieve bool true if it is able to retreive a value, the value, and the value's timestamp
+    * @return value the value retrieved
+    * @return _timestampRetrieved the value's timestamp
     */
     function getCurrentValue(uint256 _requestId) public view returns (bool ifRetrieve, uint256 value, uint256 _timestampRetrieved) {
         uint256 _count = tellor.getNewValueCountbyRequestId(_requestId);
@@ -120,7 +122,9 @@ contract UsingTellor{
     * @dev Allows the user to get the first value for the requestId before the specified timestamp
     * @param _requestId is the requestId to look up the value for
     * @param _timestamp before which to search for first verified value
-    * @return bool true if it is able to retreive a value, the value, and the value's timestamp
+    * @return _ifRetrieve bool true if it is able to retreive a value, the value, and the value's timestamp
+    * @return _value the value retrieved
+    * @return _timestampRetrieved the value's timestamp
     */
     function getDataBefore(uint256 _requestId, uint256 _timestamp)
         public

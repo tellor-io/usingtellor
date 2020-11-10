@@ -1,4 +1,4 @@
-const MockTellor = artifacts.require("MockTellor.sol");
+const TellorPlayground = artifacts.require("TellorPlayground.sol");
 const UsingTellor = artifacts.require("UsingTellor.sol");
 const BenchUsingTellor = artifacts.require("BenchUsingTellor.sol");
 
@@ -89,7 +89,7 @@ const getIndexForDataBefore = async (_requestId, _timestamp, tellor) => {
   }
   return [false, 0];
 };
-contract("Mock Tellor", function(accounts) {
+contract("Tellor Playground", function(accounts) {
   let oracle;
   let balances = [];
   for (var i = 0; i < accounts.length; i++) {
@@ -100,7 +100,7 @@ contract("Mock Tellor", function(accounts) {
 
   beforeEach("Setup contract for each test", async function() {
     //deploy old, request, update address, mine old challenge.
-    oracle = await MockTellor.new(accounts, balances);
+    oracle = await TellorPlayground.new();
   });
   it("Can add a value and retrieve value", async function() {
     await oracle.submitValue(requestId, val);
@@ -143,7 +143,7 @@ contract("Using Tellor", function(accounts) {
 
   beforeEach("Setup contract for each test", async function() {
     //deploy old, request, update address, mine old challenge.
-    oracle = await MockTellor.new(accounts, balances);
+    oracle = await TellorPlayground.new();
     usingTellor = await UsingTellor.new(oracle.address);
   });
 
