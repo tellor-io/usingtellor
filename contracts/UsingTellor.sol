@@ -1,6 +1,6 @@
-pragma solidity >0.5.16;
+pragma solidity >=0.5.16;
 
-import "./TellorPlayground.sol";
+import "../Interface/ITellor.sol";
 
 /**
 * @title UserContract
@@ -8,14 +8,14 @@ import "./TellorPlayground.sol";
 * by allowing smart contracts to read data off Tellor
 */
 contract UsingTellor{
-    TellorPlayground tellor;
+    ITellor tellor;
     /*Constructor*/
     /**
     * @dev the constructor sets the storage address and owner
     * @param _tellor is the TellorMaster address
     */
     constructor(address payable _tellor) public {
-        tellor = TellorPlayground(_tellor);
+        tellor = ITellor(_tellor);
     }
 
      /**

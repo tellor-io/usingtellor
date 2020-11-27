@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 interface ITellor {
 
@@ -130,19 +130,19 @@ interface ITellor {
 
     /**
     * @dev Getter for the current variables that include the 5 requests Id's
-    * @return the challenge, 5 requestsId, difficulty and tip
+    * @return _challenge _requestIds _difficultky _tip the challenge, 5 requestsId, difficulty and tip
     */
     function getNewCurrentVariables() external view returns(bytes32 _challenge,uint[5] memory _requestIds,uint256 _difficutly, uint256 _tip);
 
     /**
     * @dev Getter for the top tipped 5 requests Id's
-    * @return the 5 requestsId
+    * @return _requestIds the 5 requestsId
     */
     function getTopRequestIDs() external view returns(uint256[5] memory _requestIds);
 
     /**
     * @dev Getter for the 5 requests Id's next in line to get mined
-    * @return the 5 requestsId
+    * @return idsOnDeck tipsOnDeck  the 5 requestsId
     */
     function getNewVariablesOnDeck() external view returns (uint256[5] memory idsOnDeck, uint256[5] memory tipsOnDeck);
 
@@ -211,7 +211,7 @@ interface ITellor {
     * These are examples of how the variables are saved within other functions:
     * addressVars[keccak256("_owner")]
     * addressVars[keccak256("tellorContract")]
-    * @return address of the requested variable 
+    * return address
     */
     function getAddressVars(bytes32 _data) external view returns (address);
 
@@ -225,19 +225,19 @@ interface ITellor {
     * @return address of reportedMiner
     * @return address of reportingParty
     * @return address of proposedForkAddress
-    * @return uint of requestId
-    * @return uint of timestamp
-    * @return uint of value
-    * @return uint of minExecutionDate
-    * @return uint of numberOfVotes
-    * @return uint of blocknumber
-    * @return uint of minerSlot
-    * @return uint of quorum
-    * @return uint of fee
+    *    uint of requestId
+    *    uint of timestamp
+    *    uint of value
+    *    uint of minExecutionDate
+    *    uint of numberOfVotes
+    *    uint of blocknumber
+    *    uint of minerSlot
+    *    uint of quorum
+    *    uint of fee
     * @return int count of the current tally
     */
     function getAllDisputeVars(uint256 _disputeId)
-        public
+        external
         view
         returns (bytes32, bool, bool, bool, address, address, address, uint256[9] memory, int256);
     
@@ -328,7 +328,7 @@ interface ITellor {
     * @dev Getter function for the requestQ array
     * @return the requestQ arrray
     */
-    function getRequestQ() public view returns (uint256[51] memory);
+    function getRequestQ() external view returns (uint256[51] memory);
 
     /**
     * @dev Allowes access to the uint variables saved in the apiUintVars under the requestDetails struct
@@ -386,7 +386,7 @@ interface ITellor {
     * self.uintVars[keccak256("stakerCount")]
     * @return uint of specified variable
     */
-    function getUintVar(bytes32 _data) public view returns (uint256);
+    function getUintVar(bytes32 _data) external view returns (uint256);
 
     /**
     * @dev Getter function for next requestId on queue/request with highest payout at time the function is called
