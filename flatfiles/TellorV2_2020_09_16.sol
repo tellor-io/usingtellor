@@ -1,6 +1,6 @@
 
+// SPDX-License-Identifier: MIT
 // File: contracts/libraries/SafeMath.sol
-
 pragma solidity ^0.5.16;
 
 //Slightly modified SafeMath library - includes a min and max function, removes useless div function
