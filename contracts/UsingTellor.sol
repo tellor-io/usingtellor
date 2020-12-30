@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.5.16;
+pragma solidity >=0.7.0;
 
 import "../Interface/ITellor.sol";
 
@@ -9,7 +9,7 @@ import "../Interface/ITellor.sol";
  * by allowing smart contracts to read data off Tellor
  */
 contract UsingTellor {
-    ITellor tellor;
+    ITellor private tellor;
 
     /*Constructor*/
     /**
@@ -67,6 +67,7 @@ contract UsingTellor {
      * @param _index is the value index to look up
      * @return uint timestamp
      */
+
     function getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 _index)
         public
         view
@@ -92,15 +93,14 @@ contract UsingTellor {
         )
     {
         uint256 _count = tellor.getNewValueCountbyRequestId(_requestId);
-        uint256 _time = tellor.getTimestampbyRequestIDandIndex(
-            _requestId,
-            _count - 1
-        );
+        uint256 _time =
+            tellor.getTimestampbyRequestIDandIndex(_requestId, _count - 1);
         uint256 _value = tellor.retrieveData(_requestId, _time);
         if (_value > 0) return (true, _value, _time);
         return (false, 0, _time);
     }
 
+    // slither-disable-next-line calls-loop
     function getIndexForDataBefore(uint256 _requestId, uint256 _timestamp)
         public
         view
@@ -128,10 +128,11 @@ contract UsingTellor {
                 );
                 if (_time < _timestamp) {
                     //get imeadiate next value
-                    uint256 _nextTime = tellor.getTimestampbyRequestIDandIndex(
-                        _requestId,
-                        middle + 1
-                    );
+                    uint256 _nextTime =
+                        tellor.getTimestampbyRequestIDandIndex(
+                            _requestId,
+                            middle + 1
+                        );
                     if (_nextTime >= _timestamp) {
                         //_time is correct
                         return (true, middle);
@@ -140,10 +141,11 @@ contract UsingTellor {
                         start = middle + 1;
                     }
                 } else {
-                    uint256 _prevTime = tellor.getTimestampbyRequestIDandIndex(
-                        _requestId,
-                        middle - 1
-                    );
+                    uint256 _prevTime =
+                        tellor.getTimestampbyRequestIDandIndex(
+                            _requestId,
+                            middle - 1
+                        );
                     if (_prevTime < _timestamp) {
                         // _prevtime is correct
                         return (true, middle - 1);
@@ -176,15 +178,11 @@ contract UsingTellor {
             uint256 _timestampRetrieved
         )
     {
-        (bool _found, uint256 _index) = getIndexForDataBefore(
-            _requestId,
-            _timestamp
-        );
+        (bool _found, uint256 _index) =
+            getIndexForDataBefore(_requestId, _timestamp);
         if (!_found) return (false, 0, 0);
-        uint256 _time = tellor.getTimestampbyRequestIDandIndex(
-            _requestId,
-            _index
-        );
+        uint256 _time =
+            tellor.getTimestampbyRequestIDandIndex(_requestId, _index);
         _value = tellor.retrieveData(_requestId, _time);
         //If value is diputed it'll return zero
         if (_value > 0) return (true, _value, _time);
