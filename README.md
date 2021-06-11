@@ -182,7 +182,7 @@ truffle test
 
 # Implementing using Tellor
 See our documentation for implementing usingTellor here: 
-[https://tellor.readthedocs.io/en/latest/UserSetup/](https://tellor.readthedocs.io/en/latest/UserSetup/)
+[https://docs.tellor.io/tellor/integration/introduction](https://docs.tellor.io/tellor/integration/introduction)
 
 # Keywords
 
