@@ -37,9 +37,9 @@ contract BtcPriceContract is UsingTellor {
 ```
 ##### Addresses:
 
-Mainnet: [`0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5`](https://etherscan.io/address/0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5)
+Mainnet: [`0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0`](https://etherscan.io/address/0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5)
 
-Rinkeby: [`0x20374E579832859f180536A69093A126Db1c8aE9`](https://rinkeby.etherscan.io/address/0x20374E579832859f180536A69093A126Db1c8aE9#code)
+Rinkeby: [`0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0`](https://rinkeby.etherscan.io/address/0x20374E579832859f180536A69093A126Db1c8aE9#code)
 
 Kovan: [`0x20374E579832859f180536A69093A126Db1c8aE9`](https://kovan.etherscan.io/address/0x20374E579832859f180536A69093A126Db1c8aE9#code)
 
