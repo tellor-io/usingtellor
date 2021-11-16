@@ -34,8 +34,8 @@ contract TellorPlayground {
     mapping(address => mapping(address => uint256)) private _allowances;
     mapping(address => uint256) private _balances;
 
+    uint256 constant public timeBasedReward = 5e17; // time based reward for a reporter for successfully submitting a value
     uint256 public timeOfLastNewValue = block.timestamp; // time of the last new value, originally set to the block timestamp
-    uint256 public timeBasedReward = 5e17; // time based reward for a reporter for successfully submitting a value
     uint256 public tipsInContract; // number of tips within the contract
     uint256 private _totalSupply;
     string private _name;
@@ -93,6 +93,7 @@ contract TellorPlayground {
      * @param _nonce the current value count for the query id
      * @param _queryData the data used by reporters to fulfill the data query
      */
+     // slither-disable-next-line timestamp
     function submitValue(
         bytes32 _queryId,
         bytes calldata _value,
@@ -226,6 +227,7 @@ contract TellorPlayground {
      * @return uint256 tip amount for given query ID
      * @return uint256 time based reward
      */
+     // slither-disable-next-line timestamp
     function getCurrentReward(bytes32 _queryId)
         public
         view
