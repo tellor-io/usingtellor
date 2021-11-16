@@ -92,6 +92,7 @@ contract UsingTellor {
      * @return found whether the index was found
      * @return index the index
      */
+     // slither-disable-next-line calls-loop
     function getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp)
         public
         view
@@ -172,12 +173,12 @@ contract UsingTellor {
     {
         (bool _found, uint256 _index) =
             getIndexForDataBefore(_queryId, _timestamp);
-        if (!_found) return (false, bytes(''), 0);
+        if (!_found) return (false, bytes(""), 0);
         uint256 _time =
             tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
         _value = tellor.retrieveData(_queryId, _time);
         //If value is diputed it'll return zero
-        if (keccak256(_value) != keccak256(bytes(''))) return (true, _value, _time);
-        return (false, bytes(''), 0);
+        if (keccak256(_value) != keccak256(bytes(""))) return (true, _value, _time);
+        return (false, bytes(""), 0);
     }
 }
