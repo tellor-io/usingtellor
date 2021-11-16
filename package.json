@@ -6,9 +6,15 @@
     "test": "test"
   },
   "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
     "babel-eslint": "^10.0.3",
+    "chai": "^4.3.4",
     "eslint": "^6.4.0",
+    "ethereum-waffle": "^3.4.0",
+    "ethers": "^5.5.1",
     "ethlint": "^1.2.5",
+    "hardhat": "^2.6.8",
     "prettier": "^1.18.2",
     "prettier-plugin-solidity": "^1.0.0-alpha.34",
     "solc": "^0.5.11",
