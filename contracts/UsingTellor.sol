@@ -1,112 +1,97 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.7.0;
+pragma solidity >=0.8.0;
 
-import "../Interface/ITellor.sol";
+import "./interface/ITellor.sol";
 
 /**
  * @title UserContract
- * This contracts creates for easy integration to the Tellor System
- * by allowing smart contracts to read data off Tellor
+ * This contract allows for easy integration with the Tellor System
+ * by helping smart contracts to read data from Tellor
  */
 contract UsingTellor {
     ITellor private tellor;
 
     /*Constructor*/
     /**
-     * @dev the constructor sets the storage address and owner
+     * @dev the constructor sets the tellor address in storage
      * @param _tellor is the TellorMaster address
      */
     constructor(address payable _tellor) {
         tellor = ITellor(_tellor);
     }
 
+    /*Getters*/
     /**
-     * @dev Retreive value from oracle based on requestId/timestamp
-     * @param _requestId being requested
-     * @param _timestamp to retreive data/value from
-     * @return uint value for requestId/timestamp submitted
-     */
-    function retrieveData(uint256 _requestId, uint256 _timestamp)
-        public
-        view
-        returns (uint256)
-    {
-        return tellor.retrieveData(_requestId, _timestamp);
-    }
-
-    /**
-     * @dev Gets the 5 miners who mined the value for the specified requestId/_timestamp
-     * @param _requestId to looku p
-     * @param _timestamp is the timestamp to look up miners for
-     * @return bool true if requestId/timestamp is under dispute
-     */
-    function isInDispute(uint256 _requestId, uint256 _timestamp)
-        public
-        view
-        returns (bool)
-    {
-        return tellor.isInDispute(_requestId, _timestamp);
-    }
-
-    /**
-     * @dev Counts the number of values that have been submited for the request
-     * @param _requestId the requestId to look up
-     * @return uint count of the number of values received for the requestId
-     */
-    function getNewValueCountbyRequestId(uint256 _requestId)
-        public
-        view
-        returns (uint256)
-    {
-        return tellor.getNewValueCountbyRequestId(_requestId);
-    }
-
-    /**
-     * @dev Gets the timestamp for the value based on their index
-     * @param _requestId is the requestId to look up
-     * @param _index is the value index to look up
-     * @return uint timestamp
-     */
-
-    function getTimestampbyRequestIDandIndex(uint256 _requestId, uint256 _index)
-        public
-        view
-        returns (uint256)
-    {
-        return tellor.getTimestampbyRequestIDandIndex(_requestId, _index);
-    }
-
-    /**
-     * @dev Allows the user to get the latest value for the requestId specified
-     * @param _requestId is the requestId to look up the value for
-     * @return ifRetrieve bool true if it is able to retreive a value, the value, and the value's timestamp
+     * @dev Allows the user to get the latest value for the queryId specified
+     * @param _queryId is the id to look up the value for
+     * @return ifRetrieve bool true if non-zero value successfully retrieved
      * @return value the value retrieved
-     * @return _timestampRetrieved the value's timestamp
+     * @return _timestampRetrieved the retrieved value's timestamp
      */
-    function getCurrentValue(uint256 _requestId)
+    function getCurrentValue(bytes32 _queryId)
         public
         view
         returns (
             bool ifRetrieve,
-            uint256 value,
+            bytes memory value,
             uint256 _timestampRetrieved
         )
     {
-        uint256 _count = tellor.getNewValueCountbyRequestId(_requestId);
-        uint256 _time =
-            tellor.getTimestampbyRequestIDandIndex(_requestId, _count - 1);
-        uint256 _value = tellor.retrieveData(_requestId, _time);
-        if (_value > 0) return (true, _value, _time);
-        return (false, 0, _time);
+        uint256 _count = tellor.getNewValueCountbyQueryId(_queryId);
+        uint256 _time = tellor.getTimestampbyQueryIdandIndex(
+            _queryId,
+            _count - 1
+        );
+        bytes memory _value = tellor.retrieveData(_queryId, _time);
+        if (keccak256(_value) != keccak256(bytes("")))
+            return (true, _value, _time);
+        return (false, bytes(""), _time);
     }
 
+    /**
+     * @dev Retrieves the latest value for the queryId before the specified timestamp
+     * @param _queryId is the queryId to look up the value for
+     * @param _timestamp before which to search for latest value
+     * @return _ifRetrieve bool true if able to retrieve a non-zero value
+     * @return _value the value retrieved
+     * @return _timestampRetrieved the value's timestamp
+     */
+    function getDataBefore(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (
+            bool _ifRetrieve,
+            bytes memory _value,
+            uint256 _timestampRetrieved
+        )
+    {
+        (bool _found, uint256 _index) = getIndexForDataBefore(
+            _queryId,
+            _timestamp
+        );
+        if (!_found) return (false, bytes(""), 0);
+        uint256 _time = tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
+        _value = tellor.retrieveData(_queryId, _time);
+        //If value is diputed it'll return zero
+        if (keccak256(_value) != keccak256(bytes("")))
+            return (true, _value, _time);
+        return (false, bytes(""), 0);
+    }
+
+    /**
+     * @dev Retrieves latest array index of data before the specified timestamp for the queryId
+     * @param _queryId is the queryId to look up the index for
+     * @param _timestamp is the timestamp before which to search for the latest index
+     * @return found whether the index was found
+     * @return index the latest index found before the specified timestamp
+     */
     // slither-disable-next-line calls-loop
-    function getIndexForDataBefore(uint256 _requestId, uint256 _timestamp)
+    function getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp)
         public
         view
         returns (bool found, uint256 index)
     {
-        uint256 _count = tellor.getNewValueCountbyRequestId(_requestId);
+        uint256 _count = tellor.getNewValueCountbyQueryId(_queryId);
         if (_count > 0) {
             uint256 middle;
             uint256 start = 0;
@@ -114,25 +99,21 @@ contract UsingTellor {
             uint256 _time;
 
             //Checking Boundaries to short-circuit the algorithm
-            _time = tellor.getTimestampbyRequestIDandIndex(_requestId, start);
+            _time = tellor.getTimestampbyQueryIdandIndex(_queryId, start);
             if (_time >= _timestamp) return (false, 0);
-            _time = tellor.getTimestampbyRequestIDandIndex(_requestId, end);
+            _time = tellor.getTimestampbyQueryIdandIndex(_queryId, end);
             if (_time < _timestamp) return (true, end);
 
             //Since the value is within our boundaries, do a binary search
             while (true) {
                 middle = (end - start) / 2 + 1 + start;
-                _time = tellor.getTimestampbyRequestIDandIndex(
-                    _requestId,
-                    middle
-                );
+                _time = tellor.getTimestampbyQueryIdandIndex(_queryId, middle);
                 if (_time < _timestamp) {
                     //get imeadiate next value
-                    uint256 _nextTime =
-                        tellor.getTimestampbyRequestIDandIndex(
-                            _requestId,
-                            middle + 1
-                        );
+                    uint256 _nextTime = tellor.getTimestampbyQueryIdandIndex(
+                        _queryId,
+                        middle + 1
+                    );
                     if (_nextTime >= _timestamp) {
                         //_time is correct
                         return (true, middle);
@@ -141,11 +122,10 @@ contract UsingTellor {
                         start = middle + 1;
                     }
                 } else {
-                    uint256 _prevTime =
-                        tellor.getTimestampbyRequestIDandIndex(
-                            _requestId,
-                            middle - 1
-                        );
+                    uint256 _prevTime = tellor.getTimestampbyQueryIdandIndex(
+                        _queryId,
+                        middle - 1
+                    );
                     if (_prevTime < _timestamp) {
                         // _prevtime is correct
                         return (true, middle - 1);
@@ -162,30 +142,68 @@ contract UsingTellor {
     }
 
     /**
-     * @dev Allows the user to get the first value for the requestId before the specified timestamp
-     * @param _requestId is the requestId to look up the value for
-     * @param _timestamp before which to search for first verified value
-     * @return _ifRetrieve bool true if it is able to retreive a value, the value, and the value's timestamp
-     * @return _value the value retrieved
-     * @return _timestampRetrieved the value's timestamp
+     * @dev Counts the number of values that have been submited for the queryId
+     * @param _queryId the id to look up
+     * @return uint256 count of the number of values received for the queryId
      */
-    function getDataBefore(uint256 _requestId, uint256 _timestamp)
+    function getNewValueCountbyQueryId(bytes32 _queryId)
         public
         view
-        returns (
-            bool _ifRetrieve,
-            uint256 _value,
-            uint256 _timestampRetrieved
-        )
+        returns (uint256)
     {
-        (bool _found, uint256 _index) =
-            getIndexForDataBefore(_requestId, _timestamp);
-        if (!_found) return (false, 0, 0);
-        uint256 _time =
-            tellor.getTimestampbyRequestIDandIndex(_requestId, _index);
-        _value = tellor.retrieveData(_requestId, _time);
-        //If value is diputed it'll return zero
-        if (_value > 0) return (true, _value, _time);
-        return (false, 0, 0);
+        return tellor.getNewValueCountbyQueryId(_queryId);
+    }
+
+    // /**
+    //  * @dev Gets the timestamp for the value based on their index
+    //  * @param _queryId is the id to look up
+    //  * @param _index is the value index to look up
+    //  * @return uint256 timestamp
+    //  */
+    function getTimestampbyQueryIdandIndex(bytes32 _queryId, uint256 _index)
+        public
+        view
+        returns (uint256)
+    {
+        return tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
+    }
+
+    /**
+     * @dev Determines whether a value with a given queryId and timestamp has been disputed
+     * @param _queryId is the value id to look up
+     * @param _timestamp is the timestamp of the value to look up
+     * @return bool true if queryId/timestamp is under dispute
+     */
+    function isInDispute(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (bool)
+    {
+        ITellor _governance = ITellor(
+            tellor.addresses(
+                keccak256(abi.encodePacked("_GOVERNANCE_CONTRACT"))
+            )
+        );
+        return
+            _governance
+                .getVoteRounds(
+                keccak256(abi.encodePacked(_queryId, _timestamp))
+            )
+                .length >
+            0;
+    }
+
+    /**
+     * @dev Retreive value from oracle based on queryId/timestamp
+     * @param _queryId being requested
+     * @param _timestamp to retreive data/value from
+     * @return bytes value for query/timestamp submitted
+     */
+    function retrieveData(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (bytes memory)
+    {
+        return tellor.retrieveData(_queryId, _timestamp);
     }
 }

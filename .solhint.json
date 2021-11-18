@@ -8,7 +8,7 @@
     ],
     "compiler-version": [
       "error",
-      "^0.7.0"
+      ">=0.8.0"
     ],
     "contract-name-camelcase": "error",
     "not-rely-on-time": "off",
