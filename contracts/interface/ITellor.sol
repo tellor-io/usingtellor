@@ -3,8 +3,8 @@ pragma solidity >=0.8.0;
 
 interface ITellor{
     //Controller
-    function addresses(bytes32) external returns(address);
-    function uints(bytes32) external returns(uint256);
+    function addresses(bytes32) external view returns(address);
+    function uints(bytes32) external view returns(uint256);
     function burn(uint256 _amount) external;
     function changeDeity(address _newDeity) external;
     function changeOwner(address _newOwner) external;

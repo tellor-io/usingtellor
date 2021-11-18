@@ -27,16 +27,19 @@ contract TellorPlayground {
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     // Storage
+    mapping(bytes32 => address) public addresses;
     mapping(bytes32 => mapping(uint256 => bool)) public isDisputed; //queryId -> timestamp -> value
     mapping(bytes32 => uint256[]) public timestamps;
     mapping(bytes32 => uint256) public tips; // mapping of data IDs to the amount of TRB they are tipped
     mapping(bytes32 => mapping(uint256 => bytes)) public values; //queryId -> timestamp -> value
+    mapping(bytes32 => uint256[]) public voteRounds; // mapping of vote identifier hashes to an array of dispute IDs
     mapping(address => mapping(address => uint256)) private _allowances;
     mapping(address => uint256) private _balances;
 
-    uint256 constant public timeBasedReward = 5e17; // time based reward for a reporter for successfully submitting a value
+    uint256 public constant timeBasedReward = 5e17; // time based reward for a reporter for successfully submitting a value
     uint256 public timeOfLastNewValue = block.timestamp; // time of the last new value, originally set to the block timestamp
     uint256 public tipsInContract; // number of tips within the contract
+    uint256 public voteCount;
     uint256 private _totalSupply;
     string private _name;
     string private _symbol;
@@ -50,6 +53,9 @@ contract TellorPlayground {
         _name = "TellorPlayground";
         _symbol = "TRBP";
         _decimals = 18;
+        addresses[keccak256(
+            abi.encodePacked("_GOVERNANCE_CONTRACT")
+        )] = address(this);
     }
 
     /**
@@ -76,6 +82,10 @@ contract TellorPlayground {
     function beginDispute(bytes32 _queryId, uint256 _timestamp) external {
         values[_queryId][_timestamp] = bytes("");
         isDisputed[_queryId][_timestamp] = true;
+        voteCount++;
+        voteRounds[keccak256(abi.encodePacked(_queryId, _timestamp))].push(
+            voteCount
+        );
     }
 
     /**
@@ -93,7 +103,7 @@ contract TellorPlayground {
      * @param _nonce the current value count for the query id
      * @param _queryData the data used by reporters to fulfill the data query
      */
-     // slither-disable-next-line timestamp
+    // slither-disable-next-line timestamp
     function submitValue(
         bytes32 _queryId,
         bytes calldata _value,
@@ -145,11 +155,17 @@ contract TellorPlayground {
             "id must be hash of bytes data"
         );
         _transfer(msg.sender, address(this), _amount);
-        _amount = _amount/2;
+        _amount = _amount / 2;
         _burn(address(this), _amount);
         tipsInContract += _amount;
         tips[_queryId] += _amount;
-        emit TipAdded(msg.sender, _queryId, _amount, tips[_queryId], _queryData);
+        emit TipAdded(
+            msg.sender,
+            _queryId,
+            _amount,
+            tips[_queryId],
+            _queryData
+        );
     }
 
     /**
@@ -174,11 +190,11 @@ contract TellorPlayground {
      * @param _amount The quantity of tokens to transfer
      * @return bool Whether the transfer succeeded
      */
-    function transferFrom(
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) public virtual returns (bool) {
+    function transferFrom(address _sender, address _recipient, uint256 _amount)
+        public
+        virtual
+        returns (bool)
+    {
         _transfer(_sender, _recipient, _amount);
         _approve(
             _sender,
@@ -227,7 +243,7 @@ contract TellorPlayground {
      * @return uint256 tip amount for given query ID
      * @return uint256 time based reward
      */
-     // slither-disable-next-line timestamp
+    // slither-disable-next-line timestamp
     function getCurrentReward(bytes32 _queryId)
         public
         view
@@ -268,6 +284,19 @@ contract TellorPlayground {
         uint256 len = timestamps[_queryId].length;
         if (len == 0 || len <= _index) return 0;
         return timestamps[_queryId][_index];
+    }
+
+    /**
+     * @dev Returns an array of voting rounds for a given vote
+     * @param _hash is the identifier hash for a vote
+     * @return uint256[] memory dispute IDs of the vote rounds
+     */
+    function getVoteRounds(bytes32 _hash)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return voteRounds[_hash];
     }
 
     /**
@@ -315,11 +344,10 @@ contract TellorPlayground {
      * @param _spender The address which is allowed to spend the tokens
      * @param _amount The amount that msg.sender is allowing spender to use
      */
-    function _approve(
-        address _owner,
-        address _spender,
-        uint256 _amount
-    ) internal virtual {
+    function _approve(address _owner, address _spender, uint256 _amount)
+        internal
+        virtual
+    {
         require(_owner != address(0), "ERC20: approve from the zero address");
         require(_spender != address(0), "ERC20: approve to the zero address");
         _allowances[_owner][_spender] = _amount;
@@ -356,11 +384,10 @@ contract TellorPlayground {
      * @param _recipient The destination address
      * @param _amount The quantity of tokens to transfer
      */
-    function _transfer(
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) internal virtual {
+    function _transfer(address _sender, address _recipient, uint256 _amount)
+        internal
+        virtual
+    {
         require(_sender != address(0), "ERC20: transfer from the zero address");
         require(
             _recipient != address(0),

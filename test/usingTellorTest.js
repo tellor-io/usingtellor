@@ -101,4 +101,19 @@ describe("UsingTellor", function() {
     expect(dataBefore[1]).to.equal(h.bytes(150))
     expect(dataBefore[2]).to.equal(blocky1.timestamp)
   })
+
+	it("isInDispute()", async function() {
+		await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
+    blocky1 = await h.getBlock()
+    await playground.connect(addr1).submitValue(h.uintTob32(1),160,1,'0x')
+    blocky2 = await h.getBlock()
+		expect(await bench.isInDispute(h.uintTob32(1), blocky1.timestamp)).to.be.false;
+		await playground.beginDispute(h.uintTob32(1), blocky1.timestamp)
+		expect(await bench.isInDispute(h.uintTob32(1), blocky1.timestamp))
+		await playground.beginDispute(h.uintTob32(1), blocky1.timestamp)
+		expect(await bench.isInDispute(h.uintTob32(1), blocky1.timestamp))
+		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp)).to.be.false;
+		await playground.beginDispute(h.uintTob32(1), blocky2.timestamp)
+		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp))
+	})
 });
