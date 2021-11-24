@@ -24,16 +24,16 @@ contract UsingTellor {
     /**
      * @dev Allows the user to get the latest value for the queryId specified
      * @param _queryId is the id to look up the value for
-     * @return ifRetrieve bool true if non-zero value successfully retrieved
-     * @return value the value retrieved
+     * @return _ifRetrieve bool true if non-zero value successfully retrieved
+     * @return _value the value retrieved
      * @return _timestampRetrieved the retrieved value's timestamp
      */
     function getCurrentValue(bytes32 _queryId)
         public
         view
         returns (
-            bool ifRetrieve,
-            bytes memory value,
+            bool _ifRetrieve,
+            bytes memory _value,
             uint256 _timestampRetrieved
         )
     {
@@ -42,7 +42,7 @@ contract UsingTellor {
             _queryId,
             _count - 1
         );
-        bytes memory _value = tellor.retrieveData(_queryId, _time);
+        _value = tellor.retrieveData(_queryId, _time);
         if (keccak256(_value) != keccak256(bytes("")))
             return (true, _value, _time);
         return (false, bytes(""), _time);
@@ -82,14 +82,14 @@ contract UsingTellor {
      * @dev Retrieves latest array index of data before the specified timestamp for the queryId
      * @param _queryId is the queryId to look up the index for
      * @param _timestamp is the timestamp before which to search for the latest index
-     * @return found whether the index was found
-     * @return index the latest index found before the specified timestamp
+     * @return _found whether the index was found
+     * @return _index the latest index found before the specified timestamp
      */
     // slither-disable-next-line calls-loop
     function getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp)
         public
         view
-        returns (bool found, uint256 index)
+        returns (bool _found, uint256 _index)
     {
         uint256 _count = tellor.getNewValueCountbyQueryId(_queryId);
         if (_count > 0) {
@@ -142,7 +142,7 @@ contract UsingTellor {
     }
 
     /**
-     * @dev Counts the number of values that have been submited for the queryId
+     * @dev Counts the number of values that have been submitted for the queryId
      * @param _queryId the id to look up
      * @return uint256 count of the number of values received for the queryId
      */
@@ -194,9 +194,9 @@ contract UsingTellor {
     }
 
     /**
-     * @dev Retreive value from oracle based on queryId/timestamp
+     * @dev Retrieve value from oracle based on queryId/timestamp
      * @param _queryId being requested
-     * @param _timestamp to retreive data/value from
+     * @param _timestamp to retrieve data/value from
      * @return bytes value for query/timestamp submitted
      */
     function retrieveData(bytes32 _queryId, uint256 _timestamp)
