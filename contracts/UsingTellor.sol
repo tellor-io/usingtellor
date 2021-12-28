@@ -9,7 +9,7 @@ import "./interface/ITellor.sol";
  * by helping smart contracts to read data from Tellor
  */
 contract UsingTellor {
-    ITellor private tellor;
+    ITellor public tellor;
 
     /*Constructor*/
     /**
