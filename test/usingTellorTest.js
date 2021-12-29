@@ -116,4 +116,8 @@ describe("UsingTellor", function() {
 		await playground.beginDispute(h.uintTob32(1), blocky2.timestamp)
 		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp))
 	})
+
+	it("tellor()", async function() {
+		expect(await bench.tellor()).to.equal(playground.address)
+	})
 });
