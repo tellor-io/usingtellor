@@ -71,8 +71,7 @@ contract UsingTellor {
         );
         if (!_found) return (false, bytes(""), 0);
         uint256 _time = tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
-        _value = tellor.retrieveData(_queryId, _time);
-        //If value is diputed it'll return zero
+        _value = tellor.retrieveData(_queryId, _time);        
         if (keccak256(_value) != keccak256(bytes("")))
             return (true, _value, _time);
         return (false, bytes(""), 0);
