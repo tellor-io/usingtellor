@@ -38,6 +38,9 @@ contract UsingTellor {
         )
     {
         uint256 _count = tellor.getNewValueCountbyQueryId(_queryId);
+        if (_count == 0) {
+          return (false, bytes(""), 0);
+        }
         uint256 _time = tellor.getTimestampbyQueryIdandIndex(
             _queryId,
             _count - 1
@@ -71,7 +74,7 @@ contract UsingTellor {
         );
         if (!_found) return (false, bytes(""), 0);
         uint256 _time = tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
-        _value = tellor.retrieveData(_queryId, _time);        
+        _value = tellor.retrieveData(_queryId, _time);
         if (keccak256(_value) != keccak256(bytes("")))
             return (true, _value, _time);
         return (false, bytes(""), 0);
