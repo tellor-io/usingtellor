@@ -75,6 +75,10 @@ describe("UsingTellor", function() {
     expect(currentVal3[0])
     expect(currentVal3[1]).to.equal(h.bytes("houdini"))
     expect(currentVal3[2]).to.equal(blocky3.timestamp)
+		currentVal4 = await bench.getCurrentValue(h.uintTob32(2))
+		expect(!currentVal4[0])
+		expect(currentVal4[1]).to.equal('0x')
+    expect(currentVal4[2]).to.equal(0)
   })
 
   it("getIndexForDataBefore()", async function() {
