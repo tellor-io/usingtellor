@@ -16,20 +16,30 @@ Just inherit the UsingTellor contract, passing the Tellor address as a construct
 
 Here's an example
 ```solidity
-contract BtcPriceContract is UsingTellor {
+contract PriceContract is UsingTellor {
+
+  uint256 public btcPrice;
 
   //This Contract now has access to all functions in UsingTellor
-
-  bytes btcPrice;
-  bytes32 btcQueryId = 0x0000000000000000000000000000000000000000000000000000000000000002;
 
   constructor(address payable _tellorAddress) UsingTellor(_tellorAddress) public {}
 
   function setBtcPrice() public {
+
+    bytes memory _b = abi.encode("SpotPrice",abi.encode("BTC","USD")); 
+    bytes32 _queryID = keccak256(_b);
+
     bool _didGet;
     uint256 _timestamp;
+    bytes _value
 
-    (_didGet, btcPrice, _timestamp) = getCurrentValue(btcQueryId);
+    (_didGet, _value, _timestamp) = getCurrentValue(btcQueryId);
+
+    //fast bytes to uint conversion //https://stackoverflow.com/questions/63252057/how-to-use-bytestouint-function-in-solidity-the-one-with-assembly
+    
+    assembly {
+      btcPrice := mload(add(_value, 0x20)) 
+    }
   }
 }
 ```
