@@ -35,11 +35,7 @@ contract PriceContract is UsingTellor {
 
     (_didGet, _value, _timestamp) = getCurrentValue(btcQueryId);
 
-    //fast bytes to uint conversion //https://stackoverflow.com/questions/63252057/how-to-use-bytestouint-function-in-solidity-the-one-with-assembly
-    
-    assembly {
-      btcPrice := mload(add(_value, 0x20)) 
-    }
+    btcPrice = abi.decode(_value,(uint256));
   }
 }
 ```
