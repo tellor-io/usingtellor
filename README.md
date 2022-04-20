@@ -26,7 +26,7 @@ contract PriceContract is UsingTellor {
 
   function setBtcPrice() public {
 
-    bytes memory _b = abi.encode("SpotPrice",abi.encode("BTC","USD"));
+    bytes memory _b = abi.encode("SpotPrice",abi.encode("BTC","USD")); 
     bytes32 _queryID = keccak256(_b);
 
     bool _didGet;
@@ -35,12 +35,7 @@ contract PriceContract is UsingTellor {
 
     (_didGet, _value, _timestamp) = getCurrentValue(btcQueryId);
 
-    //fast bytes to uint conversion //https://stackoverflow.com/questions/63252057/how-to-use-bytestouint-function-in-solidity-the-one-with-assembly
-
-    require(_value.length == 32);
-    assembly {
-      btcPrice := mload(add(_value, 0x20))
-    }
+    btcPrice = abi.decode(_value,(uint256));
   }
 }
 ```
