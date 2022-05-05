@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.0;
 
 contract TellorPlayground {
     // Events
@@ -226,6 +226,7 @@ contract TellorPlayground {
      * @dev Allows a reporter to submit stake
      * @param _amount amount of tokens to stake
      */
+    // slither-disable-next-line timestamp
     function depositStake(uint256 _amount) external {
         StakeInfo storage _staker = stakerDetails[msg.sender];
         if (_staker.lockedBalance > 0) {
@@ -253,6 +254,7 @@ contract TellorPlayground {
      * @dev Allows a reporter to request to withdraw their stake
      * @param _amount amount of staked tokens requesting to withdraw
      */
+    // slither-disable-next-line timestamp
     function requestStakingWithdraw(uint256 _amount) external {
         StakeInfo storage _staker = stakerDetails[msg.sender];
         require(
@@ -268,6 +270,7 @@ contract TellorPlayground {
     /**
      * @dev Withdraws a reporter's stake
      */
+    // slither-disable-next-line timestamp
     function withdrawStake() external {
         StakeInfo storage _s = stakerDetails[msg.sender];
         // Ensure reporter is locked and that enough time has passed

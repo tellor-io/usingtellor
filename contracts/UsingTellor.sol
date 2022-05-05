@@ -39,7 +39,7 @@ contract UsingTellor {
     {
         uint256 _count = tellor.getNewValueCountbyQueryId(_queryId);
         if (_count == 0) {
-          return (false, bytes(""), 0);
+            return (false, bytes(""), 0);
         }
         uint256 _time = tellor.getTimestampbyQueryIdandIndex(
             _queryId,
@@ -189,10 +189,9 @@ contract UsingTellor {
         return
             _governance
                 .getVoteRounds(
-                keccak256(abi.encodePacked(_queryId, _timestamp))
-            )
-                .length >
-            0;
+                    keccak256(abi.encodePacked(_queryId, _timestamp))
+                )
+                .length > 0;
     }
 
     /**
