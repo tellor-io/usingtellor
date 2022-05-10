@@ -37,7 +37,17 @@ contract UsingTellor {
             uint256 _timestampRetrieved
         )
     {
-        uint256 _count = tellor.getNewValueCountbyQueryId(_queryId);
+        uint256 _count;
+
+        //rinkeby or ethereum check
+        if (
+            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+        ) {
+            _count = tellor.getTimestampCountById(_queryId);
+        } else {
+            _count = tellor.getNewValueCountbyQueryId(_queryId);
+        }
         if (_count == 0) {
             return (false, bytes(""), 0);
         }
@@ -93,7 +103,18 @@ contract UsingTellor {
         view
         returns (bool _found, uint256 _index)
     {
-        uint256 _count = tellor.getNewValueCountbyQueryId(_queryId);
+        uint256 _count;
+
+        //rinkeby or ethereum check
+        if (
+            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+        ) {
+            _count = tellor.getTimestampCountById(_queryId);
+        } else {
+            _count = tellor.getNewValueCountbyQueryId(_queryId);
+        }
+
         if (_count > 0) {
             uint256 middle;
             uint256 start = 0;
