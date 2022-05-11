@@ -152,6 +152,7 @@ contract UsingTellor {
         view
         returns (uint256)
     {
+        //tellorx check rinkeby/ethereum
         if (
             tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
             tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
@@ -173,6 +174,7 @@ contract UsingTellor {
         view
         returns (uint256)
     {
+        //tellorx check rinkeby/ethereum
         if (
             tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
             tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
@@ -218,6 +220,14 @@ contract UsingTellor {
         view
         returns (bytes memory)
     {
-        return tellor.retrieveData(_queryId, _timestamp);
+         if (
+            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+        ) {
+            return tellor.getValueByTimestamp(_queryId, _timestamp);
+        } else {
+            return tellor.retrieveData(_queryId, _timestamp);
+        }
+       
     }
 }
