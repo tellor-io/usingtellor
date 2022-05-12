@@ -43,7 +43,7 @@ contract UsingTellor {
             return (false, bytes(""), 0);
         }
         uint256 _time = getTimestampbyQueryIdandIndex(_queryId, _count - 1);
-        _value = tellor.retrieveData(_queryId, _time);
+        _value = retrieveData(_queryId, _time);
         if (keccak256(_value) != keccak256(bytes("")))
             return (true, _value, _time);
         return (false, bytes(""), _time);
@@ -72,7 +72,7 @@ contract UsingTellor {
         );
         if (!_found) return (false, bytes(""), 0);
         uint256 _time = getTimestampbyQueryIdandIndex(_queryId, _index);
-        _value = tellor.retrieveData(_queryId, _time);
+        _value = retrieveData(_queryId, _time);
         if (keccak256(_value) != keccak256(bytes("")))
             return (true, _value, _time);
         return (false, bytes(""), 0);
@@ -220,6 +220,7 @@ contract UsingTellor {
         view
         returns (bytes memory)
     {
+        //tellorx check rinkeby/ethereum
          if (
             tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
             tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
