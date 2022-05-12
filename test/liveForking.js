@@ -5,6 +5,7 @@ var assert = require("assert");
 const web3 = require("web3");
 const fetch = require("node-fetch");
 const { ethers } = require("hardhat");
+const { tob32 } = require("./helpers/helpers");
 
 describe("usingTellor Function Tests", function () {
   const tellorOracleAddress = "0xe8218cACb0a5421BC6409e498d9f8CC8869945ea";
@@ -12,9 +13,9 @@ describe("usingTellor Function Tests", function () {
 
   const DEV_WALLET = "0x39E419bA25196794B595B2a595Ea8E527ddC9856";
   const BIGWALLET = "0xf977814e90da44bfa03b6295a0616a897441acec";
+  const governanceAddress = "0x8Db04961e0f87dE557aCB92f97d90e2A2840A468";
   const abiCoder = new ethers.utils.AbiCoder();
   let queryId;
-  let valuesEncoded;
   let queryDataArgs;
   let queryData;
   let run = 0;
@@ -51,79 +52,146 @@ describe("usingTellor Function Tests", function () {
       method: "hardhat_impersonateAccount",
       params: [BIGWALLET],
     });
+
+    await owner.sendTransaction({
+      to: DEV_WALLET,
+      value: ethers.utils.parseEther("1.0"),
+    });
+
     bigWallet = await ethers.provider.getSigner(BIGWALLET);
     devWallet = await ethers.provider.getSigner(DEV_WALLET);
-
-    oracle = await ethers.getContractAt(
-      "ITellor",
-      tellorOracleAddress,
-      devWallet
-    );
 
     UsingTellor = await ethers.getContractFactory("UsingTellor");
     usingTellor = await UsingTellor.deploy(tellorOracleAddress);
     await usingTellor.deployed();
 
-    await addr1.sendTransaction({
-      to: DEV_WALLET,
-      value: ethers.utils.parseEther("1.0"),
-    });
+    trueEncoded = abiCoder.encode(["bool"], [true]);
+    falseEncoded = abiCoder.encode(["bool"], [false]);
 
-    valuesEncoded = abiCoder.encode(["bool"], [true]);
     queryDataArgs = abiCoder.encode(["string"], ["1"]);
     queryData = abiCoder.encode(
       ["string", "bytes"],
       ["Snapshot", queryDataArgs]
     );
     queryId = ethers.utils.keccak256(queryData);
+
+    tellorM = await ethers.getContractAt("ITellor", tellorMaster, devWallet);
+
+    await tellorM.depositStake();
+
+    oracle = await ethers.getContractAt(
+      "ITellor",
+      tellorOracleAddress,
+      devWallet
+    );
   });
 
   it("retrieveData()", async function () {
-    tellorM = await ethers.getContractAt("ITellor", tellorMaster, addr1);
-    await tellorM.depositStake();
-    // await oracle.submitValue(queryId, valuesEncoded, 0, queryData);
-    // blocky = await h.getBlock();
-    // const using = await usingTellor.retrieveData(queryId, blocky.timestamp);
+    await oracle.submitValue(queryId, falseEncoded, 0, queryData);
+    blocky1 = await h.getBlock();
+    await h.advanceTime(100000);
+    await oracle.submitValue(queryId, trueEncoded, 1, queryData);
+    blocky2 = await h.getBlock();
+    expect(await usingTellor.retrieveData(queryId, blocky1.timestamp)).to.equal(
+      h.uintTob32(0)
+    );
+    expect(await usingTellor.retrieveData(queryId, blocky2.timestamp)).to.equal(
+      h.uintTob32(1)
+    );
   });
 
-  // it("getNewValueCountbyQueryId", async function () {
-  //   const using = await usingTellor.getNewValueCountbyQueryId(queryId);
+  it("getNewValueCountbyQueryId", async function () {
+    await oracle.submitValue(queryId, falseEncoded, 0, queryData);
+    expect(await usingTellor.getNewValueCountbyQueryId(queryId)).to.equal(1);
+    await h.advanceTime(100000);
+    await oracle.submitValue(queryId, trueEncoded, 1, queryData);
+    expect(await usingTellor.getNewValueCountbyQueryId(queryId)).to.equal(2);
+  });
 
-  // });
+  it("getTimestampbyQueryIdandIndex()", async function () {
+    await oracle.submitValue(queryId, falseEncoded, 0, queryData);
+    blocky1 = await h.getBlock();
+    await h.advanceTime(100000);
+    await oracle.submitValue(queryId, trueEncoded, 1, queryData);
+    blocky2 = await h.getBlock();
+    expect(
+      await usingTellor.getTimestampbyQueryIdandIndex(queryId, 0)
+    ).to.equal(blocky1.timestamp);
+    expect(
+      await usingTellor.getTimestampbyQueryIdandIndex(queryId, 1)
+    ).to.equal(blocky2.timestamp);
+  });
 
-  // it("getTimestampbyQueryIdandIndex()", async function () {
-  //   const using = await usingTellor.getTimestampbyQueryIdandIndex(queryId, 0);
-  //   console.log("using: ", using);
-  // });
+  it("getCurrentValue()", async function () {
+    await oracle.submitValue(queryId, falseEncoded, 0, queryData);
+    blocky1 = await h.getBlock();
+    currentVal1 = await usingTellor.getCurrentValue(queryId);
+    expect(currentVal1[0]);
+    expect(currentVal1[1]).to.equal(h.uintTob32(0));
+    expect(currentVal1[2]).to.equal(blocky1.timestamp);
+    await h.advanceTime(100000);
+    await oracle.submitValue(queryId, trueEncoded, 1, queryData);
+    blocky2 = await h.getBlock();
+    currentVal1 = await usingTellor.getCurrentValue(queryId);
+    expect(currentVal1[0]);
+    expect(currentVal1[1]).to.equal(h.uintTob32(1));
+    expect(currentVal1[2]).to.equal(blocky2.timestamp);
+    await h.advanceTime(100000);
+    await oracle.submitValue(
+      h.hash("abracadabra"),
+      h.bytes("houdini"),
+      0,
+      h.bytes("abracadabra")
+    );
+    blocky3 = await h.getBlock();
+    currentVal3 = await usingTellor.getCurrentValue(h.hash("abracadabra"));
+    expect(currentVal3[0]);
+    expect(currentVal3[1]).to.equal(h.bytes("houdini"));
+    expect(currentVal3[2]).to.equal(blocky3.timestamp);
+  });
 
-  // it("getCurrentValue()", async function () {
-  //   const using = await usingTellor.getCurrentValue(queryId);
+  it("getIndexForDataBefore()", async function () {
+    await oracle.submitValue(queryId, falseEncoded, 0, queryData);
+    blocky1 = await h.getBlock();
+    await h.advanceTime(100000);
+    await oracle.submitValue(queryId, trueEncoded, 1, queryData);
+    blocky2 = await h.getBlock();
 
-  //   console.log("using: ", using);
-  // });
+    index = await usingTellor.getIndexForDataBefore(queryId, blocky2.timestamp);
+    expect(index[0]);
+    expect(index[1]).to.equal(0);
+  });
 
-  // it("getIndexForDataBefore()", async function () {
-  //   blocky = await h.getBlock();
+  it("getDataBefore()", async function () {
+    await oracle.submitValue(queryId, falseEncoded, 0, queryData);
+    blocky1 = await h.getBlock();
+    await h.advanceTime(100000);
+    await oracle.submitValue(queryId, trueEncoded, 1, queryData);
+    blocky2 = await h.getBlock();
 
-  //   const using = await usingTellor.getIndexForDataBefore(
-  //     queryId,
-  //     blocky.timestamp
-  //   );
-  //   console.log("using: ", using);
-  // });
+    dataBefore = await usingTellor.getDataBefore(queryId, blocky2.timestamp);
+    expect(dataBefore[0]);
+    expect(dataBefore[1]).to.equal(h.uintTob32(0));
+    expect(dataBefore[2]).to.equal(blocky1.timestamp);
+  });
 
-  // it("getDataBefore()", async function () {
-  //   blocky = await h.getBlock();
-
-  //   using = await usingTellor.getDataBefore(queryId, blocky.timestamp);
-  //   console.log("using: ", using);
-  // });
-
-  // it("isInDispute()", async function () {
-  //   blocky = await h.getBlock();
-
-  //   await usingTellor.isInDispute(queryId, blocky.timestamp);
-  // });
+  it("isInDispute()", async function () {
+    await oracle.submitValue(queryId, falseEncoded, 0, queryData);
+    blocky1 = await h.getBlock();
+    await h.advanceTime(100000);
+    await oracle.submitValue(queryId, trueEncoded, 1, queryData);
+    blocky2 = await h.getBlock();
+    expect(await usingTellor.isInDispute(queryId, blocky1.timestamp)).to.be
+      .false;
+    await oracle.beginDispute(queryId, blocky1.timestamp);
+    expect(await usingTellor.isInDispute(queryId, blocky1.timestamp));
+    await oracle.beginDispute(queryId, blocky1.timestamp);
+    expect(await usingTellor.isInDispute(queryId, blocky1.timestamp));
+    expect(await usingTellor.isInDispute(queryId, blocky2.timestamp)).to.be
+      .false;
+    await oracle.beginDispute(queryId, blocky2.timestamp);
+    expect(await usingTellor.isInDispute(queryId, blocky2.timestamp));
+  });
 
   it("tellor()", async function () {
     expect(await usingTellor.tellor()).to.equal(tellorOracleAddress);
