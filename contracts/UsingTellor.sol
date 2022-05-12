@@ -196,11 +196,22 @@ contract UsingTellor {
         view
         returns (bool)
     {
-        ITellor _governance = ITellor(
-            tellor.addresses(
-                keccak256(abi.encodePacked("_GOVERNANCE_CONTRACT"))
-            )
-        );
+        ITellor _governance;
+        if (
+            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+        ) {
+            ITellor _newTellor = ITellor(
+                0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0
+            );
+            _governance = ITellor(
+                _newTellor.addresses(
+                    0xefa19baa864049f50491093580c5433e97e8d5e41f8db1a61108b4fa44cacd93
+                )
+            );
+        } else {
+            _governance = ITellor(tellor.governance());
+        }
         return
             _governance
                 .getVoteRounds(
@@ -221,7 +232,7 @@ contract UsingTellor {
         returns (bytes memory)
     {
         //tellorx check rinkeby/ethereum
-         if (
+        if (
             tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
             tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
         ) {
@@ -229,6 +240,5 @@ contract UsingTellor {
         } else {
             return tellor.retrieveData(_queryId, _timestamp);
         }
-       
     }
 }
