@@ -197,6 +197,7 @@ contract UsingTellor {
         returns (bool)
     {
         ITellor _governance;
+        //tellorx check rinkeby/ethereum
         if (
             tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
             tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)

@@ -7,13 +7,13 @@ const fetch = require("node-fetch");
 const { ethers } = require("hardhat");
 const { tob32 } = require("./helpers/helpers");
 
-describe("usingTellor Function Tests", function () {
+describe("usingTellor Mainnet Forking Tests", function () {
   const tellorOracleAddress = "0xe8218cACb0a5421BC6409e498d9f8CC8869945ea";
   const tellorMaster = "0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0";
-
   const DEV_WALLET = "0x39E419bA25196794B595B2a595Ea8E527ddC9856";
   const BIGWALLET = "0xf977814e90da44bfa03b6295a0616a897441acec";
-  const governanceAddress = "0x8Db04961e0f87dE557aCB92f97d90e2A2840A468";
+  const governanceAddress = "0x51d4088d4EeE00Ae4c55f46E0673e9997121DB00";
+
   const abiCoder = new ethers.utils.AbiCoder();
   let queryId;
   let queryDataArgs;
@@ -21,7 +21,6 @@ describe("usingTellor Function Tests", function () {
   let run = 0;
   let mainnetBlock = 0;
   let devWallet;
-  let bigWallet;
 
   beforeEach("deploy and setup", async function () {
     if (run == 0) {
@@ -55,7 +54,7 @@ describe("usingTellor Function Tests", function () {
 
     await owner.sendTransaction({
       to: DEV_WALLET,
-      value: ethers.utils.parseEther("1.0"),
+      value: ethers.utils.parseEther("5.0"),
     });
 
     bigWallet = await ethers.provider.getSigner(BIGWALLET);
@@ -76,6 +75,11 @@ describe("usingTellor Function Tests", function () {
     queryId = ethers.utils.keccak256(queryData);
 
     tellorM = await ethers.getContractAt("ITellor", tellorMaster, devWallet);
+    governance = await ethers.getContractAt(
+      "ITellor",
+      governanceAddress,
+      devWallet
+    );
 
     await tellorM.depositStake();
 
@@ -178,19 +182,8 @@ describe("usingTellor Function Tests", function () {
   it("isInDispute()", async function () {
     await oracle.submitValue(queryId, falseEncoded, 0, queryData);
     blocky1 = await h.getBlock();
-    await h.advanceTime(100000);
-    await oracle.submitValue(queryId, trueEncoded, 1, queryData);
-    blocky2 = await h.getBlock();
-    expect(await usingTellor.isInDispute(queryId, blocky1.timestamp)).to.be
-      .false;
-    await oracle.beginDispute(queryId, blocky1.timestamp);
+    await governance.beginDispute(queryId, blocky1.timestamp);
     expect(await usingTellor.isInDispute(queryId, blocky1.timestamp));
-    await oracle.beginDispute(queryId, blocky1.timestamp);
-    expect(await usingTellor.isInDispute(queryId, blocky1.timestamp));
-    expect(await usingTellor.isInDispute(queryId, blocky2.timestamp)).to.be
-      .false;
-    await oracle.beginDispute(queryId, blocky2.timestamp);
-    expect(await usingTellor.isInDispute(queryId, blocky2.timestamp));
   });
 
   it("tellor()", async function () {
