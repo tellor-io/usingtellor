@@ -29,14 +29,3 @@ jobs:
         with:
           node-version: '14.x'
       - run: npm install
-      - run: sudo apt-get install python3-setuptools
-      - run: wget https://github.com/ethereum/solidity/releases/download/v0.7.5/solc-static-linux && sudo mv solc-static-linux /usr/bin/solc && sudo chmod 744 /usr/bin/solc
-      - run: git clone https://github.com/crytic/slither.git && cd slither && sudo python3 setup.py install
-      - run: make slither
-        env:
-          # These are not needed for the tests but
-          # slither runs hardhat to compile the contracts and
-          # hardhat compilation fails if these are not present.
-          INFURA_RINKEBY: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          INFURA_MAINNET: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          PRIVATE_KEY: "00000000000000000000000000000000000000000000000000"
