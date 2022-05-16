@@ -37,25 +37,13 @@ contract UsingTellor {
             uint256 _timestampRetrieved
         )
     {
-        uint256 _count;
+        uint256 _count = getNewValueCountbyQueryId(_queryId);
 
-        //rinkeby or ethereum check
-        if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
-        ) {
-            _count = tellor.getTimestampCountById(_queryId);
-        } else {
-            _count = tellor.getNewValueCountbyQueryId(_queryId);
-        }
         if (_count == 0) {
             return (false, bytes(""), 0);
         }
-        uint256 _time = tellor.getTimestampbyQueryIdandIndex(
-            _queryId,
-            _count - 1
-        );
-        _value = tellor.retrieveData(_queryId, _time);
+        uint256 _time = getTimestampbyQueryIdandIndex(_queryId, _count - 1);
+        _value = retrieveData(_queryId, _time);
         if (keccak256(_value) != keccak256(bytes("")))
             return (true, _value, _time);
         return (false, bytes(""), _time);
@@ -83,8 +71,8 @@ contract UsingTellor {
             _timestamp
         );
         if (!_found) return (false, bytes(""), 0);
-        uint256 _time = tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
-        _value = tellor.retrieveData(_queryId, _time);
+        uint256 _time = getTimestampbyQueryIdandIndex(_queryId, _index);
+        _value = retrieveData(_queryId, _time);
         if (keccak256(_value) != keccak256(bytes("")))
             return (true, _value, _time);
         return (false, bytes(""), 0);
@@ -103,17 +91,7 @@ contract UsingTellor {
         view
         returns (bool _found, uint256 _index)
     {
-        uint256 _count;
-
-        //rinkeby or ethereum check
-        if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
-        ) {
-            _count = tellor.getTimestampCountById(_queryId);
-        } else {
-            _count = tellor.getNewValueCountbyQueryId(_queryId);
-        }
+        uint256 _count = getNewValueCountbyQueryId(_queryId);
 
         if (_count > 0) {
             uint256 middle;
@@ -122,18 +100,18 @@ contract UsingTellor {
             uint256 _time;
 
             //Checking Boundaries to short-circuit the algorithm
-            _time = tellor.getTimestampbyQueryIdandIndex(_queryId, start);
+            _time = getTimestampbyQueryIdandIndex(_queryId, start);
             if (_time >= _timestamp) return (false, 0);
-            _time = tellor.getTimestampbyQueryIdandIndex(_queryId, end);
+            _time = getTimestampbyQueryIdandIndex(_queryId, end);
             if (_time < _timestamp) return (true, end);
 
             //Since the value is within our boundaries, do a binary search
             while (true) {
                 middle = (end - start) / 2 + 1 + start;
-                _time = tellor.getTimestampbyQueryIdandIndex(_queryId, middle);
+                _time = getTimestampbyQueryIdandIndex(_queryId, middle);
                 if (_time < _timestamp) {
-                    //get imeadiate next value
-                    uint256 _nextTime = tellor.getTimestampbyQueryIdandIndex(
+                    //get immediate next value
+                    uint256 _nextTime = getTimestampbyQueryIdandIndex(
                         _queryId,
                         middle + 1
                     );
@@ -145,7 +123,7 @@ contract UsingTellor {
                         start = middle + 1;
                     }
                 } else {
-                    uint256 _prevTime = tellor.getTimestampbyQueryIdandIndex(
+                    uint256 _prevTime = getTimestampbyQueryIdandIndex(
                         _queryId,
                         middle - 1
                     );
@@ -157,7 +135,7 @@ contract UsingTellor {
                         end = middle - 1;
                     }
                 }
-                //We couldn't found a value
+                //We couldn't find a value
                 //if(middle - 1 == start || middle == _count) return (false, 0);
             }
         }
@@ -174,7 +152,15 @@ contract UsingTellor {
         view
         returns (uint256)
     {
-        return tellor.getNewValueCountbyQueryId(_queryId);
+        //tellorx check rinkeby/ethereum
+        if (
+            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+        ) {
+            return tellor.getTimestampCountById(_queryId);
+        } else {
+            return tellor.getNewValueCountbyQueryId(_queryId);
+        }
     }
 
     // /**
@@ -188,7 +174,15 @@ contract UsingTellor {
         view
         returns (uint256)
     {
-        return tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
+        //tellorx check rinkeby/ethereum
+        if (
+            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+        ) {
+            return tellor.getReportTimestampByIndex(_queryId, _index);
+        } else {
+            return tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
+        }
     }
 
     /**
@@ -202,11 +196,23 @@ contract UsingTellor {
         view
         returns (bool)
     {
-        ITellor _governance = ITellor(
-            tellor.addresses(
-                keccak256(abi.encodePacked("_GOVERNANCE_CONTRACT"))
-            )
-        );
+        ITellor _governance;
+        //tellorx check rinkeby/ethereum
+        if (
+            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+        ) {
+            ITellor _newTellor = ITellor(
+                0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0
+            );
+            _governance = ITellor(
+                _newTellor.addresses(
+                    0xefa19baa864049f50491093580c5433e97e8d5e41f8db1a61108b4fa44cacd93
+                )
+            );
+        } else {
+            _governance = ITellor(tellor.governance());
+        }
         return
             _governance
                 .getVoteRounds(
@@ -226,6 +232,14 @@ contract UsingTellor {
         view
         returns (bytes memory)
     {
-        return tellor.retrieveData(_queryId, _timestamp);
+        //tellorx check rinkeby/ethereum
+        if (
+            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+        ) {
+            return tellor.getValueByTimestamp(_queryId, _timestamp);
+        } else {
+            return tellor.retrieveData(_queryId, _timestamp);
+        }
     }
 }

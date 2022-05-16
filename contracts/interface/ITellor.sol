@@ -58,6 +58,7 @@ interface ITellor{
     function executeVote(uint256 _disputeId) external;
     function proposeVote(address _contract,bytes4 _function, bytes calldata _data, uint256 _timestamp) external;
     function tallyVotes(uint256 _disputeId) external;
+    function governance() external view returns (address);
     function updateMinDisputeFee() external;
     function verify() external pure returns(uint);
     function vote(uint256 _disputeId, bool _supports, bool _invalidQuery) external;
