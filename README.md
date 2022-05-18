@@ -16,46 +16,31 @@ Just inherit the UsingTellor contract, passing the Tellor address as a construct
 
 Here's an example
 ```solidity
+import "usingtellor/contracts/UsingTellor.sol";
+
 contract PriceContract is UsingTellor {
 
   uint256 public btcPrice;
 
-  //This Contract now has access to all functions in UsingTellor
-
+  //This contract now has access to all functions in UsingTellor
   constructor(address payable _tellorAddress) UsingTellor(_tellorAddress) public {}
 
   function setBtcPrice() public {
+      bytes memory _b = abi.encode("SpotPrice", abi.encode("btc", "usd"));
+      bytes32 _btcQueryId = keccak256(_b);
 
-    bytes memory _b = abi.encode("SpotPrice",abi.encode("BTC","USD")); 
-    bytes32 _queryID = keccak256(_b);
+      bool _didGet;
+      uint256 _timestamp;
+      bytes memory _value;
 
-    bool _didGet;
-    uint256 _timestamp;
-    bytes _value
-
-    (_didGet, _value, _timestamp) = getCurrentValue(btcQueryId);
-
-    btcPrice = abi.decode(_value,(uint256));
+      (_didGet, _value, _timestamp) = getCurrentValue(_btcQueryId);
+      btcPrice = abi.decode(_value,(uint256));
   }
 }
 ```
 ##### Addresses:
 
-Mainnet: [`0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0`](https://etherscan.io/address/0x0Ba45A8b5d5575935B8158a88C631E9F9C95a2e5)
-
-Rinkeby: [`0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0`](https://rinkeby.etherscan.io/address/0x20374E579832859f180536A69093A126Db1c8aE9#code)
-
-Kovan: [`0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7`](https://kovan.etherscan.io/address/0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7#code)
-
-Ropsten: [`0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7`](https://ropsten.etherscan.io/address/0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7#code)
-
-Goerli: [`0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7`](https://goerli.etherscan.io/address/0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7#code)
-
-BSC Testnet: [`0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7`](https://testnet.bscscan.com/address/0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7#code)
-
-Polygon Mumbai Testnet: [`0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7`](https://explorer-mumbai.maticvigil.com/address/0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7/contracts)
-
-Arbitrum Testnet: [`0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7`](https://rinkeby-explorer.arbitrum.io/address/0x3477EB82263dabb59AC0CAcE47a61292f28A2eA7)
+Find Tellor contract addresses [here](https://docs.tellor.io/tellor/integration/reference).
 
 
 #### Available Tellor functions:
