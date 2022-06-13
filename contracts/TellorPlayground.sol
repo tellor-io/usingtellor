@@ -12,7 +12,6 @@ contract TellorPlayground {
         bytes32 _queryId,
         uint256 _time,
         bytes _value,
-        uint256 _reward,
         uint256 _nonce,
         bytes _queryData,
         address _reporter
@@ -42,7 +41,6 @@ contract TellorPlayground {
     mapping(address => uint256) private _balances;
 
     uint256 public constant timeBasedReward = 5e17; // time based reward for a reporter for successfully submitting a value
-    uint256 public timeOfLastNewValue = block.timestamp; // time of the last new value, originally set to the block timestamp
     uint256 public tipsInContract; // number of tips within the contract
     uint256 public voteCount;
     uint256 private _totalSupply;
@@ -70,6 +68,14 @@ contract TellorPlayground {
         addresses[
             keccak256(abi.encodePacked("_GOVERNANCE_CONTRACT"))
         ] = address(this);
+    }
+
+    /**
+     * @dev Mock function for adding staking rewards
+     * @param _amount quantity of tokens to transfer to this contract
+     */
+    function addStakingRewards(uint256 _amount) external {
+        require(_transferFrom(msg.sender, address(this), _amount));
     }
 
     /**
@@ -125,8 +131,8 @@ contract TellorPlayground {
         bytes memory _queryData
     ) external {
         require(
-            _nonce == timestamps[_queryId].length,
-            "nonce should be correct"
+            _nonce == timestamps[_queryId].length || _nonce == 0,
+            "nonce must match timestamp index"
         );
         require(
             _queryId == keccak256(_queryData) || uint256(_queryId) <= 100,
@@ -134,14 +140,6 @@ contract TellorPlayground {
         );
         values[_queryId][block.timestamp] = _value;
         timestamps[_queryId].push(block.timestamp);
-        // Send tips + timeBasedReward to reporter and reset tips for ID
-        (uint256 _tip, uint256 _reward) = getCurrentReward(_queryId);
-        if (_reward + _tip > 0) {
-            transfer(msg.sender, _reward + _tip);
-        }
-        timeOfLastNewValue = block.timestamp;
-        tipsInContract -= _tip;
-        tips[_queryId] = 0;
         reporterByTimestamp[_queryId][block.timestamp] = msg.sender;
         stakerDetails[msg.sender].reporterLastTimestamp = block.timestamp;
         stakerDetails[msg.sender].reportsSubmitted++;
@@ -149,7 +147,6 @@ contract TellorPlayground {
             _queryId,
             block.timestamp,
             _value,
-            _tip + _reward,
             _nonce,
             _queryData,
             msg.sender
@@ -352,26 +349,6 @@ contract TellorPlayground {
      */
     function decimals() public view returns (uint8) {
         return _decimals;
-    }
-
-    /**
-     * @dev Calculates the current reward for a reporter given tips and time based reward
-     * @param _queryId is ID of the specific data feed
-     * @return uint256 tip amount for given query ID
-     * @return uint256 time based reward
-     */
-    // slither-disable-next-line timestamp
-    function getCurrentReward(bytes32 _queryId)
-        public
-        view
-        returns (uint256, uint256)
-    {
-        uint256 _timeDiff = block.timestamp - timeOfLastNewValue;
-        uint256 _reward = (_timeDiff * timeBasedReward) / 300; //.5 TRB per 5 minutes (should we make this upgradeable)
-        if (balanceOf(address(this)) < _reward + tipsInContract) {
-            _reward = balanceOf(address(this)) - tipsInContract;
-        }
-        return (tips[_queryId], _reward);
     }
 
     /**

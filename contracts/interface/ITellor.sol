@@ -114,4 +114,7 @@ interface ITellor{
     function rescue51PercentAttack(address _tokenHolder) external;
     function rescueBrokenDataReporting() external;
     function rescueFailedUpdate() external;
+
+    //Tellor 360
+    function addStakingRewards(uint256 _amount) external;
 }
