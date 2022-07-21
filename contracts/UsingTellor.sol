@@ -128,12 +128,15 @@ contract UsingTellor is IERC2362 {
         public
         view
         returns (
-            bool _ifRetrieve,
             uint256[] memory _values,
             uint256[] memory _timestamps
         )
     {
-        return tellor.getMultipleValuesBefore(_queryId, _timestamp);
+        (bool _ifRetrieve, uint256 _startIndex) = getIndexForDataBefore(_queryId, _timestamp);
+        if(!_ifRetrieve) {
+            return (new uint256[](0), new uint256[](0));
+        }
+        
     }
 
     /**
