@@ -2,13 +2,14 @@
 pragma solidity >=0.8.0;
 
 import "./interface/ITellor.sol";
+import "./interface/IERC2362.sol";
 
 /**
  * @title UserContract
  * This contract allows for easy integration with the Tellor System
  * by helping smart contracts to read data from Tellor
  */
-contract UsingTellor {
+contract UsingTellor is IERC2362 {
     ITellor public tellor;
 
     /*Constructor*/
@@ -123,6 +124,18 @@ contract UsingTellor {
         return tellor.getIndexForDataBefore(_queryId, _timestamp);
     }
 
+    function getMultipleValuesBefore(bytes32 _queryId, uint256 _timestamp, uint256 _maxAge, uint256 _maxCount)
+        public
+        view
+        returns (
+            bool _ifRetrieve,
+            uint256[] memory _values,
+            uint256[] memory _timestamps
+        )
+    {
+        return tellor.getMultipleValuesBefore(_queryId, _timestamp);
+    }
+
     /**
      * @dev Counts the number of values that have been submitted for the queryId
      * @param _queryId the id to look up
@@ -199,7 +212,31 @@ contract UsingTellor {
      * @return _timestamp timestamp of most recent value
      * @return _statusCode 200 if value found, 404 if not found
      */
-    function valueFor(bytes32 _id) external view returns(int256 _value,uint256 _timestamp,uint256 _statusCode) {
+    function valueFor(bytes32 _id) external view override returns(int256 _value,uint256 _timestamp,uint256 _statusCode) {
+        bool _isERC362Id;
+        uint256 _decimalsDividend = 1;
+        if(_id == 0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5) {
+            bytes memory _queryData = abi.encode("SpotPrice", abi.encode("eth", "usd"));
+            _id = keccak256(_queryData);
+            _isERC362Id = true;
+            _decimalsDividend = 1e15;
+        } else if(_id == 0x637b7efb6b620736c247aaa282f3898914c0bef6c12faff0d3fe9d4bea783020) {
+            bytes memory _queryData = abi.encode("SpotPrice", abi.encode("btc", "usd"));
+            _id = keccak256(_queryData);
+            _isERC362Id = true;
+            _decimalsDividend = 1e15;
+        } else if(_id == 0x2dfb033e1ae0529b328985942d27f2d5a62213f3a2d97ca8e27ad2864c5af942) {
+            bytes memory _queryData = abi.encode("SpotPrice", abi.encode("xau", "usd"));
+            _id = keccak256(_queryData);
+            _isERC362Id = true;
+            _decimalsDividend = 1e15;
+        } else if(_id == 0x9899e35601719f1348e09967349f72c7d04800f17c14992d6dcf2f17fac713ea) {
+            bytes memory _queryData = abi.encode("SpotPrice", abi.encode("dai", "usd"));
+            _id = keccak256(_queryData);
+            _isERC362Id = true;
+            _decimalsDividend = 1e12;
+        }
+
         uint256 _count = getNewValueCountbyQueryId(_id);
         if (_count == 0) {
             return (0, 0, 404);
@@ -210,6 +247,7 @@ contract UsingTellor {
             return (0, 0, 404);
         }
         uint256 _valueUint = abi.decode(_valueBytes, (uint256));
+        _valueUint = _valueUint / _decimalsDividend;
         _value = int256(_valueUint);
         return(_value, _timestamp, 200);
     }
