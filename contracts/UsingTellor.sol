@@ -22,34 +22,6 @@ contract UsingTellor {
 
     /*Getters*/
     /**
-     * @dev Allows the user to get the latest value for the queryId specified
-     * @param _queryId is the id to look up the value for
-     * @return _ifRetrieve bool true if non-zero value successfully retrieved
-     * @return _value the value retrieved
-     * @return _timestampRetrieved the retrieved value's timestamp
-     */
-    function getCurrentValue(bytes32 _queryId)
-        public
-        view
-        returns (
-            bool _ifRetrieve,
-            bytes memory _value,
-            uint256 _timestampRetrieved
-        )
-    {
-        uint256 _count = getNewValueCountbyQueryId(_queryId);
-
-        if (_count == 0) {
-            return (false, bytes(""), 0);
-        }
-        uint256 _time = getTimestampbyQueryIdandIndex(_queryId, _count - 1);
-        _value = retrieveData(_queryId, _time);
-        if (keccak256(_value) != keccak256(bytes("")))
-            return (true, _value, _time);
-        return (false, bytes(""), _time);
-    }
-
-    /**
      * @dev Retrieves the latest value for the queryId before the specified timestamp
      * @param _queryId is the queryId to look up the value for
      * @param _timestamp before which to search for latest value
@@ -66,17 +38,74 @@ contract UsingTellor {
             uint256 _timestampRetrieved
         )
     {
-        (bool _found, uint256 _index) = getIndexForDataBefore(
-            _queryId,
-            _timestamp
-        );
-        if (!_found) return (false, bytes(""), 0);
-        uint256 _time = getTimestampbyQueryIdandIndex(_queryId, _index);
-        _value = retrieveData(_queryId, _time);
-        if (keccak256(_value) != keccak256(bytes("")))
-            return (true, _value, _time);
-        return (false, bytes(""), 0);
+        return tellor.getDataBefore(_queryId, _timestamp);
     }
+
+    /**
+     * @dev Retrieves the next value for the queryId after the specified timestamp
+     * @param _queryId is the queryId to look up the value for
+     * @param _timestamp after which to search for next value
+     * @return _ifRetrieve bool true if able to retrieve a non-zero value
+     * @return _value the value retrieved
+     * @return _timestampRetrieved the value's timestamp
+     */
+    function getDataAfter(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (
+            bool _ifRetrieve,
+            bytes memory _value,
+            uint256 _timestampRetrieved
+        )
+    {
+        (bool _found, uint256 _index) = getIndexForDataAfter(_queryId, _timestamp);
+        if(!_found) {
+            return (false, '', 0);
+        }
+        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
+        _value = retrieveData(_queryId, _index);
+        return (true, _value, _timestampRetrieved);
+    }
+
+    /**
+     * @dev Retrieves next array index of data after the specified timestamp for the queryId
+     * @param _queryId is the queryId to look up the index for
+     * @param _timestamp is the timestamp after which to search for the next index
+     * @return _found whether the index was found
+     * @return _index the next index found after the specified timestamp
+     */
+    function getIndexForDataAfter(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (
+            bool _found,
+            uint256 _index
+        )
+    {
+        (_found, _index) = getIndexForDataBefore(_queryId, _timestamp);
+        if(!_found) {
+            return (false, 0);
+        }
+        _index++;
+        uint256 _valCount = getNewValueCountbyQueryId(_queryId);
+        // no value after timestamp
+        if(_valCount < _index) {
+            return (false, 0);
+        }
+        uint256 _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
+        if(_timestampRetrieved > _timestamp) {
+            return (true, _index);
+        } 
+        // if _timestampRetrieved == _timestamp, try next value
+        _index++;
+        // no value after timestamp
+        if(_valCount < _index) {
+            return (false, 0);
+        }
+        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
+        return (true, _index);
+    }
+
 
     /**
      * @dev Retrieves latest array index of data before the specified timestamp for the queryId
@@ -91,55 +120,7 @@ contract UsingTellor {
         view
         returns (bool _found, uint256 _index)
     {
-        uint256 _count = getNewValueCountbyQueryId(_queryId);
-
-        if (_count > 0) {
-            uint256 middle;
-            uint256 start = 0;
-            uint256 end = _count - 1;
-            uint256 _time;
-
-            //Checking Boundaries to short-circuit the algorithm
-            _time = getTimestampbyQueryIdandIndex(_queryId, start);
-            if (_time >= _timestamp) return (false, 0);
-            _time = getTimestampbyQueryIdandIndex(_queryId, end);
-            if (_time < _timestamp) return (true, end);
-
-            //Since the value is within our boundaries, do a binary search
-            while (true) {
-                middle = (end - start) / 2 + 1 + start;
-                _time = getTimestampbyQueryIdandIndex(_queryId, middle);
-                if (_time < _timestamp) {
-                    //get immediate next value
-                    uint256 _nextTime = getTimestampbyQueryIdandIndex(
-                        _queryId,
-                        middle + 1
-                    );
-                    if (_nextTime >= _timestamp) {
-                        //_time is correct
-                        return (true, middle);
-                    } else {
-                        //look from middle + 1(next value) to end
-                        start = middle + 1;
-                    }
-                } else {
-                    uint256 _prevTime = getTimestampbyQueryIdandIndex(
-                        _queryId,
-                        middle - 1
-                    );
-                    if (_prevTime < _timestamp) {
-                        // _prevtime is correct
-                        return (true, middle - 1);
-                    } else {
-                        //look from start to middle -1(prev value)
-                        end = middle - 1;
-                    }
-                }
-                //We couldn't find a value
-                //if(middle - 1 == start || middle == _count) return (false, 0);
-            }
-        }
-        return (false, 0);
+        return tellor.getIndexForDataBefore(_queryId, _timestamp);
     }
 
     /**
@@ -152,15 +133,21 @@ contract UsingTellor {
         view
         returns (uint256)
     {
-        //tellorx check rinkeby/ethereum
-        if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
-        ) {
-            return tellor.getTimestampCountById(_queryId);
-        } else {
-            return tellor.getNewValueCountbyQueryId(_queryId);
-        }
+        return tellor.getNewValueCountbyQueryId(_queryId);
+    }
+
+    /**
+     * @dev Returns the address of the reporter who submitted a value for a data ID at a specific time
+     * @param _queryId is ID of the specific data feed
+     * @param _timestamp is the timestamp to find a corresponding reporter for
+     * @return address of the reporter who reported the value for the data ID at the given timestamp
+     */
+    function getReporterByTimestamp(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (address)
+    {
+        return tellor.getReporterByTimestamp(_queryId, _timestamp);
     }
 
     // /**
@@ -174,15 +161,7 @@ contract UsingTellor {
         view
         returns (uint256)
     {
-        //tellorx check rinkeby/ethereum
-        if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
-        ) {
-            return tellor.getReportTimestampByIndex(_queryId, _index);
-        } else {
-            return tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
-        }
+        return tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
     }
 
     /**
@@ -196,29 +175,7 @@ contract UsingTellor {
         view
         returns (bool)
     {
-        ITellor _governance;
-        //tellorx check rinkeby/ethereum
-        if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
-        ) {
-            ITellor _newTellor = ITellor(
-                0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0
-            );
-            _governance = ITellor(
-                _newTellor.addresses(
-                    0xefa19baa864049f50491093580c5433e97e8d5e41f8db1a61108b4fa44cacd93
-                )
-            );
-        } else {
-            _governance = ITellor(tellor.governance());
-        }
-        return
-            _governance
-                .getVoteRounds(
-                    keccak256(abi.encodePacked(_queryId, _timestamp))
-                )
-                .length > 0;
+        return tellor.isInDispute(_queryId, _timestamp);
     }
 
     /**
@@ -232,14 +189,28 @@ contract UsingTellor {
         view
         returns (bytes memory)
     {
-        //tellorx check rinkeby/ethereum
-        if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
-        ) {
-            return tellor.getValueByTimestamp(_queryId, _timestamp);
-        } else {
-            return tellor.retrieveData(_queryId, _timestamp);
+        return tellor.retrieveData(_queryId, _timestamp);  
+    }
+
+    /**
+     * @dev Retrieve most recent value from oracle based on queryId
+     * @param _id being requested
+     * @return _value most recent value submitted
+     * @return _timestamp timestamp of most recent value
+     * @return _statusCode 200 if value found, 404 if not found
+     */
+    function valueFor(bytes32 _id) external view returns(int256 _value,uint256 _timestamp,uint256 _statusCode) {
+        uint256 _count = getNewValueCountbyQueryId(_id);
+        if (_count == 0) {
+            return (0, 0, 404);
         }
+        _timestamp = getTimestampbyQueryIdandIndex(_id, _count - 1);
+        bytes memory _valueBytes = retrieveData(_id, _timestamp);
+        if (_valueBytes.length == 0) {
+            return (0, 0, 404);
+        }
+        uint256 _valueUint = abi.decode(_valueBytes, (uint256));
+        _value = int256(_valueUint);
+        return(_value, _timestamp, 200);
     }
 }

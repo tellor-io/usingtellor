@@ -80,12 +80,12 @@ interface ITellor{
     function getReporterByTimestamp(bytes32 _queryId, uint256 _timestamp) external view returns(address);
     function reportingLock() external view returns(uint256);
     function removeValue(bytes32 _queryId, uint256 _timestamp) external;
-    function getReportsSubmittedByAddress(address _reporter) external view returns(uint256);
     function getTipsByUser(address _user) external view returns(uint256);
     function tipQuery(bytes32 _queryId, uint256 _tip, bytes memory _queryData) external;
     function submitValue(bytes32 _queryId, bytes calldata _value, uint256 _nonce, bytes memory _queryData) external;
     function burnTips() external;
     function changeReportingLock(uint256 _newReportingLock) external;
+    function getReportsSubmittedByAddress(address _reporter) external view returns(uint256);
     function changeTimeBasedReward(uint256 _newTimeBasedReward) external;
     function getReporterLastTimestamp(address _reporter) external view returns(uint256);
     function getTipsById(bytes32 _queryId) external view returns(uint256);
@@ -94,7 +94,10 @@ interface ITellor{
     function getTimestampIndexByTimestamp(bytes32 _queryId, uint256 _timestamp) external view returns(uint256);
     function getCurrentReward(bytes32 _queryId) external view returns(uint256, uint256);
     function getCurrentValue(bytes32 _queryId) external view returns(bytes memory);
+    function getDataBefore(bytes32 _queryId, uint256 _timestamp) external view returns(bool _ifRetrieve, bytes memory _value, uint256 _timestampRetrieved);
+    function getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp) external view returns(bool _found, uint256 _index);
     function getTimeOfLastNewValue() external view returns(uint256);
+    function isInDispute(bytes32 _queryId, uint256 _timestamp) external view returns(bool);
     //Treasury
     function issueTreasury(uint256 _maxAmount, uint256 _rate, uint256 _duration) external;
     function payTreasury(address _investor,uint256 _id) external;

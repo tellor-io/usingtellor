@@ -648,6 +648,40 @@
     {
       "inputs": [
         {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "getDataBefore",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "_ifRetrieve",
+          "type": "bool"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_value",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestampRetrieved",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "_holder",
           "type": "address"
@@ -740,6 +774,35 @@
         {
           "internalType": "uint256",
           "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "getIndexForDataBefore",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "_found",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
           "type": "uint256"
         }
       ],
@@ -1424,6 +1487,30 @@
         }
       ],
       "name": "isFunctionApproved",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "isInDispute",
       "outputs": [
         {
           "internalType": "bool",
