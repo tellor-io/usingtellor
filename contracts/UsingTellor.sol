@@ -3,6 +3,7 @@ pragma solidity >=0.8.0;
 
 import "./interface/ITellor.sol";
 import "./interface/IERC2362.sol";
+import "hardhat/console.sol";
 
 /**
  * @title UserContract
@@ -83,27 +84,27 @@ contract UsingTellor is IERC2362 {
             uint256 _index
         )
     {
-        (_found, _index) = getIndexForDataBefore(_queryId, _timestamp);
+        (_found, _index) = tellor.getIndexForDataBefore(_queryId, _timestamp);
         if(!_found) {
             return (false, 0);
         }
         _index++;
-        uint256 _valCount = getNewValueCountbyQueryId(_queryId);
+        uint256 _valCount = tellor.getNewValueCountbyQueryId(_queryId);
         // no value after timestamp
         if(_valCount < _index) {
             return (false, 0);
         }
-        uint256 _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
+        uint256 _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
         if(_timestampRetrieved > _timestamp) {
             return (true, _index);
         } 
-        // if _timestampRetrieved == _timestamp, try next value
+        // if _timestampRetrieved equals _timestamp, try next value
         _index++;
         // no value after timestamp
         if(_valCount < _index) {
             return (false, 0);
         }
-        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
+        _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
         return (true, _index);
     }
 
@@ -129,14 +130,36 @@ contract UsingTellor is IERC2362 {
         view
         returns (
             uint256[] memory _values,
-            uint256[] memory _timestamps
+            uint256[] memory _timestamps,
+            uint256 _valueCount
         )
     {
         (bool _ifRetrieve, uint256 _startIndex) = getIndexForDataBefore(_queryId, _timestamp);
         if(!_ifRetrieve) {
-            return (new uint256[](0), new uint256[](0));
+            return (new uint256[](0), new uint256[](0), 0);
         }
-        
+        _startIndex++; // 
+        uint256 _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _startIndex-1);
+        uint256 _minTimestamp = block.timestamp - _maxAge;
+        if(_timestampRetrieved < _minTimestamp) {
+            return (new uint256[](0), new uint256[](0), 0);
+        }
+        uint256 _valCount;
+        bytes memory _valueRetrieved;
+        uint256[] memory _valuesArray = new uint256[](_maxCount);
+        uint256[] memory _timestampsArray = new uint256[](_maxCount);
+        while(_valCount < _maxCount && _timestampRetrieved > _maxAge && _startIndex > 0) {
+            _valueRetrieved = retrieveData(_queryId, _timestampRetrieved);
+            console.logBytes(_valueRetrieved);
+            _valuesArray[_valCount] = _sliceUint(_valueRetrieved);
+            _timestampsArray[_valCount] = _timestampRetrieved;
+            _valCount++;
+            _startIndex--;
+            if(_startIndex > 0) {
+                _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _startIndex-1);
+            }
+        }
+        return (_valuesArray, _timestampsArray, _valCount);
     }
 
     /**
@@ -166,12 +189,12 @@ contract UsingTellor is IERC2362 {
         return tellor.getReporterByTimestamp(_queryId, _timestamp);
     }
 
-    // /**
-    //  * @dev Gets the timestamp for the value based on their index
-    //  * @param _queryId is the id to look up
-    //  * @param _index is the value index to look up
-    //  * @return uint256 timestamp
-    //  */
+    /**
+     * @dev Gets the timestamp for the value based on their index
+     * @param _queryId is the id to look up
+     * @param _index is the value index to look up
+     * @return uint256 timestamp
+     */
     function getTimestampbyQueryIdandIndex(bytes32 _queryId, uint256 _index)
         public
         view
@@ -253,5 +276,18 @@ contract UsingTellor is IERC2362 {
         _valueUint = _valueUint / _decimalsDividend;
         _value = int256(_valueUint);
         return(_value, _timestamp, 200);
+    }
+
+    // Internal functions
+    /**
+     * @dev Utilized to help slice a bytes variable into a uint
+     * @param _b is the bytes variable to be sliced
+     * @return _number of the sliced uint256
+     */
+    function _sliceUint(bytes memory _b) public pure returns (uint256 _number) {
+        for (uint256 _i = 0; _i < _b.length; _i++) {
+            _number = _number * 2**8;
+            _number = _number + uint8(_b[_i]);
+        }
     }
 }

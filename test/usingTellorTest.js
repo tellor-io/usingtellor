@@ -96,7 +96,19 @@ describe("UsingTellor", function() {
 		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp))
 	})
 
-	it("tellor()", async function() {
+	it.only("tellor()", async function() {
 		expect(await bench.tellor()).to.equal(playground.address)
 	})
+
+  it.only("getMultipleValuesBefore", async function() {
+    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(150),0,'0x')
+    blocky1 = await h.getBlock()
+    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(160),1,'0x')
+    blocky2 = await h.getBlock()
+    await h.advanceTime(10)
+    blockyNow = await h.getBlock()
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow.timestamp, 3600, 3)
+    console.log("result: " + result)
+    console.log(result[1][0])
+  })
 });
