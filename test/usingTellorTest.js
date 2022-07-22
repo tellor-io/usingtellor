@@ -76,9 +76,8 @@ describe("UsingTellor", function() {
     await playground.connect(addr1).submitValue(h.uintTob32(1),170,2,'0x')
     blocky3 = await h.getBlock()
     dataBefore = await bench.getDataBefore(h.uintTob32(1), blocky2.timestamp)
-    expect(dataBefore[0])
-    expect(dataBefore[1]).to.equal(h.bytes(150))
-    expect(dataBefore[2]).to.equal(blocky1.timestamp)
+    expect(dataBefore[0]).to.equal(h.bytes(150))
+    expect(dataBefore[1]).to.equal(blocky1.timestamp)
   })
 
 	it("isInDispute()", async function() {
