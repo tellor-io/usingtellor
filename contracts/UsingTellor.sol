@@ -3,7 +3,6 @@ pragma solidity >=0.8.0;
 
 import "./interface/ITellor.sol";
 import "./interface/IERC2362.sol";
-import "hardhat/console.sol";
 
 /**
  * @title UserContract
@@ -122,43 +121,15 @@ contract UsingTellor is IERC2362 {
         return tellor.getIndexForDataBefore(_queryId, _timestamp);
     }
 
-    // function getMultipleValuesBefore(bytes32 _queryId, uint256 _timestamp, uint256 _maxAge, uint256 _maxCount)
-    //     public
-    //     view
-    //     returns (
-    //         uint256[] memory _values,
-    //         uint256[] memory _timestamps,
-    //         uint256 _valueCount
-    //     )
-    // {
-    //     (bool _ifRetrieve, uint256 _startIndex) = getIndexForDataBefore(_queryId, _timestamp);
-    //     if(!_ifRetrieve) {
-    //         return (new uint256[](0), new uint256[](0), 0);
-    //     }
-    //     _startIndex++; // 
-    //     uint256 _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _startIndex-1);
-    //     uint256 _minTimestamp = block.timestamp - _maxAge;
-    //     if(_timestampRetrieved < _minTimestamp) {
-    //         return (new uint256[](0), new uint256[](0), 0);
-    //     }
-    //     uint256 _valCount;
-    //     bytes memory _valueRetrieved;
-    //     uint256[] memory _valuesArray = new uint256[](_maxCount);
-    //     uint256[] memory _timestampsArray = new uint256[](_maxCount);
-    //     while(_valCount < _maxCount && _timestampRetrieved > _maxAge && _startIndex > 0) {
-    //         _valueRetrieved = retrieveData(_queryId, _timestampRetrieved);
-    //         console.logBytes(_valueRetrieved);
-    //         _valuesArray[_valCount] = _sliceUint(_valueRetrieved);
-    //         _timestampsArray[_valCount] = _timestampRetrieved;
-    //         _valCount++;
-    //         _startIndex--;
-    //         if(_startIndex > 0) {
-    //             _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _startIndex-1);
-    //         }
-    //     }
-    //     return (_valuesArray, _timestampsArray, _valCount);
-    // }
-
+    /**
+     * @dev Retrieves multiple uint256 values before the specified timestamp
+     * @param _queryId the unique id of the data query
+     * @param _timestamp the timestamp before which to search for values
+     * @param _maxAge the maximum number of seconds before the _timestamp to search for values
+     * @param _maxCount the maximum number of values to return
+     * @return _values the values retrieved, ordered from oldest to newest
+     * @return _timestamps the timestamps of the values retrieved
+     */
     function getMultipleValuesBefore(bytes32 _queryId, uint256 _timestamp, uint256 _maxAge, uint256 _maxCount)
         public
         view
@@ -173,32 +144,22 @@ contract UsingTellor is IERC2362 {
         }
         uint256 _endIndex;
         (_ifRetrieve, _endIndex) = getIndexForDataBefore(_queryId, _timestamp);
+        if(!_ifRetrieve) {
+            return (new uint256[](0), new uint256[](0));
+        }
         uint256 _valCount = _endIndex - _startIndex + 1;
-        console.log("here4");
         if(_valCount > _maxCount) {
-            console.log("here5");
             _startIndex = _endIndex - _maxCount + 1;
-            console.log("here6");
             _valCount = _maxCount;
         }
-        console.log("here7");
         uint256[] memory _valuesArray = new uint256[](_valCount);
         uint256[] memory _timestampsArray = new uint256[](_valCount);
-        console.log("here8");
-        console.log("valCount: %s", _valCount);
         bytes memory _valueRetrieved;
         for(uint256 _i = 0; _i < _valCount; _i++) {
-            console.log("here9");
-            console.log("startIndex: %s", _startIndex);
-            console.log("i: %s", _i);
             _timestampsArray[_i] = getTimestampbyQueryIdandIndex(_queryId, (_startIndex + _i));
-            console.log("here10");
             _valueRetrieved = retrieveData(_queryId, _timestampsArray[_i]);
-            console.log("here11");
             _valuesArray[_i] = _sliceUint(_valueRetrieved);
-            console.log("here12");
         }
-        console.log("here13");
         return (_valuesArray, _timestampsArray);
     }
 
@@ -240,9 +201,6 @@ contract UsingTellor is IERC2362 {
         view
         returns (uint256)
     {
-        console.log("in getTimestampbyQueryIdandIndex");
-        console.logBytes32(_queryId);
-        console.log("index: %s", _index);
         return tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
     }
 

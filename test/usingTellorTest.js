@@ -160,16 +160,20 @@ describe("UsingTellor", function() {
     expect(result[1]).to.equal(0)
   })
 
-  it.only("getMultipleValuesBefore", async function() {
+  it("getMultipleValuesBefore", async function() {
     // submit 2 values
     await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(150),0,'0x')
     blocky1 = await h.getBlock()
     timestamp = await playground.getTimestampbyQueryIdandIndex(h.uintTob32(1), 0)
-    console.log("timestamp: " + timestamp)
     await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(160),0,'0x')
     blocky2 = await h.getBlock()
     await h.advanceTime(10)
     blockyNow0 = await h.getBlock()
+
+    // 1 hour before 1st submission
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky1.timestamp - 3600, 3600, 4)
+    expect(result[0].length).to.equal(0)
+    expect(result[1].length).to.equal(0)
 
     // maxCount = 4
     result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 3600, 4)
@@ -285,5 +289,12 @@ describe("UsingTellor", function() {
     expect(result[0][1]).to.equal(h.uintTob32(180))
     expect(result[1][0]).to.equal(blocky3.timestamp)
     expect(result[1][1]).to.equal(blocky4.timestamp)
+
+    // maxCount = 1
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow1.timestamp, 3600, 1)
+    expect(result[0].length).to.equal(1)
+    expect(result[1].length).to.equal(1)
+    expect(result[0][0]).to.equal(h.uintTob32(180))
+    expect(result[1][0]).to.equal(blocky4.timestamp)
   })
 });
