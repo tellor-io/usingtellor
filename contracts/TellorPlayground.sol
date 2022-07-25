@@ -22,7 +22,6 @@ contract TellorPlayground {
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     // Storage
-    // mapping(bytes32 => address) public addresses;
     mapping(bytes32 => mapping(uint256 => bool)) public isDisputed; //queryId -> timestamp -> value
     mapping(bytes32 => mapping(uint256 => address)) public reporterByTimestamp;
     mapping(address => StakeInfo) stakerDetails; //mapping from a persons address to their staking info
@@ -37,6 +36,7 @@ contract TellorPlayground {
     uint256 public constant timeBasedReward = 5e17; // time based reward for a reporter for successfully submitting a value
     uint256 public tipsInContract; // number of tips within the contract
     uint256 public voteCount;
+    address public token;
     uint256 private _totalSupply;
     string private _name;
     string private _symbol;
@@ -59,14 +59,7 @@ contract TellorPlayground {
         _name = "TellorPlayground";
         _symbol = "TRBP";
         _decimals = 18;
-    }
-
-    /**
-     * @dev Mock function for adding staking rewards
-     * @param _amount quantity of tokens to transfer to this contract
-     */
-    function addStakingRewards(uint256 _amount) external {
-        require(_transferFrom(msg.sender, address(this), _amount));
+        token = address(this);
     }
 
     /**
@@ -237,14 +230,6 @@ contract TellorPlayground {
         emit StakeWithdrawn(msg.sender);
     }
 
-    /**
-     * @dev Returns mock stake amount
-     * @return uint256 stake amount
-     */
-    function getStakeAmount() external view returns (uint256) {
-        return stakeAmount;
-    }
-
     // Getters
     /**
      * @dev Returns the amount that an address is alowed to spend of behalf of another
@@ -329,11 +314,11 @@ contract TellorPlayground {
             if (_time >= _timestamp) return (false, 0);
             _time = getTimestampbyQueryIdandIndex(_queryId, _end);
             if (_time < _timestamp) {
-                while(isInDispute(_queryId, _time) && _end > 0) {
+                while (isInDispute(_queryId, _time) && _end > 0) {
                     _end--;
                     _time = getTimestampbyQueryIdandIndex(_queryId, _end);
                 }
-                if(_end == 0 && isInDispute(_queryId, _time)) {
+                if (_end == 0 && isInDispute(_queryId, _time)) {
                     return (false, 0);
                 }
                 return (true, _end);
@@ -349,16 +334,21 @@ contract TellorPlayground {
                         _middle + 1
                     );
                     if (_nextTime >= _timestamp) {
-                        if(!isInDispute(_queryId, _time)) {
+                        if (!isInDispute(_queryId, _time)) {
                             // _time is correct
                             return (true, _middle);
                         } else {
                             // iterate backwards until we find a non-disputed value
-                            while(isInDispute(_queryId, _time) && _middle > 0) {
+                            while (
+                                isInDispute(_queryId, _time) && _middle > 0
+                            ) {
                                 _middle--;
-                                _time = getTimestampbyQueryIdandIndex(_queryId, _middle);
+                                _time = getTimestampbyQueryIdandIndex(
+                                    _queryId,
+                                    _middle
+                                );
                             }
-                            if(_middle == 0 && isInDispute(_queryId, _time)) {
+                            if (_middle == 0 && isInDispute(_queryId, _time)) {
                                 return (false, 0);
                             }
                             // _time is correct
@@ -374,20 +364,24 @@ contract TellorPlayground {
                         _middle - 1
                     );
                     if (_prevTime < _timestamp) {
-                        if(!isInDispute(_queryId, _prevTime)) {
+                        if (!isInDispute(_queryId, _prevTime)) {
                             // _prevTime is correct
                             return (true, _middle - 1);
                         } else {
                             // iterate backwards until we find a non-disputed value
                             _middle--;
-                            while(isInDispute(_queryId, _prevTime) && _middle > 0) {
+                            while (
+                                isInDispute(_queryId, _prevTime) && _middle > 0
+                            ) {
                                 _middle--;
                                 _prevTime = getTimestampbyQueryIdandIndex(
                                     _queryId,
                                     _middle
                                 );
                             }
-                            if(_middle == 0 && isInDispute(_queryId, _prevTime)) {
+                            if (
+                                _middle == 0 && isInDispute(_queryId, _prevTime)
+                            ) {
                                 return (false, 0);
                             }
                             // _prevtime is correct
@@ -428,6 +422,14 @@ contract TellorPlayground {
         returns (address)
     {
         return reporterByTimestamp[_queryId][_timestamp];
+    }
+
+    /**
+     * @dev Returns mock stake amount
+     * @return uint256 stake amount
+     */
+    function getStakeAmount() external view returns (uint256) {
+        return stakeAmount;
     }
 
     /**

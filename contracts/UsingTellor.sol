@@ -5,9 +5,9 @@ import "./interface/ITellor.sol";
 import "./interface/IERC2362.sol";
 
 /**
- * @title UserContract
- * This contract allows for easy integration with the Tellor System
- * by helping smart contracts to read data from Tellor
+ @author Tellor Inc
+ @title UsingTellor
+ @dev This contract helps smart contracts read data from Tellor
  */
 contract UsingTellor is IERC2362 {
     ITellor public tellor;
@@ -23,49 +23,45 @@ contract UsingTellor is IERC2362 {
 
     /*Getters*/
     /**
-     * @dev Retrieves the latest value for the queryId before the specified timestamp
-     * @param _queryId is the queryId to look up the value for
-     * @param _timestamp before which to search for latest value
-     * @return _ifRetrieve bool true if able to retrieve a non-zero value
-     * @return _value the value retrieved
-     * @return _timestampRetrieved the value's timestamp
-     */
-    function getDataBefore(bytes32 _queryId, uint256 _timestamp)
-        public
-        view
-        returns (
-            bool _ifRetrieve,
-            bytes memory _value,
-            uint256 _timestampRetrieved
-        )
-    {
-        return tellor.getDataBefore(_queryId, _timestamp);
-    }
-
-    /**
      * @dev Retrieves the next value for the queryId after the specified timestamp
      * @param _queryId is the queryId to look up the value for
      * @param _timestamp after which to search for next value
-     * @return _ifRetrieve bool true if able to retrieve a non-zero value
      * @return _value the value retrieved
      * @return _timestampRetrieved the value's timestamp
      */
     function getDataAfter(bytes32 _queryId, uint256 _timestamp)
         public
         view
-        returns (
-            bool _ifRetrieve,
-            bytes memory _value,
-            uint256 _timestampRetrieved
-        )
+        returns (bytes memory _value, uint256 _timestampRetrieved)
     {
-        (bool _found, uint256 _index) = getIndexForDataAfter(_queryId, _timestamp);
-        if(!_found) {
-            return (false, '', 0);
+        (bool _found, uint256 _index) = getIndexForDataAfter(
+            _queryId,
+            _timestamp
+        );
+        if (!_found) {
+            return ("", 0);
         }
         _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
-        _value = retrieveData(_queryId, _index);
-        return (true, _value, _timestampRetrieved);
+        _value = retrieveData(_queryId, _timestampRetrieved);
+        return (_value, _timestampRetrieved);
+    }
+
+    /**
+     * @dev Retrieves the latest value for the queryId before the specified timestamp
+     * @param _queryId is the queryId to look up the value for
+     * @param _timestamp before which to search for latest value
+     * @return _value the value retrieved
+     * @return _timestampRetrieved the value's timestamp
+     */
+    function getDataBefore(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (bytes memory _value, uint256 _timestampRetrieved)
+    {
+        (, _value, _timestampRetrieved) = tellor.getDataBefore(
+            _queryId,
+            _timestamp
+        );
     }
 
     /**
@@ -78,35 +74,36 @@ contract UsingTellor is IERC2362 {
     function getIndexForDataAfter(bytes32 _queryId, uint256 _timestamp)
         public
         view
-        returns (
-            bool _found,
-            uint256 _index
-        )
+        returns (bool _found, uint256 _index)
     {
-        (_found, _index) = getIndexForDataBefore(_queryId, _timestamp);
-        if(!_found) {
-            return (false, 0);
+        (_found, _index) = tellor.getIndexForDataBefore(_queryId, _timestamp);
+        if (_found) {
+            _index++;
         }
-        _index++;
-        uint256 _valCount = getNewValueCountbyQueryId(_queryId);
+        uint256 _valCount = tellor.getNewValueCountbyQueryId(_queryId);
         // no value after timestamp
-        if(_valCount < _index) {
+        if (_valCount <= _index) {
             return (false, 0);
         }
-        uint256 _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
-        if(_timestampRetrieved > _timestamp) {
+        uint256 _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(
+            _queryId,
+            _index
+        );
+        if (_timestampRetrieved > _timestamp) {
             return (true, _index);
-        } 
-        // if _timestampRetrieved == _timestamp, try next value
+        }
+        // if _timestampRetrieved equals _timestamp, try next value
         _index++;
         // no value after timestamp
-        if(_valCount < _index) {
+        if (_valCount <= _index) {
             return (false, 0);
         }
-        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
+        _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(
+            _queryId,
+            _index
+        );
         return (true, _index);
     }
-
 
     /**
      * @dev Retrieves latest array index of data before the specified timestamp for the queryId
@@ -124,19 +121,57 @@ contract UsingTellor is IERC2362 {
         return tellor.getIndexForDataBefore(_queryId, _timestamp);
     }
 
-    function getMultipleValuesBefore(bytes32 _queryId, uint256 _timestamp, uint256 _maxAge, uint256 _maxCount)
+    /**
+     * @dev Retrieves multiple uint256 values before the specified timestamp
+     * @param _queryId the unique id of the data query
+     * @param _timestamp the timestamp before which to search for values
+     * @param _maxAge the maximum number of seconds before the _timestamp to search for values
+     * @param _maxCount the maximum number of values to return
+     * @return _values the values retrieved, ordered from oldest to newest
+     * @return _timestamps the timestamps of the values retrieved
+     */
+    function getMultipleValuesBefore(
+        bytes32 _queryId,
+        uint256 _timestamp,
+        uint256 _maxAge,
+        uint256 _maxCount
+    )
         public
         view
-        returns (
-            uint256[] memory _values,
-            uint256[] memory _timestamps
-        )
+        returns (uint256[] memory _values, uint256[] memory _timestamps)
     {
-        (bool _ifRetrieve, uint256 _startIndex) = getIndexForDataBefore(_queryId, _timestamp);
-        if(!_ifRetrieve) {
+        (bool _ifRetrieve, uint256 _startIndex) = getIndexForDataAfter(
+            _queryId,
+            _timestamp - _maxAge
+        );
+        // no value within range
+        if (!_ifRetrieve) {
             return (new uint256[](0), new uint256[](0));
         }
-        
+        uint256 _endIndex;
+        (_ifRetrieve, _endIndex) = getIndexForDataBefore(_queryId, _timestamp);
+        // no value before _timestamp
+        if (!_ifRetrieve) {
+            return (new uint256[](0), new uint256[](0));
+        }
+        uint256 _valCount = _endIndex - _startIndex + 1;
+        // more than _maxCount values found within range
+        if (_valCount > _maxCount) {
+            _startIndex = _endIndex - _maxCount + 1;
+            _valCount = _maxCount;
+        }
+        uint256[] memory _valuesArray = new uint256[](_valCount);
+        uint256[] memory _timestampsArray = new uint256[](_valCount);
+        bytes memory _valueRetrieved;
+        for (uint256 _i = 0; _i < _valCount; _i++) {
+            _timestampsArray[_i] = getTimestampbyQueryIdandIndex(
+                _queryId,
+                (_startIndex + _i)
+            );
+            _valueRetrieved = retrieveData(_queryId, _timestampsArray[_i]);
+            _valuesArray[_i] = _sliceUint(_valueRetrieved);
+        }
+        return (_valuesArray, _timestampsArray);
     }
 
     /**
@@ -166,12 +201,12 @@ contract UsingTellor is IERC2362 {
         return tellor.getReporterByTimestamp(_queryId, _timestamp);
     }
 
-    // /**
-    //  * @dev Gets the timestamp for the value based on their index
-    //  * @param _queryId is the id to look up
-    //  * @param _index is the value index to look up
-    //  * @return uint256 timestamp
-    //  */
+    /**
+     * @dev Gets the timestamp for the value based on their index
+     * @param _queryId is the id to look up
+     * @param _index is the value index to look up
+     * @return uint256 timestamp
+     */
     function getTimestampbyQueryIdandIndex(bytes32 _queryId, uint256 _index)
         public
         view
@@ -205,36 +240,69 @@ contract UsingTellor is IERC2362 {
         view
         returns (bytes memory)
     {
-        return tellor.retrieveData(_queryId, _timestamp);  
+        return tellor.retrieveData(_queryId, _timestamp);
     }
 
     /**
-     * @dev Retrieve most recent value from oracle based on queryId
+     * @dev Retrieve most recent int256 value from oracle based on queryId
      * @param _id being requested
      * @return _value most recent value submitted
      * @return _timestamp timestamp of most recent value
      * @return _statusCode 200 if value found, 404 if not found
      */
-    function valueFor(bytes32 _id) external view override returns(int256 _value,uint256 _timestamp,uint256 _statusCode) {
+    function valueFor(bytes32 _id)
+        external
+        view
+        override
+        returns (
+            int256 _value,
+            uint256 _timestamp,
+            uint256 _statusCode
+        )
+    {
         bool _isERC362Id;
         uint256 _decimalsDividend = 1;
-        if(_id == 0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5) {
-            bytes memory _queryData = abi.encode("SpotPrice", abi.encode("eth", "usd"));
+        if (
+            _id ==
+            0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5
+        ) {
+            bytes memory _queryData = abi.encode(
+                "SpotPrice",
+                abi.encode("eth", "usd")
+            );
             _id = keccak256(_queryData);
             _isERC362Id = true;
             _decimalsDividend = 1e15;
-        } else if(_id == 0x637b7efb6b620736c247aaa282f3898914c0bef6c12faff0d3fe9d4bea783020) {
-            bytes memory _queryData = abi.encode("SpotPrice", abi.encode("btc", "usd"));
+        } else if (
+            _id ==
+            0x637b7efb6b620736c247aaa282f3898914c0bef6c12faff0d3fe9d4bea783020
+        ) {
+            bytes memory _queryData = abi.encode(
+                "SpotPrice",
+                abi.encode("btc", "usd")
+            );
             _id = keccak256(_queryData);
             _isERC362Id = true;
             _decimalsDividend = 1e15;
-        } else if(_id == 0x2dfb033e1ae0529b328985942d27f2d5a62213f3a2d97ca8e27ad2864c5af942) {
-            bytes memory _queryData = abi.encode("SpotPrice", abi.encode("xau", "usd"));
+        } else if (
+            _id ==
+            0x2dfb033e1ae0529b328985942d27f2d5a62213f3a2d97ca8e27ad2864c5af942
+        ) {
+            bytes memory _queryData = abi.encode(
+                "SpotPrice",
+                abi.encode("xau", "usd")
+            );
             _id = keccak256(_queryData);
             _isERC362Id = true;
             _decimalsDividend = 1e15;
-        } else if(_id == 0x9899e35601719f1348e09967349f72c7d04800f17c14992d6dcf2f17fac713ea) {
-            bytes memory _queryData = abi.encode("SpotPrice", abi.encode("dai", "usd"));
+        } else if (
+            _id ==
+            0x9899e35601719f1348e09967349f72c7d04800f17c14992d6dcf2f17fac713ea
+        ) {
+            bytes memory _queryData = abi.encode(
+                "SpotPrice",
+                abi.encode("dai", "usd")
+            );
             _id = keccak256(_queryData);
             _isERC362Id = true;
             _decimalsDividend = 1e12;
@@ -252,6 +320,19 @@ contract UsingTellor is IERC2362 {
         uint256 _valueUint = abi.decode(_valueBytes, (uint256));
         _valueUint = _valueUint / _decimalsDividend;
         _value = int256(_valueUint);
-        return(_value, _timestamp, 200);
+        return (_value, _timestamp, 200);
+    }
+
+    // Internal functions
+    /**
+     * @dev Utilized to help slice a bytes variable into a uint
+     * @param _b is the bytes variable to be sliced
+     * @return _number of the sliced uint256
+     */
+    function _sliceUint(bytes memory _b) public pure returns (uint256 _number) {
+        for (uint256 _i = 0; _i < _b.length; _i++) {
+            _number = _number * 2**8;
+            _number = _number + uint8(_b[_i]);
+        }
     }
 }
