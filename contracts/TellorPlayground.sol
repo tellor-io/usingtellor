@@ -63,6 +63,14 @@ contract TellorPlayground {
     }
 
     /**
+     * @dev Mock function for adding staking rewards. No rewards actually given to stakers
+     * @param _amount Amount of TRB to be added to the contract
+     */
+    function addStakingRewards(uint256 _amount) public {
+        require(_transferFrom(msg.sender, address(this), _amount));
+    }
+
+    /**
      * @dev Approves amount that an address is alowed to spend of behalf of another
      * @param _spender The address which is allowed to spend the tokens
      * @param _amount The amount that msg.sender is allowing spender to use
