@@ -3,6 +3,8 @@ pragma solidity >=0.8.0;
 
 import "./interface/ITellor.sol";
 import "./interface/IERC2362.sol";
+import "./interface/IMappingContract.sol";
+import "hardhat/console.sol";
 
 /**
  @author Tellor Inc
@@ -11,6 +13,7 @@ import "./interface/IERC2362.sol";
  */
 contract UsingTellor is IERC2362 {
     ITellor public tellor;
+    IMappingContract public idMappingContract;
 
     /*Constructor*/
     /**
@@ -138,7 +141,7 @@ contract UsingTellor is IERC2362 {
     )
         public
         view
-        returns (uint256[] memory _values, uint256[] memory _timestamps)
+        returns (bytes[] memory _values, uint256[] memory _timestamps)
     {
         (bool _ifRetrieve, uint256 _startIndex) = getIndexForDataAfter(
             _queryId,
@@ -146,13 +149,13 @@ contract UsingTellor is IERC2362 {
         );
         // no value within range
         if (!_ifRetrieve) {
-            return (new uint256[](0), new uint256[](0));
+            return (new bytes[](0), new uint256[](0));
         }
         uint256 _endIndex;
         (_ifRetrieve, _endIndex) = getIndexForDataBefore(_queryId, _timestamp);
         // no value before _timestamp
         if (!_ifRetrieve) {
-            return (new uint256[](0), new uint256[](0));
+            return (new bytes[](0), new uint256[](0));
         }
         uint256 _valCount = _endIndex - _startIndex + 1;
         // more than _maxCount values found within range
@@ -160,7 +163,7 @@ contract UsingTellor is IERC2362 {
             _startIndex = _endIndex - _maxCount + 1;
             _valCount = _maxCount;
         }
-        uint256[] memory _valuesArray = new uint256[](_valCount);
+        bytes[] memory _valuesArray = new bytes[](_valCount);
         uint256[] memory _timestampsArray = new uint256[](_valCount);
         bytes memory _valueRetrieved;
         for (uint256 _i = 0; _i < _valCount; _i++) {
@@ -169,7 +172,7 @@ contract UsingTellor is IERC2362 {
                 (_startIndex + _i)
             );
             _valueRetrieved = retrieveData(_queryId, _timestampsArray[_i]);
-            _valuesArray[_i] = _sliceUint(_valueRetrieved);
+            _valuesArray[_i] = _valueRetrieved;
         }
         return (_valuesArray, _timestampsArray);
     }
@@ -243,6 +246,16 @@ contract UsingTellor is IERC2362 {
         return tellor.retrieveData(_queryId, _timestamp);
     }
 
+
+    /**
+     * @dev allows dev to set mapping contract for valueFor (EIP2362)
+     * @param _addy address of mapping contract
+     */
+     function setIdMappingContract(address _addy) external{
+         require(address(idMappingContract) == address(0));
+         idMappingContract = IMappingContract(_addy); 
+     }
+
     /**
      * @dev Retrieve most recent int256 value from oracle based on queryId
      * @param _id being requested
@@ -260,54 +273,7 @@ contract UsingTellor is IERC2362 {
             uint256 _statusCode
         )
     {
-        bool _isERC362Id;
-        uint256 _decimalsDividend = 1;
-        if (
-            _id ==
-            0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5
-        ) {
-            bytes memory _queryData = abi.encode(
-                "SpotPrice",
-                abi.encode("eth", "usd")
-            );
-            _id = keccak256(_queryData);
-            _isERC362Id = true;
-            _decimalsDividend = 1e15;
-        } else if (
-            _id ==
-            0x637b7efb6b620736c247aaa282f3898914c0bef6c12faff0d3fe9d4bea783020
-        ) {
-            bytes memory _queryData = abi.encode(
-                "SpotPrice",
-                abi.encode("btc", "usd")
-            );
-            _id = keccak256(_queryData);
-            _isERC362Id = true;
-            _decimalsDividend = 1e15;
-        } else if (
-            _id ==
-            0x2dfb033e1ae0529b328985942d27f2d5a62213f3a2d97ca8e27ad2864c5af942
-        ) {
-            bytes memory _queryData = abi.encode(
-                "SpotPrice",
-                abi.encode("xau", "usd")
-            );
-            _id = keccak256(_queryData);
-            _isERC362Id = true;
-            _decimalsDividend = 1e15;
-        } else if (
-            _id ==
-            0x9899e35601719f1348e09967349f72c7d04800f17c14992d6dcf2f17fac713ea
-        ) {
-            bytes memory _queryData = abi.encode(
-                "SpotPrice",
-                abi.encode("dai", "usd")
-            );
-            _id = keccak256(_queryData);
-            _isERC362Id = true;
-            _decimalsDividend = 1e12;
-        }
-
+        _id = idMappingContract.getTellorID(_id);
         uint256 _count = getNewValueCountbyQueryId(_id);
         if (_count == 0) {
             return (0, 0, 404);
@@ -317,8 +283,7 @@ contract UsingTellor is IERC2362 {
         if (_valueBytes.length == 0) {
             return (0, 0, 404);
         }
-        uint256 _valueUint = abi.decode(_valueBytes, (uint256));
-        _valueUint = _valueUint / _decimalsDividend;
+        uint256 _valueUint = _sliceUint(_valueBytes);
         _value = int256(_valueUint);
         return (_value, _timestamp, 200);
     }
@@ -331,8 +296,7 @@ contract UsingTellor is IERC2362 {
      */
     function _sliceUint(bytes memory _b) public pure returns (uint256 _number) {
         for (uint256 _i = 0; _i < _b.length; _i++) {
-            _number = _number * 2**8;
-            _number = _number + uint8(_b[_i]);
+            _number = _number * 2**8 + uint8(_b[_i]);
         }
     }
 }
