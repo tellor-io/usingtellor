@@ -1,6 +1,8 @@
-const { expect } = require("chai");
+const { expect, assert } = require("chai");
 const { ethers } = require("hardhat");
 const h = require("./helpers/helpers");
+const web3 = require('web3');
+let abiCoder = new ethers.utils.AbiCoder
 
 const precision = BigInt(1e18);
 const FAUCET_AMOUNT = BigInt(1000) * precision;
@@ -10,6 +12,7 @@ describe("UsingTellor", function() {
 
 	let bench
   let playground
+  let mappingContract;
 	let owner, addr0, addr1, addr2;
 
 	beforeEach(async function () {
@@ -20,6 +23,9 @@ describe("UsingTellor", function() {
     const BenchUsingTellor = await ethers.getContractFactory("BenchUsingTellor");
     bench = await BenchUsingTellor.deploy(playground.address);
     await bench.deployed();
+    const MappingContract= await ethers.getContractFactory("MappingContractExample");
+    mappingContract = await MappingContract.deploy();
+    await mappingContract.deployed();
 		[owner, addr1, addr2] = await ethers.getSigners();
 	});
 
@@ -93,6 +99,21 @@ describe("UsingTellor", function() {
 		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp)).to.be.false;
 		await playground.beginDispute(h.uintTob32(1), blocky2.timestamp)
 		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp))
+	})
+
+  it("getValueFor()", async function() {
+    await bench.setIdMappingContract(mappingContract.address);
+    oracleQueryDataPartial = abiCoder.encode(['string','string'], ['eth','usd'])
+    oracleQueryData = abiCoder.encode(['string', 'bytes'], ['SpotPrice', oracleQueryDataPartial])
+    oracleQueryId = ethers.utils.keccak256(oracleQueryData)
+    let eipId = "0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5"
+    assert(await bench.idMappingContract() == mappingContract.address, "mapping contract should be set correctly")
+    await playground.connect(addr1).submitValue(oracleQueryId,1500,0,oracleQueryData)
+    blocky1 = await h.getBlock()
+    let gvfData = await bench.valueFor(eipId);
+    assert(gvfData[0] == 1500, "value should be correct")
+    assert(gvfData[1] == blocky1.timestamp, "timestamp should be correct")
+    assert(gvfData[2] == 200, "status code should be correct");
 	})
 
 	it("tellor()", async function() {
