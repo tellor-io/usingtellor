@@ -8,11 +8,6 @@ interface ITellor{
     function burn(uint256 _amount) external;
     function changeDeity(address _newDeity) external;
     function changeOwner(address _newOwner) external;
-    function changeTellorContract(address _tContract) external;
-    function changeControllerContract(address _newController) external;
-    function changeGovernanceContract(address _newGovernance) external;
-    function changeOracleContract(address _newOracle) external;
-    function changeTreasuryContract(address _newTreasury) external;
     function changeUint(bytes32 _target, uint256 _amount) external;
     function migrate() external;
     function mint(address _reciever, uint256 _amount) external;
@@ -98,16 +93,9 @@ interface ITellor{
     function getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp) external view returns(bool _found, uint256 _index);
     function getTimeOfLastNewValue() external view returns(uint256);
     function isInDispute(bytes32 _queryId, uint256 _timestamp) external view returns(bool);
-    //Treasury
-    function issueTreasury(uint256 _maxAmount, uint256 _rate, uint256 _duration) external;
-    function payTreasury(address _investor,uint256 _id) external;
-    function buyTreasury(uint256 _id,uint256 _amount) external;
-    function getTreasuryDetails(uint256 _id) external view returns(uint256,uint256,uint256,uint256);
-    function getTreasuryFundsByUser(address _user) external view returns(uint256);
-    function getTreasuryAccount(uint256 _id, address _investor) external view returns(uint256,uint256,bool);
-    function getTreasuryCount() external view returns(uint256);
-    function getTreasuryOwners(uint256 _id) external view returns(address[] memory);
-    function wasPaid(uint256 _id, address _investor) external view returns(bool);
+    function depositStake(uint256 _amount) external;
+    function requestStakingWithdraw(uint256 _amount) external;
+
     //Test functions
     function changeAddressVar(bytes32 _id, address _addy) external;
 
