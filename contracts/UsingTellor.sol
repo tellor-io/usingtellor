@@ -295,8 +295,8 @@ contract UsingTellor is IERC2362 {
      * @return _number of the sliced uint256
      */
     function _sliceUint(bytes memory _b) public pure returns (uint256 _number) {
-        for (uint256 _i = 0; _i < _b.length; _i++) {
-            _number = _number * 2**8 + uint8(_b[_i]);
+        for(uint256 _i=0;_i<_b.length;_i++){
+            _number = _number + uint(uint8(_b[_i]))*(2**(8*(_b.length-(_i+1))));
         }
     }
 }
