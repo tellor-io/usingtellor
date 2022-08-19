@@ -318,7 +318,7 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][0]).to.equal(blocky4.timestamp)
   })
 
-  it("bytesToUint", async() => {
+  it("sliceUint", async() => {
     let val1 = h.uintTob32(1)
     let val2 = h.uintTob32(2)
     let val3 = h.uintTob32(300000000000000)
@@ -328,13 +328,13 @@ describe("UsingTellor Function Tests", function() {
     let val7 = '0x01'
     let val8 = '0x10'
 
-    expect(await bench.bytesToUint(val1)).to.equal(1)
-    expect(await bench.bytesToUint(val2)).to.equal(2)
-    expect(await bench.bytesToUint(val3)).to.equal(300000000000000)
-    expect(await bench.bytesToUint(val4)).to.equal(300000000000001)
-    expect(await bench.bytesToUint(val5)).to.equal(1)
-    expect(await bench.bytesToUint(val6)).to.equal("21010191828172717718232237237237128")
-    expect(await bench.bytesToUint(val7)).to.equal(1)
-    expect(await bench.bytesToUint(val8)).to.equal(16)
+    expect(await bench.sliceUint(val1)).to.equal(1)
+    expect(await bench.sliceUint(val2)).to.equal(2)
+    expect(await bench.sliceUint(val3)).to.equal(300000000000000)
+    expect(await bench.sliceUint(val4)).to.equal(300000000000001)
+    expect(await bench.sliceUint(val5)).to.equal(1)
+    expect(await bench.sliceUint(val6)).to.equal("21010191828172717718232237237237128")
+    expect(await bench.sliceUint(val7)).to.equal(1)
+    expect(await bench.sliceUint(val8)).to.equal(16)
   })
 });

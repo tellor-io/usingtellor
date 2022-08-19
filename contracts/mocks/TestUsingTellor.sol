@@ -7,7 +7,7 @@ contract TestUsingTellor is UsingTellor {
     
     constructor(address payable _tellor) UsingTellor(_tellor) {}
     
-    function bytesToUint(bytes memory _b) public pure returns (uint256) {
-        return _bytesToUint(_b);
+    function sliceUint(bytes memory _b) public pure returns (uint256) {
+        return _sliceUint(_b);
     }
 }

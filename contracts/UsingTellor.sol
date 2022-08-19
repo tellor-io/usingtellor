@@ -283,7 +283,7 @@ contract UsingTellor is IERC2362 {
         if (_valueBytes.length == 0) {
             return (0, 0, 404);
         }
-        uint256 _valueUint = _bytesToUint(_valueBytes);
+        uint256 _valueUint = _sliceUint(_valueBytes);
         _value = int256(_valueUint);
         return (_value, _timestamp, 200);
     }
@@ -294,7 +294,7 @@ contract UsingTellor is IERC2362 {
      * @param _b bytes value to convert to uint256
      * @return _number uint256 converted from bytes
      */
-    function _bytesToUint(bytes memory _b) internal pure returns(uint256 _number){
+    function _sliceUint(bytes memory _b) internal pure returns(uint256 _number){
         for (uint256 _i = 0; _i < _b.length; _i++) {
             _number = _number * 256 + uint8(_b[_i]);
         }
