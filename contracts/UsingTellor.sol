@@ -283,20 +283,20 @@ contract UsingTellor is IERC2362 {
         if (_valueBytes.length == 0) {
             return (0, 0, 404);
         }
-        uint256 _valueUint = _sliceUint(_valueBytes);
+        uint256 _valueUint = _bytesToUint(_valueBytes);
         _value = int256(_valueUint);
         return (_value, _timestamp, 200);
     }
 
     // Internal functions
     /**
-     * @dev Utilized to help slice a bytes variable into a uint
-     * @param _b is the bytes variable to be sliced
-     * @return _number of the sliced uint256
+     * @dev Internal function to read if a reward has been claimed
+     * @param _b bytes value to convert to uint256
+     * @return _number uint256 converted from bytes
      */
-    function _sliceUint(bytes memory _b) public pure returns (uint256 _number) {
+    function _bytesToUint(bytes memory _b) internal pure returns(uint256 _number){
         for (uint256 _i = 0; _i < _b.length; _i++) {
-            _number = _number * 2**8 + uint8(_b[_i]);
+            _number = _number * 256 + uint8(_b[_i]);
         }
     }
 }
