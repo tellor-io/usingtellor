@@ -290,7 +290,7 @@ contract UsingTellor is IERC2362 {
 
     // Internal functions
     /**
-     * @dev Internal function to read if a reward has been claimed
+     * @dev Convert bytes to uint256
      * @param _b bytes value to convert to uint256
      * @return _number uint256 converted from bytes
      */
