@@ -8,9 +8,9 @@ module.exports = {
   solidity: "0.8.3",
   networks: {
     hardhat: {
-      forking: {
-        url: "https://eth-mainnet.alchemyapi.io/v2/7dW8KCqWwKa1vdaitq-SxmKfxWZ4yPG6",
-      },
+      // forking: {
+      //   url: "https://eth-mainnet.alchemyapi.io/v2/7dW8KCqWwKa1vdaitq-SxmKfxWZ4yPG6",
+      // },
     },
   },
 };
