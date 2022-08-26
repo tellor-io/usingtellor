@@ -9,15 +9,18 @@ import "./interface/ITellor.sol";
  * by helping smart contracts to read data from Tellor
  */
 contract UsingTellor {
-    ITellor public tellor;
+    ITellor public oracle;
+    ITellor public autopay;
 
     /*Constructor*/
     /**
-     * @dev the constructor sets the tellor address in storage
-     * @param _tellor is the TellorMaster address
+     * @dev the constructor sets the oracle address in storage
+     * @param _oracle is the Tellor Oracle address
+     * @param _autopay is the Tellor Autopay address
      */
-    constructor(address payable _tellor) {
-        tellor = ITellor(_tellor);
+    constructor(address payable _oracle, address payable _autopay) {
+        oracle = ITellor(_oracle);
+        autopay = ITellor(_autopay);
     }
 
     /*Getters*/
@@ -154,12 +157,12 @@ contract UsingTellor {
     {
         //tellorx check rinkeby/ethereum
         if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+            oracle == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            oracle == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
         ) {
-            return tellor.getTimestampCountById(_queryId);
+            return oracle.getTimestampCountById(_queryId);
         } else {
-            return tellor.getNewValueCountbyQueryId(_queryId);
+            return oracle.getNewValueCountbyQueryId(_queryId);
         }
     }
 
@@ -176,12 +179,12 @@ contract UsingTellor {
     {
         //tellorx check rinkeby/ethereum
         if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+            oracle == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            oracle == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
         ) {
-            return tellor.getReportTimestampByIndex(_queryId, _index);
+            return oracle.getReportTimestampByIndex(_queryId, _index);
         } else {
-            return tellor.getTimestampbyQueryIdandIndex(_queryId, _index);
+            return oracle.getTimestampbyQueryIdandIndex(_queryId, _index);
         }
     }
 
@@ -199,8 +202,8 @@ contract UsingTellor {
         ITellor _governance;
         //tellorx check rinkeby/ethereum
         if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+            oracle == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            oracle == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
         ) {
             ITellor _newTellor = ITellor(
                 0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0
@@ -211,7 +214,7 @@ contract UsingTellor {
                 )
             );
         } else {
-            _governance = ITellor(tellor.governance());
+            _governance = ITellor(oracle.governance());
         }
         return
             _governance
@@ -234,12 +237,38 @@ contract UsingTellor {
     {
         //tellorx check rinkeby/ethereum
         if (
-            tellor == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
-            tellor == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
+            oracle == ITellor(0x18431fd88adF138e8b979A7246eb58EA7126ea16) ||
+            oracle == ITellor(0xe8218cACb0a5421BC6409e498d9f8CC8869945ea)
         ) {
-            return tellor.getValueByTimestamp(_queryId, _timestamp);
+            return oracle.getValueByTimestamp(_queryId, _timestamp);
         } else {
-            return tellor.retrieveData(_queryId, _timestamp);
+            return oracle.retrieveData(_queryId, _timestamp);
         }
+    }
+
+    /**  AUTOPAY FUNCTIONS */
+
+    function setupDataFeed(
+        bytes32 _queryId,
+        uint256 _reward,
+        uint256 _startTime,
+        uint256 _interval,
+        uint256 _window,
+        uint256 _priceThreshold,
+        uint256 _rewardIncreasePerSecond,
+        bytes memory _queryData,
+        uint256 _amount
+    ) external {
+        autopay.setupDataFeed(
+            _queryId,
+            _reward,
+            _startTime,
+            _interval,
+            _window,
+            _priceThreshold,
+            _rewardIncreasePerSecond,
+            _queryData,
+            _amount
+        );
     }
 }
