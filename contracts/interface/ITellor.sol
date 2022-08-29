@@ -111,4 +111,5 @@ interface ITellor{
     function getStakeAmount() external view returns(uint256);
     function stakeAmount() external view returns(uint256);
     function token() external view returns(address);
+    function getGasUsedByReport(bytes32 _queryId, uint256 _timestamp) external view returns(uint256);
 }
