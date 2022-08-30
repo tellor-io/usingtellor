@@ -294,6 +294,7 @@ contract TellorPlayground {
      * @param _timestamp is the timestamp of the report
      * @return uint256 gas cost estimate in terms of staking token; always returns 5e17
      */
+    // solhint-disable-next-line
     function getGasUsedByReport(bytes32 _queryId, uint256 _timestamp) external view returns (uint256) {
         return 0.5 ether;
     }
