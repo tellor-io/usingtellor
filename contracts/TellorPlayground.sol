@@ -289,17 +289,6 @@ contract TellorPlayground {
     }
 
     /**
-     * @dev Mock function for retrieving report gas cost estimate in terms of staking token
-     * @param _queryId is the datafeed unique identifier
-     * @param _timestamp is the timestamp of the report
-     * @return uint256 gas cost estimate in terms of staking token; always returns 5e17
-     */
-    // solhint-disable-next-line
-    function getGasUsedByReport(bytes32 _queryId, uint256 _timestamp) external view returns (uint256) {
-        return 0.5 ether;
-    }
-
-    /**
      * @dev Retrieves latest array index of data before the specified timestamp for the queryId
      * @param _queryId is the queryId to look up the index for
      * @param _timestamp is the timestamp before which to search for the latest index
