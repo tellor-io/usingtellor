@@ -108,4 +108,7 @@ interface ITellor{
 
     //Tellor 360
     function addStakingRewards(uint256 _amount) external;
+    function getStakeAmount() external view returns(uint256);
+    function stakeAmount() external view returns(uint256);
+    function token() external view returns(address);
 }
