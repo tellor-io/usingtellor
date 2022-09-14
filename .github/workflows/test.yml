@@ -10,12 +10,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js 14
       uses: actions/setup-node@v3
       with:
         node-version: 14.x
         cache: 'npm'
-    - run: |
-        npm ci
-        echo ${{ env.ALCHEMY_API_KEY }} >> .env
-        npm test
+    - run: npm ci
+    - run: echo ${{ secrets.ALCHEMY_API_KEY }} >> .env
+    - run: npm test
