@@ -90,7 +90,7 @@ contract MockAutopay is UsingTellor {
         address payable _tellor,
         address _token,
         uint256 _fee
-    ) UsingTellor(_tellor) {
+    ) UsingTellor(_tellor, address(this)) {
         token = IERC20(_token);
         fee = _fee;
     }
@@ -249,7 +249,8 @@ contract MockAutopay is UsingTellor {
         uint256 _rewardIncreasePerSecond,
         bytes calldata _queryData,
         uint256 _amount
-    ) external {
+    ) external       override
+{
         require(
             _queryId == keccak256(_queryData) || uint256(_queryId) <= 100,
             "id must be hash of bytes data"

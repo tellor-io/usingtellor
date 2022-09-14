@@ -316,7 +316,7 @@ contract UsingTellor is IERC2362 {
         uint256 _rewardIncreasePerSecond,
         bytes memory _queryData,
         uint256 _amount
-    ) external {
+    ) external virtual {
         autopay.setupDataFeed(
             _queryId,
             _reward,
