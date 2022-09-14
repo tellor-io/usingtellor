@@ -162,7 +162,6 @@ Open a git bash terminal and run this code:
 git clone https://github.com/tellor-io/usingtellor.git
 cd usingtellor
 npm i
-cp .env.example .env # add your own alchemy API key.
 npx hardhat test
 ```
 
