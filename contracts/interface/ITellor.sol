@@ -478,4 +478,7 @@ interface Autopay {
         uint256 amount;
         uint256 timestamp;
     }
+    function getStakeAmount() external view returns(uint256);
+    function stakeAmount() external view returns(uint256);
+    function token() external view returns(address);
 }

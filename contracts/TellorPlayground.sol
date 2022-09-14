@@ -66,7 +66,7 @@ contract TellorPlayground {
      * @dev Mock function for adding staking rewards. No rewards actually given to stakers
      * @param _amount Amount of TRB to be added to the contract
      */
-    function addStakingRewards(uint256 _amount) public {
+    function addStakingRewards(uint256 _amount) external {
         require(_transferFrom(msg.sender, address(this), _amount));
     }
 
@@ -77,11 +77,7 @@ contract TellorPlayground {
      * @return bool Whether the transaction succeeded
      *
      */
-    function approve(address _spender, uint256 _amount)
-        public
-        virtual
-        returns (bool)
-    {
+    function approve(address _spender, uint256 _amount) external returns (bool){
         _approve(msg.sender, _spender, _amount);
         return true;
     }
@@ -197,7 +193,6 @@ contract TellorPlayground {
      */
     function transfer(address _recipient, uint256 _amount)
         public
-        virtual
         returns (bool)
     {
         _transfer(msg.sender, _recipient, _amount);
@@ -215,7 +210,7 @@ contract TellorPlayground {
         address _sender,
         address _recipient,
         uint256 _amount
-    ) public virtual returns (bool) {
+    ) public returns (bool) {
         _transfer(_sender, _recipient, _amount);
         _approve(
             _sender,
@@ -245,12 +240,7 @@ contract TellorPlayground {
      * @param _spender The address that will use the tokens
      * @return uint256 The amount of allowed tokens
      */
-    function allowance(address _owner, address _spender)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
+    function allowance(address _owner, address _spender) external view returns (uint256){
         return _allowances[_owner][_spender];
     }
 
@@ -259,7 +249,7 @@ contract TellorPlayground {
      * @param _account user address
      * @return uint256 user's token balance
      */
-    function balanceOf(address _account) public view returns (uint256) {
+    function balanceOf(address _account) external view returns (uint256) {
         return _balances[_account];
     }
 
@@ -267,7 +257,7 @@ contract TellorPlayground {
      * @dev Returns the number of decimals used to get its user representation.
      * @return uint8 the number of decimals; used only for display purposes
      */
-    function decimals() public view returns (uint8) {
+    function decimals() external view returns (uint8) {
         return _decimals;
     }
 
@@ -280,7 +270,7 @@ contract TellorPlayground {
      * @return _timestampRetrieved the value's timestamp
      */
     function getDataBefore(bytes32 _queryId, uint256 _timestamp)
-        public
+        external
         view
         returns (
             bool _ifRetrieve,
@@ -294,7 +284,7 @@ contract TellorPlayground {
         );
         if (!_found) return (false, bytes(""), 0);
         _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
-        _value = retrieveData(_queryId, _timestampRetrieved);
+        _value = values[_queryId][_timestampRetrieved];
         return (true, _value, _timestampRetrieved);
     }
 
@@ -493,8 +483,8 @@ contract TellorPlayground {
         view
         returns (uint256)
     {
-        uint256 len = timestamps[_queryId].length;
-        if (len == 0 || len <= _index) return 0;
+        uint256 _len = timestamps[_queryId].length;
+        if (_len == 0 || _len <= _index) return 0;
         return timestamps[_queryId][_index];
     }
 
@@ -503,11 +493,7 @@ contract TellorPlayground {
      * @param _hash is the identifier hash for a vote
      * @return uint256[] memory dispute IDs of the vote rounds
      */
-    function getVoteRounds(bytes32 _hash)
-        public
-        view
-        returns (uint256[] memory)
-    {
+    function getVoteRounds(bytes32 _hash) public view returns (uint256[] memory){
         return voteRounds[_hash];
     }
 
@@ -537,7 +523,7 @@ contract TellorPlayground {
      * @dev Returns the name of the token.
      * @return string name of the token
      */
-    function name() public view returns (string memory) {
+    function name() external view returns (string memory) {
         return _name;
     }
 
@@ -548,7 +534,7 @@ contract TellorPlayground {
      * @return bytes value for queryId/timestamp submitted
      */
     function retrieveData(bytes32 _queryId, uint256 _timestamp)
-        public
+        external
         view
         returns (bytes memory)
     {
@@ -559,7 +545,7 @@ contract TellorPlayground {
      * @dev Returns the symbol of the token.
      * @return string symbol of the token
      */
-    function symbol() public view returns (string memory) {
+    function symbol() external view returns (string memory) {
         return _symbol;
     }
 
@@ -567,7 +553,7 @@ contract TellorPlayground {
      * @dev Returns the total supply of the token.
      * @return uint256 total supply of token
      */
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
 
@@ -582,7 +568,7 @@ contract TellorPlayground {
         address _owner,
         address _spender,
         uint256 _amount
-    ) internal virtual {
+    ) internal {
         require(_owner != address(0), "ERC20: approve from the zero address");
         require(_spender != address(0), "ERC20: approve to the zero address");
         _allowances[_owner][_spender] = _amount;
@@ -594,7 +580,7 @@ contract TellorPlayground {
      * @param _account The address whose tokens to burn
      * @param _amount The quantity of tokens to burn
      */
-    function _burn(address _account, uint256 _amount) internal virtual {
+    function _burn(address _account, uint256 _amount) internal{
         require(_account != address(0), "ERC20: burn from the zero address");
         _balances[_account] -= _amount;
         _totalSupply -= _amount;
@@ -606,7 +592,7 @@ contract TellorPlayground {
      * @param _account The address which receives minted tokens
      * @param _amount The quantity of tokens to min
      */
-    function _mint(address _account, uint256 _amount) internal virtual {
+    function _mint(address _account, uint256 _amount) internal{
         require(_account != address(0), "ERC20: mint to the zero address");
         _totalSupply += _amount;
         _balances[_account] += _amount;
@@ -623,12 +609,9 @@ contract TellorPlayground {
         address _sender,
         address _recipient,
         uint256 _amount
-    ) internal virtual {
+    ) internal{
         require(_sender != address(0), "ERC20: transfer from the zero address");
-        require(
-            _recipient != address(0),
-            "ERC20: transfer to the zero address"
-        );
+        require( _recipient != address(0),"ERC20: transfer to the zero address");
         _balances[_sender] -= _amount;
         _balances[_recipient] += _amount;
         emit Transfer(_sender, _recipient, _amount);
@@ -645,7 +628,7 @@ contract TellorPlayground {
         address _sender,
         address _recipient,
         uint256 _amount
-    ) internal virtual returns (bool) {
+    ) internal returns (bool) {
         _transfer(_sender, _recipient, _amount);
         _approve(
             _sender,
