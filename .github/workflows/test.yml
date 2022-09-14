@@ -16,4 +16,4 @@ jobs:
         node-version: 14.x
         cache: 'npm'
     - run: npm ci
-    - run: npx hardhat test
+    - run: npm test
