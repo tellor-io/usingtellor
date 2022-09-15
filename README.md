@@ -162,7 +162,7 @@ Open a git bash terminal and run this code:
 git clone https://github.com/tellor-io/usingtellor.git
 cd usingtellor
 npm i
-npx hardhat test
+npm test
 ```
 
 # Implementing using Tellor
