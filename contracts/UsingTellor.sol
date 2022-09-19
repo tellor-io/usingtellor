@@ -14,14 +14,18 @@ import "hardhat/console.sol";
 contract UsingTellor is IERC2362 {
     ITellor public tellor;
     IMappingContract public idMappingContract;
+    ITellor public oracle;
+    ITellor public autopay;
 
     /*Constructor*/
     /**
-     * @dev the constructor sets the tellor address in storage
-     * @param _tellor is the TellorMaster address
+     * @dev the constructor sets the oracle address in storage
+     * @param _oracle is the Tellor Oracle address
+     * @param _autopay is the Tellor Autopay address
      */
-    constructor(address payable _tellor) {
-        tellor = ITellor(_tellor);
+    constructor(address payable _oracle, address payable _autopay) {
+        oracle = ITellor(_oracle);
+        autopay = ITellor(_autopay);
     }
 
     /*Getters*/
@@ -298,5 +302,31 @@ contract UsingTellor is IERC2362 {
         for (uint256 _i = 0; _i < _b.length; _i++) {
             _number = _number * 256 + uint8(_b[_i]);
         }
+    }
+
+    /**  AUTOPAY FUNCTIONS */
+
+    function setupDataFeed(
+        bytes32 _queryId,
+        uint256 _reward,
+        uint256 _startTime,
+        uint256 _interval,
+        uint256 _window,
+        uint256 _priceThreshold,
+        uint256 _rewardIncreasePerSecond,
+        bytes memory _queryData,
+        uint256 _amount
+    ) external virtual {
+        autopay.setupDataFeed(
+            _queryId,
+            _reward,
+            _startTime,
+            _interval,
+            _window,
+            _priceThreshold,
+            _rewardIncreasePerSecond,
+            _queryData,
+            _amount
+        );
     }
 }

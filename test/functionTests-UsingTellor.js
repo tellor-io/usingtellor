@@ -13,19 +13,26 @@ describe("UsingTellor Function Tests", function() {
 	let bench
   let playground
   let mappingContract;
+  let autopay
 	let owner, addr0, addr1, addr2;
 
 	beforeEach(async function () {
-
+    
 		const TellorPlayground = await ethers.getContractFactory("TellorPlayground");
 		playground = await TellorPlayground.deploy();
     await playground.deployed();
+
     const BenchUsingTellor = await ethers.getContractFactory("BenchUsingTellor");
     bench = await BenchUsingTellor.deploy(playground.address);
     await bench.deployed();
-    const MappingContract= await ethers.getContractFactory("MappingContractExample");
+
+    const MappingContract = await ethers.getContractFactory("MappingContractExample");
     mappingContract = await MappingContract.deploy();
     await mappingContract.deployed();
+
+    const Autopay = await ethers.getContractAt("Autopay")
+    autopay = Autopay.deploy(playground.address, playground.address, 50)
+
 		[owner, addr1, addr2] = await ethers.getSigners();
 	});
 

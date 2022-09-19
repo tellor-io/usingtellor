@@ -40,7 +40,7 @@ contract PriceContract is UsingTellor {
 ```
 ##### Addresses:
 
-Find Tellor contract addresses [here](https://docs.tellor.io/tellor/integration/reference).
+Find Tellor contract addresses [here](https://docs.tellor.io/tellor/the-basics/contracts-reference).
 
 
 #### Available Tellor functions:
@@ -166,8 +166,7 @@ npx hardhat test
 ```
 
 # Implementing using Tellor
-See our documentation for implementing usingTellor here:
-[https://docs.tellor.io/tellor/integration/introduction](https://docs.tellor.io/tellor/integration/introduction)
+See our documentation for implementing usingTellor [here.](https://docs.tellor.io/tellor/getting-data/introduction)
 
 # Keywords
 
