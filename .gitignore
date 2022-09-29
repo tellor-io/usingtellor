@@ -5,6 +5,5 @@
 tmp
 cache
 **.DS_Store
-package-lock.json
 /artifacts
 /cache

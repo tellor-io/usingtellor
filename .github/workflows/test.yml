@@ -15,5 +15,12 @@ jobs:
       with:
         node-version: 14.x
         cache: 'npm'
-    - run: npm ci
-    - run: npm test
+    - run: npm i
+    - run: npx hardhat test
+      env:
+        CI: true
+        # These are not needed for the tests but
+        # hardhat fails to start when not present.
+        NODE_URL_RINKEBY: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        NODE_URL_MAINNET: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        PRIVATE_KEY: "00000000000000000000000000000000000000000000000000"
