@@ -14,7 +14,7 @@
     "ethereum-waffle": "^4.0.0-alpha.0",
     "ethers": "^5.6.0",
     "ethlint": "^1.2.5",
-    "hardhat": "^2.9.1",
+    "hardhat": "^2.11.2",
     "prettier": "^2.6.2",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "solc": "^0.8.12",
