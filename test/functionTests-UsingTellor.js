@@ -13,7 +13,6 @@ describe("UsingTellor Function Tests", function() {
 	let bench
   let playground
   let mappingContract;
-  let autopay
 	let owner, addr0, addr1, addr2;
 
 	beforeEach(async function () {
@@ -29,9 +28,6 @@ describe("UsingTellor Function Tests", function() {
     const MappingContract = await ethers.getContractFactory("MappingContractExample");
     mappingContract = await MappingContract.deploy();
     await mappingContract.deployed();
-
-    const Autopay = await ethers.getContractAt("Autopay")
-    autopay = Autopay.deploy(playground.address, playground.address, 50)
 
 		[owner, addr1, addr2] = await ethers.getSigners();
 	});
@@ -108,7 +104,7 @@ describe("UsingTellor Function Tests", function() {
 		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp))
 	})
 
-  it("getValueFor()", async function() {
+  it("valueFor()", async function() {
     await bench.setIdMappingContract(mappingContract.address);
     oracleQueryDataPartial = abiCoder.encode(['string','string'], ['eth','usd'])
     oracleQueryData = abiCoder.encode(['string', 'bytes'], ['SpotPrice', oracleQueryDataPartial])
@@ -122,6 +118,12 @@ describe("UsingTellor Function Tests", function() {
     assert(gvfData[1] == blocky1.timestamp, "timestamp should be correct")
     assert(gvfData[2] == 200, "status code should be correct");
 	})
+
+  it("setIdMappingContract()", async function() {
+    await bench.setIdMappingContract(mappingContract.address);
+    assert(await bench.idMappingContract() == mappingContract.address, "mapping contract should be set correctly")
+    await h.expectThrow(bench.setIdMappingContract(addr1.address), "mapping contract should not be able to be called twice")
+  })
 
 	it("tellor()", async function() {
 		expect(await bench.tellor()).to.equal(playground.address)
@@ -343,5 +345,14 @@ describe("UsingTellor Function Tests", function() {
     expect(await bench.sliceUint(val6)).to.equal("21010191828172717718232237237237128")
     expect(await bench.sliceUint(val7)).to.equal(1)
     expect(await bench.sliceUint(val8)).to.equal(16)
+  })
+
+  it("getReporterByTimestamp()", async function() {
+    await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
+    blocky1 = await h.getBlock()
+    expect(await bench.getReporterByTimestamp(h.uintTob32(1), blocky1.timestamp)).to.equal(addr1.address)
+    await playground.connect(addr2).submitValue(h.uintTob32(1),160,1,'0x')
+    blocky2 = await h.getBlock()
+    expect(await bench.getReporterByTimestamp(h.uintTob32(1), blocky2.timestamp)).to.equal(addr2.address)
   })
 });
