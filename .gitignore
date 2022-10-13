@@ -5,4 +5,5 @@
 tmp
 cache
 **.DS_Store
-artifacts/
+/artifacts
+/cache
