@@ -17,19 +17,11 @@ contract TellorPlayground {
         address _reporter
     );
     event NewStaker(address _staker, uint256 _amount);
-    event TipAdded(
-        address indexed _user,
-        bytes32 indexed _queryId,
-        uint256 _tip,
-        uint256 _totalTip,
-        bytes _queryData
-    );
     event StakeWithdrawRequested(address _staker, uint256 _amount);
     event StakeWithdrawn(address _staker);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     // Storage
-    mapping(bytes32 => address) public addresses;
     mapping(bytes32 => mapping(uint256 => bool)) public isDisputed; //queryId -> timestamp -> value
     mapping(bytes32 => mapping(uint256 => address)) public reporterByTimestamp;
     mapping(address => StakeInfo) stakerDetails; //mapping from a persons address to their staking info
@@ -40,9 +32,11 @@ contract TellorPlayground {
     mapping(address => mapping(address => uint256)) private _allowances;
     mapping(address => uint256) private _balances;
 
+    uint256 public stakeAmount;
     uint256 public constant timeBasedReward = 5e17; // time based reward for a reporter for successfully submitting a value
     uint256 public tipsInContract; // number of tips within the contract
     uint256 public voteCount;
+    address public token;
     uint256 private _totalSupply;
     string private _name;
     string private _symbol;
@@ -65,14 +59,12 @@ contract TellorPlayground {
         _name = "TellorPlayground";
         _symbol = "TRBP";
         _decimals = 18;
-        addresses[
-            keccak256(abi.encodePacked("_GOVERNANCE_CONTRACT"))
-        ] = address(this);
+        token = address(this);
     }
 
     /**
-     * @dev Mock function for adding staking rewards
-     * @param _amount quantity of tokens to transfer to this contract
+     * @dev Mock function for adding staking rewards. No rewards actually given to stakers
+     * @param _amount Amount of TRB to be added to the contract
      */
     function addStakingRewards(uint256 _amount) external {
         require(_transferFrom(msg.sender, address(this), _amount));
@@ -85,11 +77,7 @@ contract TellorPlayground {
      * @return bool Whether the transaction succeeded
      *
      */
-    function approve(address _spender, uint256 _amount)
-        public
-        virtual
-        returns (bool)
-    {
+    function approve(address _spender, uint256 _amount) external returns (bool){
         _approve(msg.sender, _spender, _amount);
         return true;
     }
@@ -108,117 +96,6 @@ contract TellorPlayground {
         );
     }
 
-    /**
-     * @dev Public function to mint tokens to the given address
-     * @param _user The address which will receive the tokens
-     */
-    function faucet(address _user) external {
-        _mint(_user, 1000 ether);
-    }
-
-    /**
-     * @dev A mock function to submit a value to be read without reporter staking needed
-     * @param _queryId the ID to associate the value to
-     * @param _value the value for the queryId
-     * @param _nonce the current value count for the query id
-     * @param _queryData the data used by reporters to fulfill the data query
-     */
-    // slither-disable-next-line timestamp
-    function submitValue(
-        bytes32 _queryId,
-        bytes calldata _value,
-        uint256 _nonce,
-        bytes memory _queryData
-    ) external {
-        require(
-            _nonce == timestamps[_queryId].length || _nonce == 0,
-            "nonce must match timestamp index"
-        );
-        require(
-            _queryId == keccak256(_queryData) || uint256(_queryId) <= 100,
-            "id must be hash of bytes data"
-        );
-        values[_queryId][block.timestamp] = _value;
-        timestamps[_queryId].push(block.timestamp);
-        reporterByTimestamp[_queryId][block.timestamp] = msg.sender;
-        stakerDetails[msg.sender].reporterLastTimestamp = block.timestamp;
-        stakerDetails[msg.sender].reportsSubmitted++;
-        emit NewReport(
-            _queryId,
-            block.timestamp,
-            _value,
-            _nonce,
-            _queryData,
-            msg.sender
-        );
-    }
-
-    /**
-     * @dev Adds a tip to a given query ID.
-     * @param _queryId is the queryId to look up
-     * @param _amount is the amount of tips
-     * @param _queryData is the extra bytes data needed to fulfill the request
-     */
-    function tipQuery(
-        bytes32 _queryId,
-        uint256 _amount,
-        bytes memory _queryData
-    ) external {
-        require(
-            _queryId == keccak256(_queryData) || uint256(_queryId) <= 100,
-            "id must be hash of bytes data"
-        );
-        _transfer(msg.sender, address(this), _amount);
-        _amount = _amount / 2;
-        _burn(address(this), _amount);
-        tipsInContract += _amount;
-        tips[_queryId] += _amount;
-        emit TipAdded(
-            msg.sender,
-            _queryId,
-            _amount,
-            tips[_queryId],
-            _queryData
-        );
-    }
-
-    /**
-     * @dev Transfer tokens from one user to another
-     * @param _recipient The destination address
-     * @param _amount The amount of tokens, including decimals, to transfer
-     * @return bool If the transfer succeeded
-     */
-    function transfer(address _recipient, uint256 _amount)
-        public
-        virtual
-        returns (bool)
-    {
-        _transfer(msg.sender, _recipient, _amount);
-        return true;
-    }
-
-    /**
-     * @dev Transfer tokens from user to another
-     * @param _sender The address which owns the tokens
-     * @param _recipient The destination address
-     * @param _amount The quantity of tokens to transfer
-     * @return bool Whether the transfer succeeded
-     */
-    function transferFrom(
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) public virtual returns (bool) {
-        _transfer(_sender, _recipient, _amount);
-        _approve(
-            _sender,
-            msg.sender,
-            _allowances[_sender][msg.sender] - _amount
-        );
-        return true;
-    }
-
-    // Tellor Flex
     /**
      * @dev Allows a reporter to submit stake
      * @param _amount amount of tokens to stake
@@ -247,6 +124,14 @@ contract TellorPlayground {
     }
 
     /**
+     * @dev Public function to mint tokens to the given address
+     * @param _user The address which will receive the tokens
+     */
+    function faucet(address _user) external {
+        _mint(_user, 1000 ether);
+    }
+
+    /**
      * @dev Allows a reporter to request to withdraw their stake
      * @param _amount amount of staked tokens requesting to withdraw
      */
@@ -263,6 +148,79 @@ contract TellorPlayground {
     }
 
     /**
+     * @dev A mock function to submit a value to be read without reporter staking needed
+     * @param _queryId the ID to associate the value to
+     * @param _value the value for the queryId
+     * @param _nonce the current value count for the query id
+     * @param _queryData the data used by reporters to fulfill the data query
+     */
+    // slither-disable-next-line timestamp
+    function submitValue(
+        bytes32 _queryId,
+        bytes calldata _value,
+        uint256 _nonce,
+        bytes memory _queryData
+    ) external {
+        require(keccak256(_value) != keccak256(""), "value must be submitted");
+        require(
+            _nonce == timestamps[_queryId].length || _nonce == 0,
+            "nonce must match timestamp index"
+        );
+        require(
+            _queryId == keccak256(_queryData) || uint256(_queryId) <= 100,
+            "id must be hash of bytes data"
+        );
+        values[_queryId][block.timestamp] = _value;
+        timestamps[_queryId].push(block.timestamp);
+        reporterByTimestamp[_queryId][block.timestamp] = msg.sender;
+        stakerDetails[msg.sender].reporterLastTimestamp = block.timestamp;
+        stakerDetails[msg.sender].reportsSubmitted++;
+        emit NewReport(
+            _queryId,
+            block.timestamp,
+            _value,
+            _nonce,
+            _queryData,
+            msg.sender
+        );
+    }
+
+    /**
+     * @dev Transfer tokens from one user to another
+     * @param _recipient The destination address
+     * @param _amount The amount of tokens, including decimals, to transfer
+     * @return bool If the transfer succeeded
+     */
+    function transfer(address _recipient, uint256 _amount)
+        public
+        returns (bool)
+    {
+        _transfer(msg.sender, _recipient, _amount);
+        return true;
+    }
+
+    /**
+     * @dev Transfer tokens from user to another
+     * @param _sender The address which owns the tokens
+     * @param _recipient The destination address
+     * @param _amount The quantity of tokens to transfer
+     * @return bool Whether the transfer succeeded
+     */
+    function transferFrom(
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    ) public returns (bool) {
+        _transfer(_sender, _recipient, _amount);
+        _approve(
+            _sender,
+            msg.sender,
+            _allowances[_sender][msg.sender] - _amount
+        );
+        return true;
+    }
+
+    /**
      * @dev Withdraws a reporter's stake
      */
     function withdrawStake() external {
@@ -273,6 +231,181 @@ contract TellorPlayground {
         _transfer(address(this), msg.sender, _s.lockedBalance);
         _s.lockedBalance = 0;
         emit StakeWithdrawn(msg.sender);
+    }
+
+    // Getters
+    /**
+     * @dev Returns the amount that an address is alowed to spend of behalf of another
+     * @param _owner The address which owns the tokens
+     * @param _spender The address that will use the tokens
+     * @return uint256 The amount of allowed tokens
+     */
+    function allowance(address _owner, address _spender) external view returns (uint256){
+        return _allowances[_owner][_spender];
+    }
+
+    /**
+     * @dev Returns the balance of a given user.
+     * @param _account user address
+     * @return uint256 user's token balance
+     */
+    function balanceOf(address _account) external view returns (uint256) {
+        return _balances[_account];
+    }
+
+    /**
+     * @dev Returns the number of decimals used to get its user representation.
+     * @return uint8 the number of decimals; used only for display purposes
+     */
+    function decimals() external view returns (uint8) {
+        return _decimals;
+    }
+
+    /**
+     * @dev Retrieves the latest value for the queryId before the specified timestamp
+     * @param _queryId is the queryId to look up the value for
+     * @param _timestamp before which to search for latest value
+     * @return _ifRetrieve bool true if able to retrieve a non-zero value
+     * @return _value the value retrieved
+     * @return _timestampRetrieved the value's timestamp
+     */
+    function getDataBefore(bytes32 _queryId, uint256 _timestamp)
+        external
+        view
+        returns (
+            bool _ifRetrieve,
+            bytes memory _value,
+            uint256 _timestampRetrieved
+        )
+    {
+        (bool _found, uint256 _index) = getIndexForDataBefore(
+            _queryId,
+            _timestamp
+        );
+        if (!_found) return (false, bytes(""), 0);
+        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _index);
+        _value = values[_queryId][_timestampRetrieved];
+        return (true, _value, _timestampRetrieved);
+    }
+
+    /**
+     * @dev Retrieves latest array index of data before the specified timestamp for the queryId
+     * @param _queryId is the queryId to look up the index for
+     * @param _timestamp is the timestamp before which to search for the latest index
+     * @return _found whether the index was found
+     * @return _index the latest index found before the specified timestamp
+     */
+    // slither-disable-next-line calls-loop
+    function getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (bool _found, uint256 _index)
+    {
+        uint256 _count = getNewValueCountbyQueryId(_queryId);
+        if (_count > 0) {
+            uint256 _middle;
+            uint256 _start = 0;
+            uint256 _end = _count - 1;
+            uint256 _time;
+            //Checking Boundaries to short-circuit the algorithm
+            _time = getTimestampbyQueryIdandIndex(_queryId, _start);
+            if (_time >= _timestamp) return (false, 0);
+            _time = getTimestampbyQueryIdandIndex(_queryId, _end);
+            if (_time < _timestamp) {
+                while (isInDispute(_queryId, _time) && _end > 0) {
+                    _end--;
+                    _time = getTimestampbyQueryIdandIndex(_queryId, _end);
+                }
+                if (_end == 0 && isInDispute(_queryId, _time)) {
+                    return (false, 0);
+                }
+                return (true, _end);
+            }
+            //Since the value is within our boundaries, do a binary search
+            while (true) {
+                _middle = (_end - _start) / 2 + 1 + _start;
+                _time = getTimestampbyQueryIdandIndex(_queryId, _middle);
+                if (_time < _timestamp) {
+                    //get immediate next value
+                    uint256 _nextTime = getTimestampbyQueryIdandIndex(
+                        _queryId,
+                        _middle + 1
+                    );
+                    if (_nextTime >= _timestamp) {
+                        if (!isInDispute(_queryId, _time)) {
+                            // _time is correct
+                            return (true, _middle);
+                        } else {
+                            // iterate backwards until we find a non-disputed value
+                            while (
+                                isInDispute(_queryId, _time) && _middle > 0
+                            ) {
+                                _middle--;
+                                _time = getTimestampbyQueryIdandIndex(
+                                    _queryId,
+                                    _middle
+                                );
+                            }
+                            if (_middle == 0 && isInDispute(_queryId, _time)) {
+                                return (false, 0);
+                            }
+                            // _time is correct
+                            return (true, _middle);
+                        }
+                    } else {
+                        //look from middle + 1(next value) to end
+                        _start = _middle + 1;
+                    }
+                } else {
+                    uint256 _prevTime = getTimestampbyQueryIdandIndex(
+                        _queryId,
+                        _middle - 1
+                    );
+                    if (_prevTime < _timestamp) {
+                        if (!isInDispute(_queryId, _prevTime)) {
+                            // _prevTime is correct
+                            return (true, _middle - 1);
+                        } else {
+                            // iterate backwards until we find a non-disputed value
+                            _middle--;
+                            while (
+                                isInDispute(_queryId, _prevTime) && _middle > 0
+                            ) {
+                                _middle--;
+                                _prevTime = getTimestampbyQueryIdandIndex(
+                                    _queryId,
+                                    _middle
+                                );
+                            }
+                            if (
+                                _middle == 0 && isInDispute(_queryId, _prevTime)
+                            ) {
+                                return (false, 0);
+                            }
+                            // _prevtime is correct
+                            return (true, _middle);
+                        }
+                    } else {
+                        //look from start to middle -1(prev value)
+                        _end = _middle - 1;
+                    }
+                }
+            }
+        }
+        return (false, 0);
+    }
+
+    /**
+     * @dev Counts the number of values that have been submitted for a given ID
+     * @param _queryId the ID to look up
+     * @return uint256 count of the number of values received for the queryId
+     */
+    function getNewValueCountbyQueryId(bytes32 _queryId)
+        public
+        view
+        returns (uint256)
+    {
+        return timestamps[_queryId].length;
     }
 
     /**
@@ -290,15 +423,27 @@ contract TellorPlayground {
     }
 
     /**
+     * @dev Returns mock stake amount
+     * @return uint256 stake amount
+     */
+    function getStakeAmount() external view returns (uint256) {
+        return stakeAmount;
+    }
+
+    /**
      * @dev Allows users to retrieve all information about a staker
-     * @param _staker address of staker inquiring about
+     * @param _stakerAddress address of staker inquiring about
      * @return uint startDate of staking
      * @return uint current amount staked
      * @return uint current amount locked for withdrawal
+     * @return uint reward debt used to calculate staking reward
      * @return uint reporter's last reported timestamp
      * @return uint total number of reports submitted by reporter
+     * @return uint governance vote count when first staked
+     * @return uint number of votes case by staker when first staked
+     * @return uint whether staker is counted in totalStakers
      */
-    function getStakerInfo(address _staker)
+    function getStakerInfo(address _stakerAddress)
         external
         view
         returns (
@@ -306,62 +451,25 @@ contract TellorPlayground {
             uint256,
             uint256,
             uint256,
-            uint256
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            bool
         )
     {
+        StakeInfo storage _staker = stakerDetails[_stakerAddress];
         return (
-            stakerDetails[_staker].startDate,
-            stakerDetails[_staker].stakedBalance,
-            stakerDetails[_staker].lockedBalance,
-            stakerDetails[_staker].reporterLastTimestamp,
-            stakerDetails[_staker].reportsSubmitted
+            _staker.startDate,
+            _staker.stakedBalance,
+            _staker.lockedBalance,
+            0, // reward debt
+            _staker.reporterLastTimestamp,
+            _staker.reportsSubmitted,
+            0, // start vote count
+            0, // start vote tally
+            false
         );
-    }
-
-    // Getters
-    /**
-     * @dev Returns the amount that an address is alowed to spend of behalf of another
-     * @param _owner The address which owns the tokens
-     * @param _spender The address that will use the tokens
-     * @return uint256 The amount of allowed tokens
-     */
-    function allowance(address _owner, address _spender)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        return _allowances[_owner][_spender];
-    }
-
-    /**
-     * @dev Returns the balance of a given user.
-     * @param _account user address
-     * @return uint256 user's token balance
-     */
-    function balanceOf(address _account) public view returns (uint256) {
-        return _balances[_account];
-    }
-
-    /**
-     * @dev Returns the number of decimals used to get its user representation.
-     * @return uint8 the number of decimals; used only for display purposes
-     */
-    function decimals() public view returns (uint8) {
-        return _decimals;
-    }
-
-    /**
-     * @dev Counts the number of values that have been submitted for a given ID
-     * @param _queryId the ID to look up
-     * @return uint256 count of the number of values received for the queryId
-     */
-    function getNewValueCountbyQueryId(bytes32 _queryId)
-        public
-        view
-        returns (uint256)
-    {
-        return timestamps[_queryId].length;
     }
 
     /**
@@ -375,8 +483,8 @@ contract TellorPlayground {
         view
         returns (uint256)
     {
-        uint256 len = timestamps[_queryId].length;
-        if (len == 0 || len <= _index) return 0;
+        uint256 _len = timestamps[_queryId].length;
+        if (_len == 0 || _len <= _index) return 0;
         return timestamps[_queryId][_index];
     }
 
@@ -385,11 +493,7 @@ contract TellorPlayground {
      * @param _hash is the identifier hash for a vote
      * @return uint256[] memory dispute IDs of the vote rounds
      */
-    function getVoteRounds(bytes32 _hash)
-        public
-        view
-        returns (uint256[] memory)
-    {
+    function getVoteRounds(bytes32 _hash) public view returns (uint256[] memory){
         return voteRounds[_hash];
     }
 
@@ -397,15 +501,29 @@ contract TellorPlayground {
      * @dev Returns the governance address of the contract
      * @return address (this address)
      */
-    function governance() external view returns(address){
+    function governance() external view returns (address) {
         return address(this);
     }
-    
+
+    /**
+     * @dev Returns whether a given value is disputed
+     * @param _queryId unique ID of the data feed
+     * @param _timestamp timestamp of the value
+     * @return bool whether the value is disputed
+     */
+    function isInDispute(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (bool)
+    {
+        return isDisputed[_queryId][_timestamp];
+    }
+
     /**
      * @dev Returns the name of the token.
      * @return string name of the token
      */
-    function name() public view returns (string memory) {
+    function name() external view returns (string memory) {
         return _name;
     }
 
@@ -416,7 +534,7 @@ contract TellorPlayground {
      * @return bytes value for queryId/timestamp submitted
      */
     function retrieveData(bytes32 _queryId, uint256 _timestamp)
-        public
+        external
         view
         returns (bytes memory)
     {
@@ -427,7 +545,7 @@ contract TellorPlayground {
      * @dev Returns the symbol of the token.
      * @return string symbol of the token
      */
-    function symbol() public view returns (string memory) {
+    function symbol() external view returns (string memory) {
         return _symbol;
     }
 
@@ -435,7 +553,7 @@ contract TellorPlayground {
      * @dev Returns the total supply of the token.
      * @return uint256 total supply of token
      */
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
 
@@ -450,7 +568,7 @@ contract TellorPlayground {
         address _owner,
         address _spender,
         uint256 _amount
-    ) internal virtual {
+    ) internal {
         require(_owner != address(0), "ERC20: approve from the zero address");
         require(_spender != address(0), "ERC20: approve to the zero address");
         _allowances[_owner][_spender] = _amount;
@@ -462,7 +580,7 @@ contract TellorPlayground {
      * @param _account The address whose tokens to burn
      * @param _amount The quantity of tokens to burn
      */
-    function _burn(address _account, uint256 _amount) internal virtual {
+    function _burn(address _account, uint256 _amount) internal{
         require(_account != address(0), "ERC20: burn from the zero address");
         _balances[_account] -= _amount;
         _totalSupply -= _amount;
@@ -474,7 +592,7 @@ contract TellorPlayground {
      * @param _account The address which receives minted tokens
      * @param _amount The quantity of tokens to min
      */
-    function _mint(address _account, uint256 _amount) internal virtual {
+    function _mint(address _account, uint256 _amount) internal{
         require(_account != address(0), "ERC20: mint to the zero address");
         _totalSupply += _amount;
         _balances[_account] += _amount;
@@ -491,12 +609,9 @@ contract TellorPlayground {
         address _sender,
         address _recipient,
         uint256 _amount
-    ) internal virtual {
+    ) internal{
         require(_sender != address(0), "ERC20: transfer from the zero address");
-        require(
-            _recipient != address(0),
-            "ERC20: transfer to the zero address"
-        );
+        require( _recipient != address(0),"ERC20: transfer to the zero address");
         _balances[_sender] -= _amount;
         _balances[_recipient] += _amount;
         emit Transfer(_sender, _recipient, _amount);
@@ -513,7 +628,7 @@ contract TellorPlayground {
         address _sender,
         address _recipient,
         uint256 _amount
-    ) internal virtual returns (bool) {
+    ) internal returns (bool) {
         _transfer(_sender, _recipient, _amount);
         _approve(
             _sender,
