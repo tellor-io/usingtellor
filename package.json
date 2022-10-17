@@ -1,6 +1,6 @@
 {
   "name": "usingtellor",
-  "version": "4.0.7",
+  "version": "5.0.0",
   "main": "hardhat.config.js",
   "directories": {
     "test": "test"
