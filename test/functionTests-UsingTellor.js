@@ -325,6 +325,8 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1].length).to.equal(1)
     expect(result[0][0]).to.equal(h.uintTob32(180))
     expect(result[1][0]).to.equal(blocky4.timestamp)
+
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky4.timestamp, 100, 3)
   })
 
   it("sliceUint", async() => {
