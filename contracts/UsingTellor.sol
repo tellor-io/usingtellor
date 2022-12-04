@@ -134,101 +134,124 @@ contract UsingTellor is IERC2362 {
     {
         console.log("*********** getIndexForDataAfter ***********");
         uint256 _count = getNewValueCountbyQueryId(_queryId);
-        if (_count > 0) {
-            _count--;
-            uint256 _middle;
-            uint256 _start = 0;
-            uint256 _end = _count;
-            uint256 _timestampRetrieved;
-            //Checking Boundaries to short-circuit the algorithm
-            _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _end);
-            if (_timestampRetrieved <= _timestamp) return (false, 0);
-            _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _start);
+        if (_count == 0) return (false, 0);
+        _count--;
+        bool _search = true; // perform binary search
+        uint256 _middle = 0;
+        uint256 _start = 0;
+        uint256 _end = _count;
+        uint256 _timestampRetrieved;
+        //Checking Boundaries to short-circuit the algorithm
+        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _end);
+        if (_timestampRetrieved <= _timestamp) return (false, 0);
+        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _start);
+        if (_timestampRetrieved > _timestamp) {
+            // candidate found, check for disputes
+            _search = false;
+            // if(!isInDispute(_queryId, _timestampRetrieved)) {
+            //     return (true, _start);
+            // } else {
+            //     while(isInDispute(_queryId, _timestampRetrieved) && _start < _count) {
+            //         _start++;
+            //         _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _start);
+            //     }
+            //     if(_start == _count && isInDispute(_queryId, _timestampRetrieved)) {
+            //         return (false, 0);
+            //     }
+            //     return (true, _start);
+            // }
+        }
+        //Since the value is within our boundaries, do a binary search
+        while (_search) {
+            console.log("@VAL_WITHIN_BOUNDARIES");
+            _middle = (_end - _start) / 2 + 1 + _start; // end + start / 2?
+            console.log("@START: %s, END: %s, MIDDLE: %s", _start, _end, _middle);
+            _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
             if (_timestampRetrieved > _timestamp) {
-                if(!isInDispute(_queryId, _timestampRetrieved)) {
-                    return (true, _start);
+                console.log("@TIMESTAMP_RETRIEVED GREATER_THAN TIMESTAMP");
+                //get immediate next value
+                uint256 _prevTime = getTimestampbyQueryIdandIndex(
+                    _queryId,
+                    _middle - 1
+                );
+                if (_prevTime <= _timestamp) {
+                    _search = false;
+                    // if(!isInDispute(_queryId, _timestampRetrieved)) {
+                    //     console.log("@TIMESTAMP_RETRIEVED NOT IN DISPUTE");
+                    //     // _timestampRetrieved is correct
+                    //     return (true, _middle);
+                    // } else {
+                    //     // iterate forward until we find a non-disputed value
+                    //     while(isInDispute(_queryId, _timestampRetrieved) && _middle < _count) {
+                    //         console.log("@TIMESTAMP_RETRIEVED IN DISPUTE");
+                    //         _middle++;
+                    //         _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
+                    //     }
+                    //     if(_middle == _count && isInDispute(_queryId, _timestampRetrieved)) {
+                    //         return (false, 0);
+                    //     }
+                    //     // _timestampRetrieved is correct
+                    //     return (true, _middle);
+                    // }
                 } else {
-                    while(isInDispute(_queryId, _timestampRetrieved) && _start < _count) {
-                        _start++;
-                        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _start);
-                    }
-                    if(_start == _count && isInDispute(_queryId, _timestampRetrieved)) {
-                        return (false, 0);
-                    }
-                    return (true, _start);
+                    //look from middle + 1(next value) to end
+                    _end = _middle - 1;
                 }
-            }
-            //Since the value is within our boundaries, do a binary search
-            while (true) {
-                console.log("@VAL_WITHIN_BOUNDARIES");
-                _middle = (_end - _start) / 2 + 1 + _start; // end + start / 2?
-                console.log("@START: %s, END: %s, MIDDLE: %s", _start, _end, _middle);
-                _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
-                if (_timestampRetrieved > _timestamp) {
-                    console.log("@TIMESTAMP_RETRIEVED GREATER_THAN TIMESTAMP");
-                    //get immediate next value
-                    uint256 _prevTime = getTimestampbyQueryIdandIndex(
-                        _queryId,
-                        _middle - 1
-                    );
-                    if (_prevTime <= _timestamp) {
-                        if(!isInDispute(_queryId, _timestampRetrieved)) {
-                            console.log("@TIMESTAMP_RETRIEVED NOT IN DISPUTE");
-                            // _timestampRetrieved is correct
-                            return (true, _middle);
-                        } else {
-                            // iterate forward until we find a non-disputed value
-                            while(isInDispute(_queryId, _timestampRetrieved) && _middle < _count) {
-                                console.log("@TIMESTAMP_RETRIEVED IN DISPUTE");
-                                _middle++;
-                                _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
-                            }
-                            if(_middle == _count && isInDispute(_queryId, _timestampRetrieved)) {
-                                return (false, 0);
-                            }
-                            // _timestampRetrieved is correct
-                            return (true, _middle);
-                        }
-                    } else {
-                        //look from middle + 1(next value) to end
-                        _end = _middle - 1;
-                    }
+            } else {
+                console.log("@TIMESTAMP_RETRIEVED LESS_THAN_OR_EQUAL_TO TIMESTAMP");
+                uint256 _nextTime = getTimestampbyQueryIdandIndex(
+                    _queryId,
+                    _middle + 1
+                );
+                if (_nextTime > _timestamp) {
+                    _search = false;
+                    _middle++;
+                    _timestampRetrieved = _nextTime;
+                    // if(!isInDispute(_queryId, _nextTime)) {
+                    //     console.log("@NEXT_TIMESTAMP NOT IN DISPUTE");
+                    //     // _nextTime is correct
+                    //     return (true, _middle + 1);
+                    // } else {
+                    //     // iterate forward until we find a non-disputed value
+                    //     _middle++;
+                    //     while(isInDispute(_queryId, _nextTime) && _middle < _count) {
+                    //         console.log("@NEXT_TIMESTAMP IN DISPUTE");
+                    //         _middle++;
+                    //         _nextTime = getTimestampbyQueryIdandIndex(
+                    //             _queryId,
+                    //             _middle
+                    //         );
+                    //     }
+                    //     if(_middle == _count && isInDispute(_queryId, _nextTime)) {
+                    //         return (false, 0);
+                    //     }
+                    //     // _nextTime is correct
+                    //     return (true, _middle);
+                    // }
                 } else {
-                    console.log("@TIMESTAMP_RETRIEVED LESS_THAN_OR_EQUAL_TO TIMESTAMP");
-                    uint256 _nextTime = getTimestampbyQueryIdandIndex(
-                        _queryId,
-                        _middle + 1
-                    );
-                    if (_nextTime > _timestamp) {
-                        if(!isInDispute(_queryId, _nextTime)) {
-                            console.log("@NEXT_TIMESTAMP NOT IN DISPUTE");
-                            // _nextTime is correct
-                            return (true, _middle + 1);
-                        } else {
-                            // iterate forward until we find a non-disputed value
-                            _middle++;
-                            while(isInDispute(_queryId, _nextTime) && _middle < _count) {
-                                console.log("@NEXT_TIMESTAMP IN DISPUTE");
-                                _middle++;
-                                _nextTime = getTimestampbyQueryIdandIndex(
-                                    _queryId,
-                                    _middle
-                                );
-                            }
-                            if(_middle == _count && isInDispute(_queryId, _nextTime)) {
-                                return (false, 0);
-                            }
-                            // _nextTime is correct
-                            return (true, _middle);
-                        }
-                    } else {
-                        //look from start to middle -1(prev value)
-                        _start = _middle + 1;
-                    }
+                    //look from start to middle -1(prev value)
+                    _start = _middle + 1;
                 }
             }
         }
-        return (false, 0);
+        // candidate found, check for disputed values
+        if(!isInDispute(_queryId, _timestampRetrieved)) {
+            console.log("@TIMESTAMP_RETRIEVED NOT IN DISPUTE");
+            // _timestampRetrieved is correct
+            return (true, _middle);
+        } else {
+            // iterate forward until we find a non-disputed value
+            while(isInDispute(_queryId, _timestampRetrieved) && _middle < _count) {
+                console.log("@TIMESTAMP_RETRIEVED IN DISPUTE");
+                _middle++;
+                _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
+            }
+            if(_middle == _count && isInDispute(_queryId, _timestampRetrieved)) {
+                return (false, 0);
+            }
+            // _timestampRetrieved is correct
+            return (true, _middle);
+        }
     }
 
     /**

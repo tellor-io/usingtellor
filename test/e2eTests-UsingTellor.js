@@ -205,8 +205,20 @@ describe("UsingTellor Function Tests", function() {
    
   })
 
+  it("query")
+
   // cases:
+  //   - no data
+  //   - one data point
+  //   - two data points
   //   - last submitted value's timestamp is before the requested timestamp
   //   - first submitted value's timestamp is after the requested timestamp
-  //   - 
-});
+  //   - "", is disputed, next value is not disputed
+  //   - "", is disputed, next value is disputed
+  //   - target value is in bottom half of values
+  //   - target value is in top half of values
+  //   - target value is in bottom half of values, but is disputed
+  //   - target value is in top half of values, but is disputed
+  //   - target value is in bottom half of values, but is disputed, and next value is disputed
+  //   - target value is in top half of values, but is disputed, and next value is disputed
+  //   - middle value == inputted timestamp
