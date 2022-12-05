@@ -87,7 +87,7 @@ contract UsingTellor is IERC2362 {
         uint256 _start = 0;
         uint256 _end = _count;
         uint256 _timestampRetrieved;
-        //Checking Boundaries to short-circuit the algorithm
+        // checking boundaries to short-circuit the algorithm
         _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _end);
         if (_timestampRetrieved <= _timestamp) return (false, 0);
         _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _start);
@@ -95,33 +95,36 @@ contract UsingTellor is IERC2362 {
             // candidate found, check for disputes
             _search = false;
         }
-        //Since the value is within our boundaries, do a binary search
+        // since the value is within our boundaries, do a binary search
         while (_search) {
             _middle = (_end + _start) / 2;
             _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
             if (_timestampRetrieved > _timestamp) {
-                //get immediate next value
+                // get immediate previous value
                 uint256 _prevTime = getTimestampbyQueryIdandIndex(
                     _queryId,
                     _middle - 1
                 );
                 if (_prevTime <= _timestamp) {
+                    // candidate found, check for disputes
                     _search = false;
                 } else {
-                    //look from middle + 1(next value) to end
+                    // look from start to middle -1(prev value)
                     _end = _middle - 1;
                 }
             } else {
+                // get immediate next value
                 uint256 _nextTime = getTimestampbyQueryIdandIndex(
                     _queryId,
                     _middle + 1
                 );
                 if (_nextTime > _timestamp) {
+                    // candidate found, check for disputes
                     _search = false;
                     _middle++;
                     _timestampRetrieved = _nextTime;
                 } else {
-                    //look from start to middle -1(prev value)
+                    // look from middle + 1(next value) to end
                     _start = _middle + 1;
                 }
             }
