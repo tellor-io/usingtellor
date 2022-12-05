@@ -4,7 +4,6 @@ pragma solidity >=0.8.0;
 import "./interface/ITellor.sol";
 import "./interface/IERC2362.sol";
 import "./interface/IMappingContract.sol";
-import "hardhat/console.sol";
 
 /**
  @author Tellor Inc
@@ -41,7 +40,6 @@ contract UsingTellor is IERC2362 {
             _queryId,
             _timestamp
         );
-        console.log("Found: %s, Index: %s", _found, _index);
         if (!_found) {
             return ("", 0);
         }
@@ -69,57 +67,6 @@ contract UsingTellor is IERC2362 {
     }
 
     /**
-     * @dev Retrieves next array index of data after the specified timestamp for the queryId
-     * @param _queryId is the queryId to look up the index for
-     * @param _timestamp is the timestamp after which to search for the next index
-     * @return _found whether the index was found
-     * @return _index the next index found after the specified timestamp
-     */
-    function getIndexForDataAfterOld(bytes32 _queryId, uint256 _timestamp)
-        public
-        view
-        returns (bool _found, uint256 _index)
-    {
-        (_found, _index) = tellor.getIndexForDataBefore(_queryId, _timestamp);
-        if (_found) {
-            _index++;
-        }
-        uint256 _valCount = tellor.getNewValueCountbyQueryId(_queryId);
-        // no value after timestamp
-        if (_valCount <= _index) {
-            return (false, 0);
-        }
-        uint256 _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(
-            _queryId,
-            _index
-        );
-        // if _timestampRetrieved equals _timestamp, try next value
-        if (_timestampRetrieved <= _timestamp) {
-            _index++;
-            // no value after timestamp
-            if(_valCount <= _index) {
-                return (false, 0);
-            }
-            _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(
-                _queryId,
-                _index
-            );
-        }
-        // check for disputed values
-        while(isInDispute(_queryId, _timestampRetrieved)) {
-            _index++;
-            if(_valCount <= _index) {
-                return (false, 0);
-            }
-            _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(
-                _queryId,
-                _index
-            );
-        }
-        return (true, _index);
-    }
-
-    /**
      * @dev Retrieves latest array index of data before the specified timestamp for the queryId
      * @param _queryId is the queryId to look up the index for
      * @param _timestamp is the timestamp before which to search for the latest index
@@ -132,7 +79,6 @@ contract UsingTellor is IERC2362 {
         view
         returns (bool _found, uint256 _index)
     {
-        console.log("*********** getIndexForDataAfter ***********");
         uint256 _count = getNewValueCountbyQueryId(_queryId);
         if (_count == 0) return (false, 0);
         _count--;
@@ -148,27 +94,12 @@ contract UsingTellor is IERC2362 {
         if (_timestampRetrieved > _timestamp) {
             // candidate found, check for disputes
             _search = false;
-            // if(!isInDispute(_queryId, _timestampRetrieved)) {
-            //     return (true, _start);
-            // } else {
-            //     while(isInDispute(_queryId, _timestampRetrieved) && _start < _count) {
-            //         _start++;
-            //         _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _start);
-            //     }
-            //     if(_start == _count && isInDispute(_queryId, _timestampRetrieved)) {
-            //         return (false, 0);
-            //     }
-            //     return (true, _start);
-            // }
         }
         //Since the value is within our boundaries, do a binary search
         while (_search) {
-            console.log("@VAL_WITHIN_BOUNDARIES");
-            _middle = (_end - _start) / 2 + 1 + _start; // end + start / 2?
-            console.log("@START: %s, END: %s, MIDDLE: %s", _start, _end, _middle);
+            _middle = (_end + _start) / 2;
             _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
             if (_timestampRetrieved > _timestamp) {
-                console.log("@TIMESTAMP_RETRIEVED GREATER_THAN TIMESTAMP");
                 //get immediate next value
                 uint256 _prevTime = getTimestampbyQueryIdandIndex(
                     _queryId,
@@ -176,29 +107,11 @@ contract UsingTellor is IERC2362 {
                 );
                 if (_prevTime <= _timestamp) {
                     _search = false;
-                    // if(!isInDispute(_queryId, _timestampRetrieved)) {
-                    //     console.log("@TIMESTAMP_RETRIEVED NOT IN DISPUTE");
-                    //     // _timestampRetrieved is correct
-                    //     return (true, _middle);
-                    // } else {
-                    //     // iterate forward until we find a non-disputed value
-                    //     while(isInDispute(_queryId, _timestampRetrieved) && _middle < _count) {
-                    //         console.log("@TIMESTAMP_RETRIEVED IN DISPUTE");
-                    //         _middle++;
-                    //         _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
-                    //     }
-                    //     if(_middle == _count && isInDispute(_queryId, _timestampRetrieved)) {
-                    //         return (false, 0);
-                    //     }
-                    //     // _timestampRetrieved is correct
-                    //     return (true, _middle);
-                    // }
                 } else {
                     //look from middle + 1(next value) to end
                     _end = _middle - 1;
                 }
             } else {
-                console.log("@TIMESTAMP_RETRIEVED LESS_THAN_OR_EQUAL_TO TIMESTAMP");
                 uint256 _nextTime = getTimestampbyQueryIdandIndex(
                     _queryId,
                     _middle + 1
@@ -207,27 +120,6 @@ contract UsingTellor is IERC2362 {
                     _search = false;
                     _middle++;
                     _timestampRetrieved = _nextTime;
-                    // if(!isInDispute(_queryId, _nextTime)) {
-                    //     console.log("@NEXT_TIMESTAMP NOT IN DISPUTE");
-                    //     // _nextTime is correct
-                    //     return (true, _middle + 1);
-                    // } else {
-                    //     // iterate forward until we find a non-disputed value
-                    //     _middle++;
-                    //     while(isInDispute(_queryId, _nextTime) && _middle < _count) {
-                    //         console.log("@NEXT_TIMESTAMP IN DISPUTE");
-                    //         _middle++;
-                    //         _nextTime = getTimestampbyQueryIdandIndex(
-                    //             _queryId,
-                    //             _middle
-                    //         );
-                    //     }
-                    //     if(_middle == _count && isInDispute(_queryId, _nextTime)) {
-                    //         return (false, 0);
-                    //     }
-                    //     // _nextTime is correct
-                    //     return (true, _middle);
-                    // }
                 } else {
                     //look from start to middle -1(prev value)
                     _start = _middle + 1;
@@ -236,13 +128,11 @@ contract UsingTellor is IERC2362 {
         }
         // candidate found, check for disputed values
         if(!isInDispute(_queryId, _timestampRetrieved)) {
-            console.log("@TIMESTAMP_RETRIEVED NOT IN DISPUTE");
             // _timestampRetrieved is correct
             return (true, _middle);
         } else {
             // iterate forward until we find a non-disputed value
             while(isInDispute(_queryId, _timestampRetrieved) && _middle < _count) {
-                console.log("@TIMESTAMP_RETRIEVED IN DISPUTE");
                 _middle++;
                 _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
             }

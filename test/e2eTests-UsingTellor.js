@@ -4,9 +4,6 @@ const h = require("./helpers/helpers");
 const web3 = require('web3');
 let abiCoder = new ethers.utils.AbiCoder
 
-const precision = BigInt(1e18);
-const FAUCET_AMOUNT = BigInt(1000) * precision;
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const QUERY_DATA_1 = h.uintTob32(1);
 const QUERY_ID_1 = h.hash(QUERY_DATA_1);
 
@@ -33,179 +30,6 @@ describe("UsingTellor Function Tests", function() {
 
 		[owner, addr1, addr2] = await ethers.getSigners();
 	});
-
-  it("test getDataBefore and disputed data", async function() {
-    let queryData = h.uintTob32(1);
-    let queryId = h.hash(queryData);
-
-    await playground.connect(addr1).submitValue(queryId,150,0,queryData)
-    blocky1 = await h.getBlock()
-    await playground.connect(addr1).submitValue(queryId,160,1,queryData)
-    blocky2 = await h.getBlock()
-    await playground.connect(addr1).submitValue(queryId,170,2,queryData)
-    blocky3 = await h.getBlock()
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky3.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(160))
-    expect(dataRetrieved[1]).to.equal(blocky2.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky2.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky1.timestamp)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky3.timestamp + 1)
-    expect(dataRetrieved[0]).to.equal(h.bytes(170))
-    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
-    
-
-    // dispute the middle value
-    await playground.connect(addr1).beginDispute(queryId, blocky2.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky3.timestamp + 1)
-    expect(dataRetrieved[0]).to.equal(h.bytes(170))
-    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky3.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky2.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky1.timestamp)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-
-
-    // dispute the last value
-    await playground.connect(addr1).beginDispute(queryId, blocky3.timestamp)
-    
-    dataRetrieved = await bench.getDataBefore(queryId,blocky3.timestamp + 1)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky3.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky2.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky1.timestamp)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-
-
-    // dispute the first value
-    await playground.connect(addr1).beginDispute(queryId, blocky1.timestamp)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky3.timestamp + 1)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky3.timestamp)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky2.timestamp)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-
-    dataRetrieved = await bench.getDataBefore(queryId,blocky1.timestamp)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-  })
-
-  it("test getDataAfter and disputed data", async function() {
-    let queryData = h.uintTob32(1);
-    let queryId = h.hash(queryData);
-
-    await playground.connect(addr1).submitValue(queryId,150,0,queryData)
-    blocky1 = await h.getBlock()
-    await playground.connect(addr1).submitValue(queryId,160,1,queryData)
-    blocky2 = await h.getBlock()
-    await playground.connect(addr1).submitValue(queryId,170,2,queryData)
-    blocky3 = await h.getBlock()
-
-    dataRetrieved = await bench.getDataAfter(queryId,blocky3.timestamp)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-
-    dataRetrieved = await bench.getDataAfter(queryId,blocky2.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(170))
-    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
-
-    dataRetrieved = await bench.getDataAfter(queryId,blocky1.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(160))
-    expect(dataRetrieved[1]).to.equal(blocky2.timestamp)
-
-    dataRetrieved = await bench.getDataAfter(queryId,blocky1.timestamp - 1)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-    
-
-    // dispute the middle value
-    console.log("\ndispute the middle value")
-    await playground.connect(addr1).beginDispute(queryId, blocky2.timestamp)
-
-    console.log("\ndataRetrieved = await bench.getDataAfter(queryId,block1.timestamp - 1)")
-    dataRetrieved = await bench.getDataAfter(queryId,blocky1.timestamp - 1)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-
-    console.log("\ndataRetrieved = await bench.getDataAfter(queryId,blocky1.timestamp)")
-    dataRetrieved = await bench.getDataAfter(queryId,blocky1.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(170))
-    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
-
-    dataRetrieved = await bench.getDataAfter(queryId,blocky2.timestamp)
-    expect(dataRetrieved[0]).to.equal(h.bytes(170))
-    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
-
-    dataRetrieved = await bench.getDataAfter(queryId,blocky3.timestamp)
-    expect(dataRetrieved[0]).to.equal('0x')
-    expect(dataRetrieved[1]).to.equal(0)
-
-
-   
-  })
-
-  it("lil test", async function() {
-    let queryData = h.uintTob32(1);
-    let queryId = h.hash(queryData);
-
-    await playground.connect(addr1).submitValue(queryId,150,0,queryData)
-    blocky1 = await h.getBlock()
-    await playground.connect(addr1).submitValue(queryId,160,1,queryData)
-    blocky2 = await h.getBlock()
-    await playground.connect(addr1).submitValue(queryId,170,2,queryData)
-    blocky3 = await h.getBlock()
-
-    // dispute the middle value
-    console.log("\ndispute the middle value")
-    await playground.connect(addr1).beginDispute(queryId, blocky2.timestamp)
-
-    console.log("\ndataRetrieved = await bench.getDataAfter(queryId,block1.timestamp - 1)")
-    dataRetrieved = await bench.getDataAfter(queryId,blocky1.timestamp - 1)
-    expect(dataRetrieved[0]).to.equal(h.bytes(150))
-    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
-
-    console.log("\ndataRetrieved = await bench.getDataAfter(queryId,blocky1.timestamp)")
-    dataRetrieved = await bench.getDataAfter(queryId,blocky1.timestamp)
-    index = await bench.getIndexForDataAfter(queryId,blocky1.timestamp)
-    console.log("found: ",index[0])
-    console.log("index: ",index[1])
-    expect(dataRetrieved[0]).to.equal(h.bytes(170))
-    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
-
-   
-  })
 
   it("getDataAfter without disputes", async function() {
     // setup
@@ -811,21 +635,178 @@ describe("UsingTellor Function Tests", function() {
     expect(dataRetrieved[0]).to.equal('0x')
     expect(dataRetrieved[1]).to.equal(0)
 
+
+    // non-disputed, disputed, non-disputed, non-disputed
+    queryData2 = h.uintTob32(2)
+    queryId2 = h.hash(queryData2)
+
+    await playground.submitValue(queryId2, 150, 0, queryData2)
+    blocky1 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId2, 160, 1, queryData2)
+    blocky2 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId2, 170, 2, queryData2)
+    blocky3 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId2, 180, 3, queryData2)
+    blocky4 = await h.getBlock()
+
+    await playground.beginDispute(queryId2, blocky2.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky1.timestamp - 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(150))
+    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky1.timestamp)
+    expect(dataRetrieved[0]).to.equal(h.bytes(170))
+    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky1.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(170))
+    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
+    
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky2.timestamp)
+    expect(dataRetrieved[0]).to.equal(h.bytes(170))
+    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky2.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(170))
+    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky3.timestamp)
+    expect(dataRetrieved[0]).to.equal(h.bytes(180))
+    expect(dataRetrieved[1]).to.equal(blocky4.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky3.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(180))
+    expect(dataRetrieved[1]).to.equal(blocky4.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky4.timestamp)
+    expect(dataRetrieved[0]).to.equal('0x')
+    expect(dataRetrieved[1]).to.equal(0)
+
+    dataRetrieved = await bench.getDataAfter(queryId2, blocky4.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal('0x')
+    expect(dataRetrieved[1]).to.equal(0)
+
+
+    // non-disputed, non-disputed, disputed, non-disputed
+    queryData3 = h.uintTob32(3)
+    queryId3 = h.hash(queryData3)
+
+    await playground.submitValue(queryId3, 150, 0, queryData3)
+    blocky1 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId3, 160, 1, queryData3)
+    blocky2 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId3, 170, 2, queryData3)
+    blocky3 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId3, 180, 3, queryData3)
+    blocky4 = await h.getBlock()
+
+    await playground.beginDispute(queryId3, blocky3.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky1.timestamp - 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(150))
+    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
+    
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky1.timestamp)
+    expect(dataRetrieved[0]).to.equal(h.bytes(160))
+    expect(dataRetrieved[1]).to.equal(blocky2.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky1.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(160))
+    expect(dataRetrieved[1]).to.equal(blocky2.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky2.timestamp)
+    expect(dataRetrieved[0]).to.equal(h.bytes(180))
+    expect(dataRetrieved[1]).to.equal(blocky4.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky2.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(180))
+    expect(dataRetrieved[1]).to.equal(blocky4.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky3.timestamp)
+    expect(dataRetrieved[0]).to.equal(h.bytes(180))
+    expect(dataRetrieved[1]).to.equal(blocky4.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky3.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(180))
+    expect(dataRetrieved[1]).to.equal(blocky4.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky4.timestamp)
+    expect(dataRetrieved[0]).to.equal('0x')
+    expect(dataRetrieved[1]).to.equal(0)
+
+    dataRetrieved = await bench.getDataAfter(queryId3, blocky4.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal('0x')
+    expect(dataRetrieved[1]).to.equal(0)
+
+
+    // non-disputed, non-disputed, non-disputed, disputed
+    queryData4 = h.uintTob32(4)
+    queryId4 = h.hash(queryData4)
+
+    await playground.submitValue(queryId4, 150, 0, queryData4)
+    blocky1 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId4, 160, 1, queryData4)
+    blocky2 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId4, 170, 2, queryData4)
+    blocky3 = await h.getBlock()
+
+    await h.advanceTime(10)
+    await playground.submitValue(queryId4, 180, 3, queryData4)
+    blocky4 = await h.getBlock()
+
+    await playground.beginDispute(queryId4, blocky4.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky1.timestamp - 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(150))
+    expect(dataRetrieved[1]).to.equal(blocky1.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky1.timestamp)
+    expect(dataRetrieved[0]).to.equal(h.bytes(160))
+    expect(dataRetrieved[1]).to.equal(blocky2.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky1.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(160))
+    expect(dataRetrieved[1]).to.equal(blocky2.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky2.timestamp)
+    expect(dataRetrieved[0]).to.equal(h.bytes(170))
+    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky2.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal(h.bytes(170))
+    expect(dataRetrieved[1]).to.equal(blocky3.timestamp)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky3.timestamp)
+    expect(dataRetrieved[0]).to.equal('0x')
+    expect(dataRetrieved[1]).to.equal(0)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky3.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal('0x')
+    expect(dataRetrieved[1]).to.equal(0)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky4.timestamp)
+    expect(dataRetrieved[0]).to.equal('0x')
+    expect(dataRetrieved[1]).to.equal(0)
+
+    dataRetrieved = await bench.getDataAfter(queryId4, blocky4.timestamp + 1)
+    expect(dataRetrieved[0]).to.equal('0x')
+    expect(dataRetrieved[1]).to.equal(0)
   })
 })
-
-  // cases:
-  //   - no data
-  //   - one data point
-  //   - two data points
-  //   - last submitted value's timestamp is before the requested timestamp
-  //   - first submitted value's timestamp is after the requested timestamp
-  //   - "", is disputed, next value is not disputed
-  //   - "", is disputed, next value is disputed
-  //   - target value is in bottom half of values
-  //   - target value is in top half of values
-  //   - target value is in bottom half of values, but is disputed
-  //   - target value is in top half of values, but is disputed
-  //   - target value is in bottom half of values, but is disputed, and next value is disputed
-  //   - target value is in top half of values, but is disputed, and next value is disputed
-  //   - middle value == inputted timestamp
