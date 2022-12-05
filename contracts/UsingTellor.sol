@@ -67,44 +67,84 @@ contract UsingTellor is IERC2362 {
     }
 
     /**
-     * @dev Retrieves next array index of data after the specified timestamp for the queryId
+     * @dev Retrieves latest array index of data before the specified timestamp for the queryId
      * @param _queryId is the queryId to look up the index for
-     * @param _timestamp is the timestamp after which to search for the next index
+     * @param _timestamp is the timestamp before which to search for the latest index
      * @return _found whether the index was found
-     * @return _index the next index found after the specified timestamp
+     * @return _index the latest index found before the specified timestamp
      */
+    // slither-disable-next-line calls-loop
     function getIndexForDataAfter(bytes32 _queryId, uint256 _timestamp)
         public
         view
         returns (bool _found, uint256 _index)
     {
-        (_found, _index) = tellor.getIndexForDataBefore(_queryId, _timestamp);
-        if (_found) {
-            _index++;
-        }
-        uint256 _valCount = tellor.getNewValueCountbyQueryId(_queryId);
-        // no value after timestamp
-        if (_valCount <= _index) {
-            return (false, 0);
-        }
-        uint256 _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(
-            _queryId,
-            _index
-        );
+        uint256 _count = getNewValueCountbyQueryId(_queryId);
+        if (_count == 0) return (false, 0);
+        _count--;
+        bool _search = true; // perform binary search
+        uint256 _middle = 0;
+        uint256 _start = 0;
+        uint256 _end = _count;
+        uint256 _timestampRetrieved;
+        // checking boundaries to short-circuit the algorithm
+        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _end);
+        if (_timestampRetrieved <= _timestamp) return (false, 0);
+        _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _start);
         if (_timestampRetrieved > _timestamp) {
-            return (true, _index);
+            // candidate found, check for disputes
+            _search = false;
         }
-        // if _timestampRetrieved equals _timestamp, try next value
-        _index++;
-        // no value after timestamp
-        if (_valCount <= _index) {
-            return (false, 0);
+        // since the value is within our boundaries, do a binary search
+        while (_search) {
+            _middle = (_end + _start) / 2;
+            _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
+            if (_timestampRetrieved > _timestamp) {
+                // get immediate previous value
+                uint256 _prevTime = getTimestampbyQueryIdandIndex(
+                    _queryId,
+                    _middle - 1
+                );
+                if (_prevTime <= _timestamp) {
+                    // candidate found, check for disputes
+                    _search = false;
+                } else {
+                    // look from start to middle -1(prev value)
+                    _end = _middle - 1;
+                }
+            } else {
+                // get immediate next value
+                uint256 _nextTime = getTimestampbyQueryIdandIndex(
+                    _queryId,
+                    _middle + 1
+                );
+                if (_nextTime > _timestamp) {
+                    // candidate found, check for disputes
+                    _search = false;
+                    _middle++;
+                    _timestampRetrieved = _nextTime;
+                } else {
+                    // look from middle + 1(next value) to end
+                    _start = _middle + 1;
+                }
+            }
         }
-        _timestampRetrieved = tellor.getTimestampbyQueryIdandIndex(
-            _queryId,
-            _index
-        );
-        return (true, _index);
+        // candidate found, check for disputed values
+        if(!isInDispute(_queryId, _timestampRetrieved)) {
+            // _timestampRetrieved is correct
+            return (true, _middle);
+        } else {
+            // iterate forward until we find a non-disputed value
+            while(isInDispute(_queryId, _timestampRetrieved) && _middle < _count) {
+                _middle++;
+                _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
+            }
+            if(_middle == _count && isInDispute(_queryId, _timestampRetrieved)) {
+                return (false, 0);
+            }
+            // _timestampRetrieved is correct
+            return (true, _middle);
+        }
     }
 
     /**
