@@ -98,7 +98,10 @@ contract UsingTellor is IERC2362 {
         // since the value is within our boundaries, do a binary search
         while (_search) {
             _middle = (_end + _start) / 2;
-            _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
+            _timestampRetrieved = getTimestampbyQueryIdandIndex(
+                _queryId,
+                _middle
+            );
             if (_timestampRetrieved > _timestamp) {
                 // get immediate previous value
                 uint256 _prevTime = getTimestampbyQueryIdandIndex(
@@ -130,16 +133,23 @@ contract UsingTellor is IERC2362 {
             }
         }
         // candidate found, check for disputed values
-        if(!isInDispute(_queryId, _timestampRetrieved)) {
+        if (!isInDispute(_queryId, _timestampRetrieved)) {
             // _timestampRetrieved is correct
             return (true, _middle);
         } else {
             // iterate forward until we find a non-disputed value
-            while(isInDispute(_queryId, _timestampRetrieved) && _middle < _count) {
+            while (
+                isInDispute(_queryId, _timestampRetrieved) && _middle < _count
+            ) {
                 _middle++;
-                _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
+                _timestampRetrieved = getTimestampbyQueryIdandIndex(
+                    _queryId,
+                    _middle
+                );
             }
-            if(_middle == _count && isInDispute(_queryId, _timestampRetrieved)) {
+            if (
+                _middle == _count && isInDispute(_queryId, _timestampRetrieved)
+            ) {
                 return (false, 0);
             }
             // _timestampRetrieved is correct
@@ -202,9 +212,12 @@ contract UsingTellor is IERC2362 {
         uint256 _index = 0;
         uint256[] memory _timestampsArrayTemp = new uint256[](_maxCount);
         // generate array of non-disputed timestamps within range
-        while(_valCount < _maxCount && _endIndex + 1 - _index > _startIndex) {
-            uint256 _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _endIndex - _index);
-            if(!isInDispute(_queryId, _timestampRetrieved)) {
+        while (_valCount < _maxCount && _endIndex + 1 - _index > _startIndex) {
+            uint256 _timestampRetrieved = getTimestampbyQueryIdandIndex(
+                _queryId,
+                _endIndex - _index
+            );
+            if (!isInDispute(_queryId, _timestampRetrieved)) {
                 _timestampsArrayTemp[_valCount] = _timestampRetrieved;
                 _valCount++;
             }
@@ -289,15 +302,14 @@ contract UsingTellor is IERC2362 {
         return tellor.retrieveData(_queryId, _timestamp);
     }
 
-
     /**
      * @dev allows dev to set mapping contract for valueFor (EIP2362)
      * @param _addy address of mapping contract
      */
-     function setIdMappingContract(address _addy) external{
-         require(address(idMappingContract) == address(0));
-         idMappingContract = IMappingContract(_addy); 
-     }
+    function setIdMappingContract(address _addy) external {
+        require(address(idMappingContract) == address(0));
+        idMappingContract = IMappingContract(_addy);
+    }
 
     /**
      * @dev Retrieve most recent int256 value from oracle based on queryId
@@ -337,7 +349,11 @@ contract UsingTellor is IERC2362 {
      * @param _b bytes value to convert to uint256
      * @return _number uint256 converted from bytes
      */
-    function _sliceUint(bytes memory _b) internal pure returns(uint256 _number){
+    function _sliceUint(bytes memory _b)
+        internal
+        pure
+        returns (uint256 _number)
+    {
         for (uint256 _i = 0; _i < _b.length; _i++) {
             _number = _number * 256 + uint8(_b[_i]);
         }
