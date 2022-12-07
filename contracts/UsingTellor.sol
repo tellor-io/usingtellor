@@ -226,6 +226,7 @@ contract UsingTellor is IERC2362 {
 
         bytes[] memory _valuesArray = new bytes[](_valCount);
         uint256[] memory _timestampsArray = new uint256[](_valCount);
+        // retrieve values and reverse timestamps order
         for (uint256 _i = 0; _i < _valCount; _i++) {
             _timestampsArray[_i] = _timestampsArrayTemp[_valCount - 1 - _i];
             _valuesArray[_i] = retrieveData(_queryId, _timestampsArray[_i]);
@@ -328,14 +329,13 @@ contract UsingTellor is IERC2362 {
             uint256 _statusCode
         )
     {
-        _id = idMappingContract.getTellorID(_id);
-        uint256 _count = getNewValueCountbyQueryId(_id);
-        if (_count == 0) {
-            return (0, 0, 404);
-        }
-        _timestamp = getTimestampbyQueryIdandIndex(_id, _count - 1);
-        bytes memory _valueBytes = retrieveData(_id, _timestamp);
-        if (_valueBytes.length == 0) {
+        bytes32 _queryId = idMappingContract.getTellorID(_id);
+        bytes memory _valueBytes;
+        (_valueBytes, _timestamp) = getDataBefore(
+            _queryId,
+            block.timestamp + 1
+        );
+        if (_timestamp == 0) {
             return (0, 0, 404);
         }
         uint256 _valueUint = _sliceUint(_valueBytes);
