@@ -809,4 +809,101 @@ describe("UsingTellor Function Tests", function() {
     expect(dataRetrieved[0]).to.equal('0x')
     expect(dataRetrieved[1]).to.equal(0)
   })
+
+  it("getMultipleValuesBefore", async function() {
+    // submit 4 values
+    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(150),0,'0x')
+    blocky1 = await h.getBlock()
+    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(160),0,'0x')
+    blocky2 = await h.getBlock()
+    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(170),0,'0x')
+    blocky3 = await h.getBlock()
+    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(180),0,'0x')
+    blocky4 = await h.getBlock()
+
+    await h.advanceTime(10)
+    blockyNow0 = await h.getBlock()
+
+    // dispute 2nd value
+    await playground.connect(addr1).beginDispute(h.uintTob32(1), blocky2.timestamp)
+
+    // check from blockyNow
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(3)
+    expect(result[1].length).to.equal(3)
+    expect(result[0][0]).to.equal(h.uintTob32(150))
+    expect(result[1][0]).to.equal(blocky1.timestamp)
+    expect(result[0][1]).to.equal(h.uintTob32(170))
+    expect(result[1][1]).to.equal(blocky3.timestamp)
+    expect(result[0][2]).to.equal(h.uintTob32(180))
+    expect(result[1][2]).to.equal(blocky4.timestamp)
+
+    // check from blocky4
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky4.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(2)
+    expect(result[1].length).to.equal(2)
+    expect(result[0][0]).to.equal(h.uintTob32(150))
+    expect(result[1][0]).to.equal(blocky1.timestamp)
+    expect(result[0][1]).to.equal(h.uintTob32(170))
+    expect(result[1][1]).to.equal(blocky3.timestamp)
+
+    // check from blocky3
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky3.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(1)
+    expect(result[1].length).to.equal(1)
+    expect(result[0][0]).to.equal(h.uintTob32(150))
+    expect(result[1][0]).to.equal(blocky1.timestamp)
+
+    // check from blocky2
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky2.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(1)
+    expect(result[1].length).to.equal(1)
+    expect(result[0][0]).to.equal(h.uintTob32(150))
+    expect(result[1][0]).to.equal(blocky1.timestamp)
+
+    // check from blocky1
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky1.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(0)
+    expect(result[1].length).to.equal(0)
+
+    // dispute 3rd value
+    await playground.connect(addr1).beginDispute(h.uintTob32(1), blocky3.timestamp)
+
+    // check from blockyNow
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(2)
+    expect(result[1].length).to.equal(2)
+    expect(result[0][0]).to.equal(h.uintTob32(150))
+    expect(result[1][0]).to.equal(blocky1.timestamp)
+    expect(result[0][1]).to.equal(h.uintTob32(180))
+    expect(result[1][1]).to.equal(blocky4.timestamp)
+
+    // check from blocky4
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky4.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(1)
+    expect(result[1].length).to.equal(1)
+    expect(result[0][0]).to.equal(h.uintTob32(150))
+    expect(result[1][0]).to.equal(blocky1.timestamp)
+
+    // check from blocky3
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky3.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(1)
+    expect(result[1].length).to.equal(1)
+    expect(result[0][0]).to.equal(h.uintTob32(150))
+    expect(result[1][0]).to.equal(blocky1.timestamp)
+
+    // check from blocky2
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky2.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(1)
+    expect(result[1].length).to.equal(1)
+    expect(result[0][0]).to.equal(h.uintTob32(150))
+    expect(result[1][0]).to.equal(blocky1.timestamp)
+
+    // check from blocky1
+    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky1.timestamp, 3600, 4)
+    expect(result[0].length).to.equal(0)
+    expect(result[1].length).to.equal(0)
+    
+
+  })
 })
