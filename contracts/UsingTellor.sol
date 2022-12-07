@@ -98,7 +98,10 @@ contract UsingTellor is IERC2362 {
         // since the value is within our boundaries, do a binary search
         while (_search) {
             _middle = (_end + _start) / 2;
-            _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
+            _timestampRetrieved = getTimestampbyQueryIdandIndex(
+                _queryId,
+                _middle
+            );
             if (_timestampRetrieved > _timestamp) {
                 // get immediate previous value
                 uint256 _prevTime = getTimestampbyQueryIdandIndex(
@@ -130,16 +133,23 @@ contract UsingTellor is IERC2362 {
             }
         }
         // candidate found, check for disputed values
-        if(!isInDispute(_queryId, _timestampRetrieved)) {
+        if (!isInDispute(_queryId, _timestampRetrieved)) {
             // _timestampRetrieved is correct
             return (true, _middle);
         } else {
             // iterate forward until we find a non-disputed value
-            while(isInDispute(_queryId, _timestampRetrieved) && _middle < _count) {
+            while (
+                isInDispute(_queryId, _timestampRetrieved) && _middle < _count
+            ) {
                 _middle++;
-                _timestampRetrieved = getTimestampbyQueryIdandIndex(_queryId, _middle);
+                _timestampRetrieved = getTimestampbyQueryIdandIndex(
+                    _queryId,
+                    _middle
+                );
             }
-            if(_middle == _count && isInDispute(_queryId, _timestampRetrieved)) {
+            if (
+                _middle == _count && isInDispute(_queryId, _timestampRetrieved)
+            ) {
                 return (false, 0);
             }
             // _timestampRetrieved is correct
@@ -182,6 +192,7 @@ contract UsingTellor is IERC2362 {
         view
         returns (bytes[] memory _values, uint256[] memory _timestamps)
     {
+        // get index of first possible value
         (bool _ifRetrieve, uint256 _startIndex) = getIndexForDataAfter(
             _queryId,
             _timestamp - _maxAge
@@ -191,27 +202,34 @@ contract UsingTellor is IERC2362 {
             return (new bytes[](0), new uint256[](0));
         }
         uint256 _endIndex;
+        // get index of last possible value
         (_ifRetrieve, _endIndex) = getIndexForDataBefore(_queryId, _timestamp);
         // no value before _timestamp
         if (!_ifRetrieve) {
             return (new bytes[](0), new uint256[](0));
         }
-        uint256 _valCount = _endIndex - _startIndex + 1;
-        // more than _maxCount values found within range
-        if (_valCount > _maxCount) {
-            _startIndex = _endIndex - _maxCount + 1;
-            _valCount = _maxCount;
+        uint256 _valCount = 0;
+        uint256 _index = 0;
+        uint256[] memory _timestampsArrayTemp = new uint256[](_maxCount);
+        // generate array of non-disputed timestamps within range
+        while (_valCount < _maxCount && _endIndex + 1 - _index > _startIndex) {
+            uint256 _timestampRetrieved = getTimestampbyQueryIdandIndex(
+                _queryId,
+                _endIndex - _index
+            );
+            if (!isInDispute(_queryId, _timestampRetrieved)) {
+                _timestampsArrayTemp[_valCount] = _timestampRetrieved;
+                _valCount++;
+            }
+            _index++;
         }
+
         bytes[] memory _valuesArray = new bytes[](_valCount);
         uint256[] memory _timestampsArray = new uint256[](_valCount);
-        bytes memory _valueRetrieved;
+        // retrieve values and reverse timestamps order
         for (uint256 _i = 0; _i < _valCount; _i++) {
-            _timestampsArray[_i] = getTimestampbyQueryIdandIndex(
-                _queryId,
-                (_startIndex + _i)
-            );
-            _valueRetrieved = retrieveData(_queryId, _timestampsArray[_i]);
-            _valuesArray[_i] = _valueRetrieved;
+            _timestampsArray[_i] = _timestampsArrayTemp[_valCount - 1 - _i];
+            _valuesArray[_i] = retrieveData(_queryId, _timestampsArray[_i]);
         }
         return (_valuesArray, _timestampsArray);
     }
@@ -285,15 +303,14 @@ contract UsingTellor is IERC2362 {
         return tellor.retrieveData(_queryId, _timestamp);
     }
 
-
     /**
      * @dev allows dev to set mapping contract for valueFor (EIP2362)
      * @param _addy address of mapping contract
      */
-     function setIdMappingContract(address _addy) external{
-         require(address(idMappingContract) == address(0));
-         idMappingContract = IMappingContract(_addy); 
-     }
+    function setIdMappingContract(address _addy) external {
+        require(address(idMappingContract) == address(0));
+        idMappingContract = IMappingContract(_addy);
+    }
 
     /**
      * @dev Retrieve most recent int256 value from oracle based on queryId
@@ -312,14 +329,13 @@ contract UsingTellor is IERC2362 {
             uint256 _statusCode
         )
     {
-        _id = idMappingContract.getTellorID(_id);
-        uint256 _count = getNewValueCountbyQueryId(_id);
-        if (_count == 0) {
-            return (0, 0, 404);
-        }
-        _timestamp = getTimestampbyQueryIdandIndex(_id, _count - 1);
-        bytes memory _valueBytes = retrieveData(_id, _timestamp);
-        if (_valueBytes.length == 0) {
+        bytes32 _queryId = idMappingContract.getTellorID(_id);
+        bytes memory _valueBytes;
+        (_valueBytes, _timestamp) = getDataBefore(
+            _queryId,
+            block.timestamp + 1
+        );
+        if (_timestamp == 0) {
             return (0, 0, 404);
         }
         uint256 _valueUint = _sliceUint(_valueBytes);
@@ -333,7 +349,11 @@ contract UsingTellor is IERC2362 {
      * @param _b bytes value to convert to uint256
      * @return _number uint256 converted from bytes
      */
-    function _sliceUint(bytes memory _b) internal pure returns(uint256 _number){
+    function _sliceUint(bytes memory _b)
+        internal
+        pure
+        returns (uint256 _number)
+    {
         for (uint256 _i = 0; _i < _b.length; _i++) {
             _number = _number * 256 + uint8(_b[_i]);
         }
