@@ -48,8 +48,9 @@ advanceTime = async (time) =>{
       const invalidOpcode = error.message.search("invalid opcode") >= 0;
       const outOfGas = error.message.search("out of gas") >= 0;
       const revert = error.message.search("revert") >= 0;
+      const overflow = error.message.search("overflow") >= 0;
       assert(
-        invalidOpcode || outOfGas || revert,
+        invalidOpcode || outOfGas || revert || overflow,
         "Expected throw, got '" + error + "' instead"
       );
       return;
