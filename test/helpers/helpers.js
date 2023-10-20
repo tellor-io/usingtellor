@@ -48,9 +48,8 @@ advanceTime = async (time) =>{
       const invalidOpcode = error.message.search("invalid opcode") >= 0;
       const outOfGas = error.message.search("out of gas") >= 0;
       const revert = error.message.search("revert") >= 0;
-      const overflow = error.message.search("overflow") >= 0;
       assert(
-        invalidOpcode || outOfGas || revert || overflow,
+        invalidOpcode || outOfGas || revert,
         "Expected throw, got '" + error + "' instead"
       );
       return;
@@ -84,6 +83,14 @@ advanceTime = async (time) =>{
     return ethers.provider.getBlock()
   }
 
+  function toWei(n){
+    return web3.utils.toWei(n)
+  }
+
+  function fromWei(n){
+    return web3.utils.fromWei(n)
+  }
+
 module.exports = {
   stakeAmount: new BN(web3.utils.toWei("500", "ether")),
   timeTarget: 240,
@@ -99,5 +106,7 @@ module.exports = {
   advanceBlock,
   advanceTimeAndBlock,
   takeFifteen,
+  toWei,
+  fromWei,
   expectThrow,
 };

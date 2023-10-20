@@ -11,97 +11,120 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 describe("UsingTellor Function Tests", function() {
 
 	let bench
-  let playground
+  let oracle, gov, token
   let mappingContract;
 	let owner, addr0, addr1, addr2;
 
+  const abiCoder = new ethers.utils.AbiCoder();
+  const TRB_QUERY_DATA_ARGS = abiCoder.encode(['string', 'string'], ['trb', 'usd']);
+  const TRB_QUERY_DATA = abiCoder.encode(['string', 'bytes'], ['SpotPrice', TRB_QUERY_DATA_ARGS]);
+  const TRB_QUERY_ID = ethers.utils.keccak256(TRB_QUERY_DATA);
+
 	beforeEach(async function () {
-    
+		[owner, addr1, addr2] = await ethers.getSigners();
+
 		const TellorPlayground = await ethers.getContractFactory("TellorPlayground");
-		playground = await TellorPlayground.deploy();
-    await playground.deployed();
+    token = await TellorPlayground.deploy();
+    await token.deployed();
+
+    const TellorFlex = await ethers.getContractFactory("TellorFlex");
+    oracle = await TellorFlex.deploy(token.address, 86400/2, h.toWei("15"), h.toWei("1500"), h.toWei(".001"), TRB_QUERY_ID);
+
+    const Governance = await ethers.getContractFactory("Governance");
+    gov = await Governance.deploy(oracle.address, owner.address);
+    await gov.deployed();
+
+    await oracle.init(gov.address);
 
     const BenchUsingTellor = await ethers.getContractFactory("BenchUsingTellor");
-    bench = await BenchUsingTellor.deploy(playground.address);
+    bench = await BenchUsingTellor.deploy(oracle.address);
     await bench.deployed();
 
     const MappingContract = await ethers.getContractFactory("MappingContractExample");
     mappingContract = await MappingContract.deploy();
     await mappingContract.deployed();
 
-		[owner, addr1, addr2] = await ethers.getSigners();
+    // stake
+    await token.connect(addr1).approve(oracle.address, h.toWei("10000"));
+    await token.connect(addr2).approve(oracle.address, h.toWei("10000"));
+    for(i=0; i<10; i++) {
+      await token.faucet(addr1.address)
+      await token.faucet(addr2.address)
+    }
+    await oracle.connect(addr1).depositStake(h.toWei("10000"));
+    await oracle.connect(addr2).depositStake(h.toWei("10000"));
 	});
 
   it("retrieveData()", async function() {
-    await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID, 150, 0, TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),160,1,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,160,1,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),170,2,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,170,2,TRB_QUERY_DATA)
     blocky3 = await h.getBlock()
-    expect(await bench.retrieveData(h.uintTob32(1), blocky1.timestamp)).to.equal(h.bytes(150))
-    expect(await bench.retrieveData(h.uintTob32(1), blocky2.timestamp)).to.equal(h.bytes(160))
-    expect(await bench.retrieveData(h.uintTob32(1), blocky3.timestamp)).to.equal(h.bytes(170))
+    expect(await bench.retrieveData(TRB_QUERY_ID, blocky1.timestamp)).to.equal(h.bytes(150))
+    expect(await bench.retrieveData(TRB_QUERY_ID, blocky2.timestamp)).to.equal(h.bytes(160))
+    expect(await bench.retrieveData(TRB_QUERY_ID, blocky3.timestamp)).to.equal(h.bytes(170))
   })
 
   it("getNewValueCountbyQueryId", async function() {
-    await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
-    expect(await bench.getNewValueCountbyQueryId(h.uintTob32(1))).to.equal(1)
-    await playground.connect(addr1).submitValue(h.uintTob32(1),160,1,'0x')
-    expect(await bench.getNewValueCountbyQueryId(h.uintTob32(1))).to.equal(2)
-    await playground.connect(addr1).submitValue(h.uintTob32(1),170,2,'0x')
-    expect(await bench.getNewValueCountbyQueryId(h.uintTob32(1))).to.equal(3)
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID, 150, 0, TRB_QUERY_DATA)
+    expect(await bench.getNewValueCountbyQueryId(TRB_QUERY_ID)).to.equal(1)
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,160,1,TRB_QUERY_DATA)
+    expect(await bench.getNewValueCountbyQueryId(TRB_QUERY_ID)).to.equal(2)
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,170,2,TRB_QUERY_DATA)
+    expect(await bench.getNewValueCountbyQueryId(TRB_QUERY_ID)).to.equal(3)
   })
 
   it("getTimestampbyQueryIdandIndex()", async function() {
-    await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID, 150, 0, TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),160,1,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,160,1,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),170,2,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,170,2,TRB_QUERY_DATA)
     blocky3 = await h.getBlock()
-    expect(await bench.getTimestampbyQueryIdandIndex(h.uintTob32(1), 0)).to.equal(blocky1.timestamp)
-    expect(await bench.getTimestampbyQueryIdandIndex(h.uintTob32(1), 1)).to.equal(blocky2.timestamp)
-    expect(await bench.getTimestampbyQueryIdandIndex(h.uintTob32(1), 2)).to.equal(blocky3.timestamp)
+    expect(await bench.getTimestampbyQueryIdandIndex(TRB_QUERY_ID, 0)).to.equal(blocky1.timestamp)
+    expect(await bench.getTimestampbyQueryIdandIndex(TRB_QUERY_ID, 1)).to.equal(blocky2.timestamp)
+    expect(await bench.getTimestampbyQueryIdandIndex(TRB_QUERY_ID, 2)).to.equal(blocky3.timestamp)
   })
 
   it("getIndexForDataBefore()", async function() {
-    await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID, 150, 0, TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),160,1,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,160,1,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),170,2,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,170,2,TRB_QUERY_DATA)
     blocky3 = await h.getBlock()
-    index = await bench.getIndexForDataBefore(h.uintTob32(1), blocky3.timestamp)
+    index = await bench.getIndexForDataBefore(TRB_QUERY_ID, blocky3.timestamp)
     expect(index[0])
     expect(index[1]).to.equal(1)
   })
 
   it("getDataBefore()", async function() {
-    await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID, 150, 0, TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),160,1,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,160,1,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),170,2,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,170,2,TRB_QUERY_DATA)
     blocky3 = await h.getBlock()
-    dataBefore = await bench.getDataBefore(h.uintTob32(1), blocky2.timestamp)
+    dataBefore = await bench.getDataBefore(TRB_QUERY_ID, blocky2.timestamp)
     expect(dataBefore[0]).to.equal(h.bytes(150))
     expect(dataBefore[1]).to.equal(blocky1.timestamp)
   })
 
 	it("isInDispute()", async function() {
-		await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
+		await oracle.connect(addr1).submitValue(TRB_QUERY_ID, 150, 0, TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),160,1,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,160,1,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
-		expect(await bench.isInDispute(h.uintTob32(1), blocky1.timestamp)).to.be.false;
-		await playground.beginDispute(h.uintTob32(1), blocky1.timestamp)
-		expect(await bench.isInDispute(h.uintTob32(1), blocky1.timestamp))
-		await playground.beginDispute(h.uintTob32(1), blocky1.timestamp)
-		expect(await bench.isInDispute(h.uintTob32(1), blocky1.timestamp))
-		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp)).to.be.false;
-		await playground.beginDispute(h.uintTob32(1), blocky2.timestamp)
-		expect(await bench.isInDispute(h.uintTob32(1), blocky2.timestamp))
+		expect(await bench.isInDispute(TRB_QUERY_ID, blocky1.timestamp)).to.be.false;
+    await token.faucet(addr1.address)
+    await token.connect(addr1).approve(gov.address, h.toWei("1000"));
+		await gov.connect(addr1).beginDispute(TRB_QUERY_ID, blocky1.timestamp)
+		expect(await bench.isInDispute(TRB_QUERY_ID, blocky1.timestamp))
+		expect(await bench.isInDispute(TRB_QUERY_ID, blocky2.timestamp)).to.be.false;
+		gov.connect(addr1).beginDispute(TRB_QUERY_ID, blocky2.timestamp)
+		expect(await bench.isInDispute(TRB_QUERY_ID, blocky2.timestamp))
 	})
 
   it("valueFor()", async function() {
@@ -111,7 +134,7 @@ describe("UsingTellor Function Tests", function() {
     oracleQueryId = ethers.utils.keccak256(oracleQueryData)
     let eipId = "0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5"
     assert(await bench.idMappingContract() == mappingContract.address, "mapping contract should be set correctly")
-    await playground.connect(addr1).submitValue(oracleQueryId,1500,0,oracleQueryData)
+    await oracle.connect(addr1).submitValue(oracleQueryId,1500,0,oracleQueryData)
     blocky1 = await h.getBlock()
     let gvfData = await bench.valueFor(eipId);
     assert(gvfData[0] == 1500, "value should be correct")
@@ -126,86 +149,85 @@ describe("UsingTellor Function Tests", function() {
   })
 
 	it("tellor()", async function() {
-		expect(await bench.tellor()).to.equal(playground.address)
+		expect(await bench.tellor()).to.equal(oracle.address)
 	})
 
   it("getIndexForDataAfter()", async function() {
     blocky0 = await h.getBlock()
-    result = await bench.getIndexForDataAfter(h.uintTob32(1), blocky0.timestamp)
+    result = await bench.getIndexForDataAfter(TRB_QUERY_ID, blocky0.timestamp)
     expect(result[0]).to.be.false
     expect(result[1]).to.equal(0)
 
-    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(150),0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,h.uintTob32(150),0,TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
 
-    result = await bench.getIndexForDataAfter(h.uintTob32(1), blocky0.timestamp)
+    result = await bench.getIndexForDataAfter(TRB_QUERY_ID, blocky0.timestamp)
     expect(result[0]).to.be.true
     expect(result[1]).to.equal(0)
-    result = await bench.getIndexForDataAfter(h.uintTob32(1), blocky1.timestamp)
+    result = await bench.getIndexForDataAfter(TRB_QUERY_ID, blocky1.timestamp)
     expect(result[0]).to.be.false
     expect(result[1]).to.equal(0)
 
-    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(160),1,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,h.uintTob32(160),1,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
 
-    result = await bench.getIndexForDataAfter(h.uintTob32(1), blocky0.timestamp)
+    result = await bench.getIndexForDataAfter(TRB_QUERY_ID, blocky0.timestamp)
     expect(result[0]).to.be.true
     expect(result[1]).to.equal(0)
-    result = await bench.getIndexForDataAfter(h.uintTob32(1), blocky1.timestamp)
+    result = await bench.getIndexForDataAfter(TRB_QUERY_ID, blocky1.timestamp)
     expect(result[0]).to.be.true
     expect(result[1]).to.equal(1)
-    result = await bench.getIndexForDataAfter(h.uintTob32(1), blocky2.timestamp)
+    result = await bench.getIndexForDataAfter(TRB_QUERY_ID, blocky2.timestamp)
     expect(result[0]).to.be.false
     expect(result[1]).to.equal(0)
   })
 
   it("getDataAfter()", async function() {
     blocky0 = await h.getBlock()
-    // result = await bench.getDataAfter(h.uintTob32(1), blocky0.timestamp)
-    // expect(result[0]).to.equal('0x')
+    // result = await bench.getDataAfter(TRB_QUERY_ID, blocky0.timestamp)
+    // expect(result[0]).to.equal(TRB_QUERY_DATA)
     // expect(result[1]).to.equal(0)
 
-    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(150),0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,h.uintTob32(150),0,TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
 
-    result = await bench.getDataAfter(h.uintTob32(1), blocky0.timestamp)
+    result = await bench.getDataAfter(TRB_QUERY_ID, blocky0.timestamp)
     expect(result[0]).to.equal(h.uintTob32(150))
     expect(result[1]).to.equal(blocky1.timestamp)
-    result = await bench.getDataAfter(h.uintTob32(1), blocky1.timestamp)
+    result = await bench.getDataAfter(TRB_QUERY_ID, blocky1.timestamp)
     expect(result[0]).to.equal('0x')
     expect(result[1]).to.equal(0)
 
-    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(160),1,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,h.uintTob32(160),1,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
 
-    result = await bench.getDataAfter(h.uintTob32(1), blocky0.timestamp)
+    result = await bench.getDataAfter(TRB_QUERY_ID, blocky0.timestamp)
     expect(result[0]).to.equal(h.uintTob32(150))
     expect(result[1]).to.equal(blocky1.timestamp)
-    result = await bench.getDataAfter(h.uintTob32(1), blocky1.timestamp)
+    result = await bench.getDataAfter(TRB_QUERY_ID, blocky1.timestamp)
     expect(result[0]).to.equal(h.uintTob32(160))
     expect(result[1]).to.equal(blocky2.timestamp)
-    result = await bench.getDataAfter(h.uintTob32(1), blocky2.timestamp)
+    result = await bench.getDataAfter(TRB_QUERY_ID, blocky2.timestamp)
     expect(result[0]).to.equal('0x')
     expect(result[1]).to.equal(0)
   })
 
   it("getMultipleValuesBefore", async function() {
     // submit 2 values
-    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(150),0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,h.uintTob32(150),0,TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
-    timestamp = await playground.getTimestampbyQueryIdandIndex(h.uintTob32(1), 0)
-    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(160),0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,h.uintTob32(160),0,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
     await h.advanceTime(10)
     blockyNow0 = await h.getBlock()
 
     // 1 hour before 1st submission
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky1.timestamp - 3600, 3600, 4)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blocky1.timestamp - 3600, 3600, 4)
     expect(result[0].length).to.equal(0)
     expect(result[1].length).to.equal(0)
 
     // maxCount = 4
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 3600, 4)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow0.timestamp, 3600, 4)
     expect(result[0].length).to.equal(2)
     expect(result[1].length).to.equal(2)
     expect(result[0][0]).to.equal(h.uintTob32(150))
@@ -214,7 +236,7 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][1]).to.equal(blocky2.timestamp)
 
     // maxCount = 3
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 3600, 3)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow0.timestamp, 3600, 3)
     expect(result[0].length).to.equal(2)
     expect(result[1].length).to.equal(2)
     expect(result[0][0]).to.equal(h.uintTob32(150))
@@ -223,7 +245,7 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][1]).to.equal(blocky2.timestamp)
 
     // maxCount = 2
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 3600, 2)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow0.timestamp, 3600, 2)
     expect(result[0].length).to.equal(2)
     expect(result[1].length).to.equal(2)
     expect(result[0][0]).to.equal(h.uintTob32(150))
@@ -232,27 +254,27 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][1]).to.equal(blocky2.timestamp)
 
     // maxCount = 1
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 3600, 1)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow0.timestamp, 3600, 1)
     expect(result[0].length).to.equal(1)
     expect(result[1].length).to.equal(1)
     expect(result[0][0]).to.equal(h.uintTob32(160))
     expect(result[1][0]).to.equal(blocky2.timestamp)
 
     // maxAge = 5
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 5, 4)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow0.timestamp, 5, 4)
     expect(result[0].length).to.equal(0)
     expect(result[1].length).to.equal(0)
 
     // submit another 2 values
-    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(170),0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,h.uintTob32(170),0,TRB_QUERY_DATA)
     blocky3 = await h.getBlock()
-    await playground.connect(addr1).submitValue(h.uintTob32(1),h.uintTob32(180),0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID,h.uintTob32(180),0,TRB_QUERY_DATA)
     blocky4 = await h.getBlock()
     await h.advanceTime(10)
     blockyNow1 = await h.getBlock()
 
     // maxCount = 6, don't update blocky
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow0.timestamp, 3600, 6)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow0.timestamp, 3600, 6)
     expect(result[0].length).to.equal(2)
     expect(result[1].length).to.equal(2)
     expect(result[0][0]).to.equal(h.uintTob32(150))
@@ -261,7 +283,7 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][1]).to.equal(blocky2.timestamp)
 
     // maxCount = 6, update blocky
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow1.timestamp, 3600, 6)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow1.timestamp, 3600, 6)
     expect(result[0].length).to.equal(4)
     expect(result[1].length).to.equal(4)
     expect(result[0][0]).to.equal(h.uintTob32(150))
@@ -274,7 +296,7 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][3]).to.equal(blocky4.timestamp)
 
     // maxCount = 5
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow1.timestamp, 3600, 5)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow1.timestamp, 3600, 5)
     expect(result[0].length).to.equal(4)
     expect(result[1].length).to.equal(4)
     expect(result[0][0]).to.equal(h.uintTob32(150))
@@ -287,7 +309,7 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][3]).to.equal(blocky4.timestamp)
 
     // maxCount = 4
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow1.timestamp, 3600, 4)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow1.timestamp, 3600, 4)
     expect(result[0].length).to.equal(4)
     expect(result[1].length).to.equal(4)
     expect(result[0][0]).to.equal(h.uintTob32(150))
@@ -300,7 +322,7 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][3]).to.equal(blocky4.timestamp)
 
     // maxCount = 3
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow1.timestamp, 3600, 3)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow1.timestamp, 3600, 3)
     expect(result[0].length).to.equal(3)
     expect(result[1].length).to.equal(3)
     expect(result[0][0]).to.equal(h.uintTob32(160))
@@ -311,7 +333,7 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][2]).to.equal(blocky4.timestamp)
 
     // maxCount = 2
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow1.timestamp, 3600, 2)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow1.timestamp, 3600, 2)
     expect(result[0].length).to.equal(2)
     expect(result[1].length).to.equal(2)
     expect(result[0][0]).to.equal(h.uintTob32(170))
@@ -320,13 +342,13 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][1]).to.equal(blocky4.timestamp)
 
     // maxCount = 1
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blockyNow1.timestamp, 3600, 1)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blockyNow1.timestamp, 3600, 1)
     expect(result[0].length).to.equal(1)
     expect(result[1].length).to.equal(1)
     expect(result[0][0]).to.equal(h.uintTob32(180))
     expect(result[1][0]).to.equal(blocky4.timestamp)
 
-    result = await bench.getMultipleValuesBefore(h.uintTob32(1), blocky4.timestamp, 100, 3)
+    result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blocky4.timestamp, 100, 3)
   })
 
   it("sliceUint", async() => {
@@ -350,11 +372,11 @@ describe("UsingTellor Function Tests", function() {
   })
 
   it("getReporterByTimestamp()", async function() {
-    await playground.connect(addr1).submitValue(h.uintTob32(1),150,0,'0x')
+    await oracle.connect(addr1).submitValue(TRB_QUERY_ID, 150, 0, TRB_QUERY_DATA)
     blocky1 = await h.getBlock()
-    expect(await bench.getReporterByTimestamp(h.uintTob32(1), blocky1.timestamp)).to.equal(addr1.address)
-    await playground.connect(addr2).submitValue(h.uintTob32(1),160,1,'0x')
+    expect(await bench.getReporterByTimestamp(TRB_QUERY_ID, blocky1.timestamp)).to.equal(addr1.address)
+    await oracle.connect(addr2).submitValue(TRB_QUERY_ID,160,0,TRB_QUERY_DATA)
     blocky2 = await h.getBlock()
-    expect(await bench.getReporterByTimestamp(h.uintTob32(1), blocky2.timestamp)).to.equal(addr2.address)
+    expect(await bench.getReporterByTimestamp(TRB_QUERY_ID, blocky2.timestamp)).to.equal(addr2.address)
   })
 });
