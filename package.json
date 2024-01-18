@@ -14,7 +14,7 @@
     "ethereum-waffle": "^4.0.10",
     "ethers": "^5.6.0",
     "ethlint": "^1.2.5",
-    "hardhat": "^2.11.2",
+    "hardhat": "2.11.2",
     "prettier": "^2.6.2",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "solc": "^0.8.12",
@@ -24,7 +24,9 @@
     "dotenv": "^16.0.1",
     "eth-json-rpc-filters": "^4.2.2",
     "ethereumjs-tx": "^2.1.2",
-    "web3": "^1.10.0"
+    "web3": "^1.10.0",
+    "polygongovernance": "github:tellor-io/governance",
+    "tellorflex": "github:tellor-io/tellorFlex"
   },
   "scripts": {
     "test": "npx hardhat test"
