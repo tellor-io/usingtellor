@@ -39,10 +39,6 @@ describe("UsingTellor E2E Tests", function() {
     bench = await BenchUsingTellor.deploy(oracle.address);
     await bench.deployed();
 
-    const MappingContract = await ethers.getContractFactory("MappingContractExample");
-    mappingContract = await MappingContract.deploy();
-    await mappingContract.deployed();
-
     // stake
     await token.connect(addr1).approve(oracle.address, h.toWei("10000"));
     await token.connect(addr2).approve(oracle.address, h.toWei("10000"));
