@@ -32,7 +32,7 @@ contract PriceContract is UsingTellor {
       uint256 _timestamp;
       bytes memory _value;
 
-      (_value, _timestamp) = getDataBefore(_btcQueryId, block.timestamp - 1 hours);
+      (_value, _timestamp) = _getDataBefore(_btcQueryId, block.timestamp - 1 hours);
       btcPrice = abi.decode(_value,(uint256));
   }
 }
@@ -54,8 +54,8 @@ Children contracts have access to the following functions:
  * @return _value the value retrieved
  * @return _timestampRetrieved the value's timestamp
  */
-function getDataAfter(bytes32 _queryId, uint256 _timestamp)
-    public
+function _getDataAfter(bytes32 _queryId, uint256 _timestamp)
+    internal
     view
     returns (bytes memory _value, uint256 _timestampRetrieved);
 
@@ -66,8 +66,8 @@ function getDataAfter(bytes32 _queryId, uint256 _timestamp)
   * @return _value the value retrieved
   * @return _timestampRetrieved the value's timestamp
   */
-function getDataBefore(bytes32 _queryId, uint256 _timestamp)
-    public
+function _getDataBefore(bytes32 _queryId, uint256 _timestamp)
+    internal
     view
     returns (bytes memory _value, uint256 _timestampRetrieved);
 
@@ -78,8 +78,8 @@ function getDataBefore(bytes32 _queryId, uint256 _timestamp)
  * @return _found whether the index was found
  * @return _index the next index found after the specified timestamp
  */
-function getIndexForDataAfter(bytes32 _queryId, uint256 _timestamp)
-    public
+function _getIndexForDataAfter(bytes32 _queryId, uint256 _timestamp)
+    internal
     view
     returns (bool _found, uint256 _index);
 
@@ -90,8 +90,8 @@ function getIndexForDataAfter(bytes32 _queryId, uint256 _timestamp)
  * @return _found whether the index was found
  * @return _index the latest index found before the specified timestamp
  */
-function getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp)
-    public
+function _getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp)
+    internal
     view
     returns (bool _found, uint256 _index);
 
@@ -104,13 +104,13 @@ function getIndexForDataBefore(bytes32 _queryId, uint256 _timestamp)
  * @return _values the values retrieved, ordered from oldest to newest
  * @return _timestamps the timestamps of the values retrieved
  */
-function getMultipleValuesBefore(
+function _getMultipleValuesBefore(
   bytes32 _queryId,
   uint256 _timestamp,
   uint256 _maxAge,
   uint256 _maxCount
 )
-  public
+  internal
   view
   returns (bytes[] memory _values, uint256[] memory _timestamps);
 
@@ -119,8 +119,8 @@ function getMultipleValuesBefore(
  * @param _queryId the id to look up
  * @return uint256 count of the number of values received for the queryId
  */
-function getNewValueCountbyQueryId(bytes32 _queryId)
-  public
+function _getNewValueCountbyQueryId(bytes32 _queryId)
+  internal
   view
   returns (uint256);
 
@@ -130,8 +130,8 @@ function getNewValueCountbyQueryId(bytes32 _queryId)
  * @param _timestamp is the timestamp to find a corresponding reporter for
  * @return address of the reporter who reported the value for the data ID at the given timestamp
  */
-function getReporterByTimestamp(bytes32 _queryId, uint256 _timestamp)
-  public
+function _getReporterByTimestamp(bytes32 _queryId, uint256 _timestamp)
+  internal
   view
   returns (address);
 
@@ -141,8 +141,8 @@ function getReporterByTimestamp(bytes32 _queryId, uint256 _timestamp)
  * @param _index is the value index to look up
  * @return uint256 timestamp
  */
-function getTimestampbyQueryIdandIndex(bytes32 _queryId, uint256 _index)
-  public
+function _getTimestampbyQueryIdandIndex(bytes32 _queryId, uint256 _index)
+  internal
   view
   returns (uint256);
 
@@ -152,8 +152,8 @@ function getTimestampbyQueryIdandIndex(bytes32 _queryId, uint256 _index)
  * @param _timestamp is the timestamp of the value to look up
  * @return bool true if queryId/timestamp is under dispute
  */
-function isInDispute(bytes32 _queryId, uint256 _timestamp)
-  public
+function _isInDispute(bytes32 _queryId, uint256 _timestamp)
+  internal
   view
   returns (bool);
 
@@ -163,8 +163,8 @@ function isInDispute(bytes32 _queryId, uint256 _timestamp)
  * @param _timestamp to retrieve data/value from
  * @return bytes value for query/timestamp submitted
  */
-function retrieveData(bytes32 _queryId, uint256 _timestamp)
-  public
+function _retrieveData(bytes32 _queryId, uint256 _timestamp)
+  internal
   view
   returns (bytes memory);
 ```
@@ -172,7 +172,7 @@ function retrieveData(bytes32 _queryId, uint256 _timestamp)
 
 #### Tellor Playground:
 
-For ease of use, the  `UsingTellor`  repo comes with a version of [Tellor Playground](https://github.com/tellor-io/TellorPlayground) for easier integration. This version contains a few helper functions:
+For ease of use, the  `UsingTellor`  repo comes with a version of [Tellor Playground](https://github.com/tellor-io/TellorPlayground) for easier testing. This version contains a few helper functions:
 
 ```solidity
 /**

@@ -40,10 +40,6 @@ describe("UsingTellor Function Tests", function() {
     bench = await BenchUsingTellor.deploy(oracle.address);
     await bench.deployed();
 
-    const MappingContract = await ethers.getContractFactory("MappingContractExample");
-    mappingContract = await MappingContract.deploy();
-    await mappingContract.deployed();
-
     // stake
     await token.connect(addr1).approve(oracle.address, h.toWei("10000"));
     await token.connect(addr2).approve(oracle.address, h.toWei("10000"));
@@ -126,27 +122,6 @@ describe("UsingTellor Function Tests", function() {
 		gov.connect(addr1).beginDispute(TRB_QUERY_ID, blocky2.timestamp)
 		expect(await bench.isInDispute(TRB_QUERY_ID, blocky2.timestamp))
 	})
-
-  it("valueFor()", async function() {
-    await bench.setIdMappingContract(mappingContract.address);
-    oracleQueryDataPartial = abiCoder.encode(['string','string'], ['eth','usd'])
-    oracleQueryData = abiCoder.encode(['string', 'bytes'], ['SpotPrice', oracleQueryDataPartial])
-    oracleQueryId = ethers.utils.keccak256(oracleQueryData)
-    let eipId = "0xdfaa6f747f0f012e8f2069d6ecacff25f5cdf0258702051747439949737fc0b5"
-    assert(await bench.idMappingContract() == mappingContract.address, "mapping contract should be set correctly")
-    await oracle.connect(addr1).submitValue(oracleQueryId,1500,0,oracleQueryData)
-    blocky1 = await h.getBlock()
-    let gvfData = await bench.valueFor(eipId);
-    assert(gvfData[0] == 1500, "value should be correct")
-    assert(gvfData[1] == blocky1.timestamp, "timestamp should be correct")
-    assert(gvfData[2] == 200, "status code should be correct");
-	})
-
-  it("setIdMappingContract()", async function() {
-    await bench.setIdMappingContract(mappingContract.address);
-    assert(await bench.idMappingContract() == mappingContract.address, "mapping contract should be set correctly")
-    await h.expectThrow(bench.setIdMappingContract(addr1.address), "mapping contract should not be able to be called twice")
-  })
 
 	it("tellor()", async function() {
 		expect(await bench.tellor()).to.equal(oracle.address)
@@ -349,26 +324,6 @@ describe("UsingTellor Function Tests", function() {
     expect(result[1][0]).to.equal(blocky4.timestamp)
 
     result = await bench.getMultipleValuesBefore(TRB_QUERY_ID, blocky4.timestamp, 100, 3)
-  })
-
-  it("sliceUint", async() => {
-    let val1 = h.uintTob32(1)
-    let val2 = h.uintTob32(2)
-    let val3 = h.uintTob32(300000000000000)
-    let val4 = h.uintTob32(300000000000001)
-    let val5 = abiCoder.encode(["uint256"], [1])
-    let val6 = abiCoder.encode(["uint256"], ["21010191828172717718232237237237128"])
-    let val7 = '0x01'
-    let val8 = '0x10'
-
-    expect(await bench.sliceUint(val1)).to.equal(1)
-    expect(await bench.sliceUint(val2)).to.equal(2)
-    expect(await bench.sliceUint(val3)).to.equal(300000000000000)
-    expect(await bench.sliceUint(val4)).to.equal(300000000000001)
-    expect(await bench.sliceUint(val5)).to.equal(1)
-    expect(await bench.sliceUint(val6)).to.equal("21010191828172717718232237237237128")
-    expect(await bench.sliceUint(val7)).to.equal(1)
-    expect(await bench.sliceUint(val8)).to.equal(16)
   })
 
   it("getReporterByTimestamp()", async function() {
