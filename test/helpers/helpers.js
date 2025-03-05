@@ -1,16 +1,7 @@
-const web3 = require('web3');
 const { ethers } = require("hardhat");
-const BN = web3.utils.BN;
 
-const hash = web3.utils.keccak256;
+const hash = ethers.utils.keccak256;
 var assert = require('assert');
-
-advanceTimeAndBlock = async (time) => {
-    await advanceTime(time);
-    await advanceBlock();
-    console.log("Time Travelling...");
-    return Promise.resolve(web3.eth.getBlock("latest"));
-  };
 
 const takeFifteen = async () => {
 await advanceTime(60 * 18);
@@ -21,25 +12,6 @@ advanceTime = async (time) =>{
   await network.provider.send("evm_increaseTime", [time])
   await network.provider.send("evm_mine")
 }
-  advanceBlock = () => {
-    return new Promise((resolve, reject) => {
-      web3.currentProvider.send(
-        {
-          jsonrpc: "2.0",
-          method: "evm_mine",
-          id: new Date().getTime(),
-        },
-        (err, result) => {
-          if (err) {
-            return reject(err);
-          }
-          const newBlockHash = web3.eth.getBlock("latest").hash;
-
-          return resolve(newBlockHash);
-        }
-      );
-    });
-  };
 
   async function expectThrow(promise) {
     try {
@@ -66,7 +38,7 @@ advanceTime = async (time) =>{
   }
 
   function uintTob32(n){
-    let vars = web3.utils.toHex(n)
+    let vars = ethers.utils.hexlify(n)
     vars = vars.slice(2)
     while(vars.length < 64){
       vars = "0" + vars
@@ -76,7 +48,7 @@ advanceTime = async (time) =>{
   }
 
   function bytes(n){
-    return web3.utils.toHex(n)
+    return ethers.utils.hexlify(n)
   }
 
   function getBlock(){
@@ -84,15 +56,14 @@ advanceTime = async (time) =>{
   }
 
   function toWei(n){
-    return web3.utils.toWei(n)
+    return ethers.utils.parseEther(n)
   }
 
   function fromWei(n){
-    return web3.utils.fromWei(n)
+    return ethers.utils.formatEther(n)
   }
 
 module.exports = {
-  stakeAmount: new BN(web3.utils.toWei("500", "ether")),
   timeTarget: 240,
   hash,
   zeroAddress:"0x0000000000000000000000000000000000000000",
@@ -101,10 +72,7 @@ module.exports = {
   tob32,
   bytes,
   getBlock,
-  maxUint256: new BN("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
   advanceTime,
-  advanceBlock,
-  advanceTimeAndBlock,
   takeFifteen,
   toWei,
   fromWei,
