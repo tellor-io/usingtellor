@@ -1,7 +1,6 @@
 const { expect, assert } = require("chai");
 const { ethers } = require("hardhat");
 const h = require("./helpers/helpers");
-const web3 = require('web3');
 let abiCoder = new ethers.utils.AbiCoder
 
 const QUERY_DATA_1 = h.uintTob32(1);
