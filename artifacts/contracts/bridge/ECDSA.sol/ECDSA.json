@@ -1,0 +1,38 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ECDSA",
+  "sourceName": "contracts/bridge/ECDSA.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "ECDSAInvalidSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "length",
+          "type": "uint256"
+        }
+      ],
+      "name": "ECDSAInvalidSignatureLength",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ECDSAInvalidSignatureS",
+      "type": "error"
+    }
+  ],
+  "bytecode": "0x60808060405234601357603a908160198239f35b600080fdfe600080fdfea2646970667358221220634446c1f6bec492486f439e83a3a733aef01c0e94bce18aa300c0cb914ea2a864736f6c63430008130033",
+  "deployedBytecode": "0x600080fdfea2646970667358221220634446c1f6bec492486f439e83a3a733aef01c0e94bce18aa300c0cb914ea2a864736f6c63430008130033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

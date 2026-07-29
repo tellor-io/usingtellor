@@ -1,25 +1,20 @@
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-require("@nomiclabs/hardhat-waffle");
-require("@nomiclabs/hardhat-ethers");
+require("@nomicfoundation/hardhat-toolbox");
 
 module.exports = {
   solidity: {
-    compilers: [
-      {
-        version: "0.8.3",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 300
-          }
-        }
-      }
-    ]
+    version: "0.8.19",
+    settings: {
+      optimizer: { enabled: true, runs: 200 },
+      viaIR: true,
+    },
   },
   networks: {
     hardhat: {
+      accounts: {
+        mnemonic:
+          "nick lucian brenda kevin sam fiscal patch fly damp ocean produce wish",
+        count: 40,
+      },
     },
   },
 };
