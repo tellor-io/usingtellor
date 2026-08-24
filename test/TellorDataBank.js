@@ -20,6 +20,7 @@ describe("TellorDataBank - Function Tests", function () {
   const MAX_ATTESTATION_AGE = 10 * 60; // 10 minutes
   const OPTIMISTIC_DELAY = 12 * 60 * 60; // 12 hours
   const MS_PER_SECOND = 1000;
+  const MAX_SPOT_PRICE = h.toWei("1000000000000"); // $1 trillion, 18 decimals
 
   // Fixture to deploy contracts for testing
   async function deployTellorDataBankFixture() {
@@ -35,7 +36,7 @@ describe("TellorDataBank - Function Tests", function () {
 
     // Deploy TellorDataBank
     const TellorDataBank = await ethers.getContractFactory("TellorDataBank");
-    const tellorDataBank = await TellorDataBank.deploy(dataBridge.target, MAX_DATA_AGE, MAX_ATTESTATION_AGE, OPTIMISTIC_DELAY);
+    const tellorDataBank = await TellorDataBank.deploy(dataBridge.target, MAX_DATA_AGE, MAX_ATTESTATION_AGE, OPTIMISTIC_DELAY, MAX_SPOT_PRICE);
     await tellorDataBank.waitForDeployment();
 
     return {
@@ -57,6 +58,7 @@ describe("TellorDataBank - Function Tests", function () {
       expect(await tellorDataBank.MAX_ATTESTATION_AGE()).to.equal(MAX_ATTESTATION_AGE);
       expect(await tellorDataBank.OPTIMISTIC_DELAY()).to.equal(OPTIMISTIC_DELAY);
       expect(await tellorDataBank.MS_PER_SECOND()).to.equal(MS_PER_SECOND);
+      expect(await tellorDataBank.MAX_SPOT_PRICE()).to.equal(MAX_SPOT_PRICE);
     });
   });
 
@@ -671,7 +673,126 @@ describe("TellorDataBank - Function Tests", function () {
         }
       });
     });
-  });
 
+    describe("SpotPrice TWAPs", function () {
+      it("accumulates prices in aggregate time and excludes the endpoint price", async function () {
+        const { tellorDataBank, validatorSet } = await loadFixture(deployTellorDataBankFixture);
+        const prices = [h.toWei("100"), h.toWei("200"), h.toWei("300")];
+        const aggregateTimestamps = [];
+
+        for (let i = 0; i < prices.length; i++) {
+          if (i > 0) await time.increase(60);
+          const prepared = await h.prepareOracleData(
+            ETH_USD_QUERY_ID,
+            abiCoder.encode(["uint256"], [prices[i]]),
+            validatorSet
+          );
+          await tellorDataBank.updateOracleData(
+            prepared.attestData,
+            prepared.currentValidatorSet,
+            prepared.sigs
+          );
+          aggregateTimestamps.push(BigInt(prepared.attestData.report.timestamp));
+        }
+
+        const first = await tellorDataBank.getAggregateByIndex(ETH_USD_QUERY_ID, 0);
+        const second = await tellorDataBank.getAggregateByIndex(ETH_USD_QUERY_ID, 1);
+        const third = await tellorDataBank.getAggregateByIndex(ETH_USD_QUERY_ID, 2);
+        const firstPeriod = aggregateTimestamps[1] - aggregateTimestamps[0];
+        const secondPeriod = aggregateTimestamps[2] - aggregateTimestamps[1];
+        const coverage = aggregateTimestamps[2] - aggregateTimestamps[0];
+        const expectedCumulative = prices[0] * firstPeriod + prices[1] * secondPeriod;
+
+        expect(first.cumulativePrice).to.equal(0);
+        expect(second.cumulativePrice).to.equal(prices[0] * firstPeriod);
+        expect(third.cumulativePrice).to.equal(expectedCumulative);
+
+        const [found, twap] = await tellorDataBank.getTwapAt(
+          ETH_USD_QUERY_ID,
+          2,
+          coverage
+        );
+        expect(found).to.equal(true);
+        expect(twap.price).to.equal(expectedCumulative / coverage);
+        expect(twap.startAggregateTimestamp).to.equal(aggregateTimestamps[0]);
+        expect(twap.endAggregateTimestamp).to.equal(aggregateTimestamps[2]);
+        expect(twap.observationCount).to.equal(3);
+
+        const [latestFound, latestTwap] = await tellorDataBank.getTwap(
+          ETH_USD_QUERY_ID,
+          coverage
+        );
+        expect(latestFound).to.equal(true);
+        expect(latestTwap.price).to.equal(twap.price);
+      });
+
+      it("binds relay-time selection to the same aggregate-time TWAP endpoint", async function () {
+        const { tellorDataBank, validatorSet } = await loadFixture(deployTellorDataBankFixture);
+        const reports = [];
+
+        for (const price of ["100", "100", "105"]) {
+          if (reports.length > 0) await time.increase(60);
+          const prepared = await h.prepareOracleData(
+            ETH_USD_QUERY_ID,
+            abiCoder.encode(["uint256"], [h.toWei(price)]),
+            validatorSet
+          );
+          const tx = await tellorDataBank.updateOracleData(
+            prepared.attestData,
+            prepared.currentValidatorSet,
+            prepared.sigs
+          );
+          const receipt = await tx.wait();
+          reports.push({
+            aggregateTimestamp: BigInt(prepared.attestData.report.timestamp),
+            relayTimestamp: BigInt((await ethers.provider.getBlock(receipt.blockNumber)).timestamp),
+          });
+        }
+
+        const window = reports[2].aggregateTimestamp - reports[0].aggregateTimestamp;
+        const [found, index, candidate, twap] = await tellorDataBank.getRelayWithTwapBefore(
+          ETH_USD_QUERY_ID,
+          reports[2].relayTimestamp + 1n,
+          window
+        );
+
+        expect(found).to.equal(true);
+        expect(index).to.equal(2);
+        expect(candidate.aggregateTimestamp).to.equal(reports[2].aggregateTimestamp);
+        expect(twap.endAggregateTimestamp).to.equal(candidate.aggregateTimestamp);
+        expect(twap.price).to.equal(h.toWei("100"));
+      });
+
+      it("rejects values outside the declared SpotPrice encoding policy", async function () {
+        const { tellorDataBank, validatorSet } = await loadFixture(deployTellorDataBankFixture);
+
+        const malformed = await h.prepareOracleData(
+          ETH_USD_QUERY_ID,
+          "0x1234",
+          validatorSet
+        );
+        await expect(
+          tellorDataBank.updateOracleData(
+            malformed.attestData,
+            malformed.currentValidatorSet,
+            malformed.sigs
+          )
+        ).to.be.revertedWith("TellorDataBank: Invalid SpotPrice");
+
+        const excessive = await h.prepareOracleData(
+          ETH_USD_QUERY_ID,
+          abiCoder.encode(["uint256"], [MAX_SPOT_PRICE + 1n]),
+          validatorSet
+        );
+        await expect(
+          tellorDataBank.updateOracleData(
+            excessive.attestData,
+            excessive.currentValidatorSet,
+            excessive.sigs
+          )
+        ).to.be.revertedWith("TellorDataBank: SpotPrice out of range");
+      });
+    });
+  });
 
 });

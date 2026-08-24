@@ -1,0 +1,94 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ITellorShepherd",
+  "sourceName": "contracts/interfaces/ITellorShepherd.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "getCurrentValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "aggregateTimestamp",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "previewValue",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "enum ITellorShepherd.Status",
+              "name": "status",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint256",
+              "name": "candidateIndex",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "candidateValue",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "candidateAggregateTimestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "candidateRelayTimestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "twap",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deviationBps",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "twapStartTimestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "twapEndTimestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "observationCount",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct ITellorShepherd.PricePreview",
+          "name": "preview",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

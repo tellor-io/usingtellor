@@ -8,7 +8,7 @@ Use this package to install the Tellor user contracts and test helper functions,
 
 - `contracts/interfaces/ITellorDataBridge.sol` - The TellorDataBridge interface
 - `contracts/testing/TellorLab.sol` - A testing contract for rapid prototyping with Tellor oracle data
-- `contracts/interfaces/ITellorDataBank.sol` - The TellorDataBank interface, a standard interface for reading tellor data
+- `contracts/interfaces/ITellorDataBank.sol` - The TellorDataBank interface for verified SpotPrice history and TWAP reads
 - `contracts/bridge/TellorDataBridge.sol` - The TellorDataBridge contract
 - `src/helpers/evmHelpers.js` - Helper functions for testing
 
