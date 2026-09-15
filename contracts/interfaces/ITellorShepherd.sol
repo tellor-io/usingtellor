@@ -6,11 +6,12 @@ interface ITellorShepherd {
     enum Status {
         UNAVAILABLE,
         NORMAL,
-        RECOVERY,
+        BACKUP,
         PAUSED,
         INVALID_PRICE,
         INVALID_COVERAGE,
-        DEVIATING
+        DEVIATING,
+        CHALLENGING
     }
 
     struct PricePreview {
@@ -26,9 +27,9 @@ interface ITellorShepherd {
         uint256 observationCount;
     }
 
-    /// @notice Returns the current validated price or the latched recovery snapshot.
+    /// @notice Returns the delayed Tellor price, or the backup price after a successful challenge.
     /// @return value SpotPrice with 18 decimals.
-    /// @return aggregateTimestamp Tellor aggregate timestamp in milliseconds.
+    /// @return aggregateTimestamp Tellor aggregate timestamp in milliseconds, or backup observation time.
     function getCurrentValue()
         external
         view

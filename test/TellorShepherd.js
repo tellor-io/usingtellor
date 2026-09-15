@@ -19,6 +19,7 @@ describe("TellorShepherd", function () {
   const MIN_OBSERVATIONS = 3;
   const DEVIATION_BPS = 1_000;
   const GOVERNANCE_DELAY = 3_600;
+  const CHALLENGE_DELAY = 3_600;
   const ROLE_DELAY = 1_800;
   const MAX_SPOT_PRICE = h.toWei("1000000000000");
 
@@ -29,7 +30,7 @@ describe("TellorShepherd", function () {
     maxTwapCoverage: MAX_COVERAGE,
     minTwapObservations: MIN_OBSERVATIONS,
     deviationThresholdBps: DEVIATION_BPS,
-    recoveryExitDelay: GOVERNANCE_DELAY,
+    challengeDelay: CHALLENGE_DELAY,
     unpauseDelay: GOVERNANCE_DELAY,
     dataBankChangeDelay: GOVERNANCE_DELAY,
     roleChangeDelay: ROLE_DELAY,
@@ -37,8 +38,7 @@ describe("TellorShepherd", function () {
   };
 
   async function fixture() {
-    const [deployer, admin, pauser, recoveryOperator, stranger, nextAdmin] =
-      await ethers.getSigners();
+    const [deployer, admin, pauser, stranger, nextAdmin] = await ethers.getSigners();
     const valset = await h.createTellorValset({ tellorChainId: "tellor-1" });
 
     const Bridge = await ethers.getContractFactory("TellorDataBridge");
@@ -59,24 +59,27 @@ describe("TellorShepherd", function () {
       MAX_SPOT_PRICE
     );
 
+    const Backup = await ethers.getContractFactory("ManualBackupOracle");
+    const backup = await Backup.deploy(admin.address);
+
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy(
       bank.target,
       admin.address,
+      backup.target,
       queryId,
       parameters,
-      [pauser.address],
-      [recoveryOperator.address]
+      [pauser.address]
     );
 
     return {
       shepherd,
       bank,
+      backup,
       bridge,
       valset,
       admin,
       pauser,
-      recoveryOperator,
       stranger,
       nextAdmin,
     };
@@ -139,90 +142,129 @@ describe("TellorShepherd", function () {
     expect(aggregateTimestamp).to.equal(reports[2].aggregateTimestamp);
   });
 
-  it("fails closed when the delayed relay deviates from its preceding TWAP", async function () {
+  it("still returns the delayed relay when it deviates from TWAP", async function () {
     const { shepherd, bank, valset } = await loadFixture(fixture);
-    await seedDeviation(bank, valset);
+    const reports = await seedDeviation(bank, valset);
 
     const preview = await shepherd.previewValue();
     expect(preview.status).to.equal(6); // DEVIATING
     expect(preview.candidateValue).to.equal(h.toWei("200"));
     expect(preview.twap).to.equal(h.toWei("100"));
     expect(preview.deviationBps).to.equal(10_000);
-    await expect(shepherd.getCurrentValue())
-      .to.be.revertedWithCustomError(shepherd, "PriceUnavailable")
-      .withArgs(6);
-  });
 
-  it("lets a recovery operator latch a prior healthy relay", async function () {
-    const { shepherd, bank, valset, recoveryOperator, stranger } =
-      await loadFixture(fixture);
-    const reports = await seedDeviation(bank, valset);
-
-    await expect(shepherd.connect(stranger).enterRecovery(2)).to.be.revertedWithCustomError(
-      shepherd,
-      "NotRecoveryOperator"
-    );
-    await expect(shepherd.connect(recoveryOperator).enterRecovery(2))
-      .to.emit(shepherd, "RecoveryEntered")
-      .withArgs(2, h.toWei("100"), reports[2].aggregateTimestamp, recoveryOperator.address);
-
-    expect(await shepherd.recoveryActive()).to.equal(true);
-    const preview = await shepherd.previewValue();
-    expect(preview.status).to.equal(2); // RECOVERY
     const [value, aggregateTimestamp] = await shepherd.getCurrentValue();
-    expect(value).to.equal(h.toWei("100"));
-    expect(aggregateTimestamp).to.equal(reports[2].aggregateTimestamp);
+    expect(value).to.equal(h.toWei("200"));
+    expect(aggregateTimestamp).to.equal(reports[3].aggregateTimestamp);
   });
 
-  it("allows recovery operators to select only newer, matured DataBank relays", async function () {
-    const { shepherd, bank, valset, recoveryOperator } = await loadFixture(fixture);
-    await seedDeviation(bank, valset);
-    await shepherd.connect(recoveryOperator).enterRecovery(2);
-
-    const next = await relay(bank, valset, "110", 60);
-    await expect(
-      shepherd.connect(recoveryOperator).updateRecoverySnapshot(next.index)
-    ).to.be.revertedWithCustomError(shepherd, "InvalidRecoveryValue");
-
+  it("lets anyone open a challenge when the delayed relay is deviant", async function () {
+    const { shepherd, bank, valset, stranger } = await loadFixture(fixture);
+    await seedHealthyHistory(bank, valset);
     await time.increase(RELAY_DELAY + 1);
-    await expect(shepherd.connect(recoveryOperator).updateRecoverySnapshot(next.index))
-      .to.emit(shepherd, "RecoverySnapshotUpdated")
-      .withArgs(
-        next.index,
-        h.toWei("110"),
-        next.aggregateTimestamp,
-        recoveryOperator.address
-      );
 
-    expect((await shepherd.getCurrentValue())[0]).to.equal(h.toWei("110"));
-    await expect(
-      shepherd.connect(recoveryOperator).updateRecoverySnapshot(2)
-    ).to.be.revertedWithCustomError(shepherd, "InvalidRecoveryValue");
+    await expect(shepherd.challenge()).to.be.revertedWithCustomError(
+      shepherd,
+      "ChallengeNotRequired"
+    );
+
+    await seedDeviation(bank, valset);
+    await expect(shepherd.connect(stranger).challenge()).to.emit(
+      shepherd,
+      "ChallengeOpened"
+    );
+
+    expect(await shepherd.challengeStartTime()).to.be.gt(0);
+    expect((await shepherd.previewValue()).status).to.equal(7); // CHALLENGING
+    expect((await shepherd.getCurrentValue())[0]).to.equal(h.toWei("200"));
+
+    await expect(shepherd.challenge()).to.be.revertedWithCustomError(
+      shepherd,
+      "ChallengePending"
+    );
   });
 
-  it("keeps recovery latched until delayed admin exit into a healthy live value", async function () {
-    const { shepherd, bank, valset, recoveryOperator, admin } =
+  it("keeps serving the delayed relay until a matured challenge is executed", async function () {
+    const { shepherd, bank, backup, valset, admin, stranger } =
       await loadFixture(fixture);
     await seedDeviation(bank, valset);
-    await shepherd.connect(recoveryOperator).enterRecovery(2);
+    await shepherd.connect(stranger).challenge();
+    await backup.connect(admin).setValue(h.toWei("101"));
+
+    await expect(
+      shepherd.connect(stranger).executeChallenge()
+    ).to.be.revertedWithCustomError(shepherd, "DelayNotPassed");
+
+    expect((await shepherd.getCurrentValue())[0]).to.equal(h.toWei("200"));
+
+    await backup.connect(admin).setReadyToReturn(true);
+    await time.increase(CHALLENGE_DELAY);
+    await expect(
+      shepherd.connect(stranger).executeChallenge()
+    ).to.be.revertedWithCustomError(shepherd, "BackupReadyToReturn");
+
+    await backup.connect(admin).setReadyToReturn(false);
+    await expect(shepherd.connect(stranger).executeChallenge())
+      .to.emit(shepherd, "ChallengeExecuted")
+      .withArgs(stranger.address, h.toWei("200"), h.toWei("100"), 10_000);
+
+    expect(await shepherd.usingBackup()).to.equal(true);
+    expect(await shepherd.challengeStartTime()).to.equal(0);
+    expect((await shepherd.previewValue()).status).to.equal(2); // BACKUP
+    expect((await shepherd.getCurrentValue())[0]).to.equal(h.toWei("101"));
+  });
+
+  it("clears the challenge without switching if deviation has resolved", async function () {
+    const { shepherd, bank, valset, stranger } = await loadFixture(fixture);
+    await seedDeviation(bank, valset);
+    await shepherd.connect(stranger).challenge();
+
+    await relay(bank, valset, "100", 60);
+    await relay(bank, valset, "100", 60);
+    await relay(bank, valset, "100", 60);
+    await time.increase(CHALLENGE_DELAY);
+
+    await expect(shepherd.connect(stranger).executeChallenge())
+      .to.emit(shepherd, "ChallengeCleared")
+      .withArgs(stranger.address);
+
+    expect(await shepherd.usingBackup()).to.equal(false);
+    expect(await shepherd.challengeStartTime()).to.equal(0);
+    expect((await shepherd.previewValue()).status).to.equal(1); // NORMAL
+    expect((await shepherd.getCurrentValue())[0]).to.equal(h.toWei("100"));
+  });
+
+  it("returns to Tellor only after the backup oracle is ready", async function () {
+    const { shepherd, bank, backup, valset, admin, stranger } =
+      await loadFixture(fixture);
+    await seedDeviation(bank, valset);
+    await backup.connect(admin).setValue(h.toWei("101"));
+    await shepherd.connect(stranger).challenge();
+    await time.increase(CHALLENGE_DELAY);
+    await shepherd.connect(stranger).executeChallenge();
+
+    await expect(shepherd.connect(stranger).returnToPrimary()).to.be.revertedWithCustomError(
+      shepherd,
+      "BackupNotReady"
+    );
+    await expect(shepherd.connect(stranger).challenge()).to.be.revertedWithCustomError(
+      shepherd,
+      "UsingBackup"
+    );
 
     await relay(bank, valset, "100", 60);
     await relay(bank, valset, "100", 60);
     const recovered = await relay(bank, valset, "100", 60);
     await time.increase(RELAY_DELAY + 1);
 
-    await shepherd.connect(admin).proposeRecoveryExit();
-    await expect(
-      shepherd.connect(admin).executeRecoveryExit()
-    ).to.be.revertedWithCustomError(shepherd, "DelayNotPassed");
+    await backup.connect(admin).setReadyToReturn(true);
+    await expect(shepherd.connect(stranger).returnToPrimary())
+      .to.emit(shepherd, "ReturnedToPrimary")
+      .withArgs(stranger.address);
 
-    await time.increase(GOVERNANCE_DELAY);
-    await expect(shepherd.connect(admin).executeRecoveryExit())
-      .to.emit(shepherd, "RecoveryExited")
-      .withArgs(recovered.index, h.toWei("100"), recovered.aggregateTimestamp);
-
-    expect(await shepherd.recoveryActive()).to.equal(false);
-    expect((await shepherd.getCurrentValue())[0]).to.equal(h.toWei("100"));
+    expect(await shepherd.usingBackup()).to.equal(false);
+    const [value, aggregateTimestamp] = await shepherd.getCurrentValue();
+    expect(value).to.equal(h.toWei("100"));
+    expect(aggregateTimestamp).to.equal(recovered.aggregateTimestamp);
   });
 
   it("retains fast pausing and delayed unpause", async function () {
@@ -246,22 +288,17 @@ describe("TellorShepherd", function () {
   });
 
   it("delays authority expansion and DataBank migration", async function () {
-    const {
-      shepherd,
-      bridge,
-      admin,
-      pauser,
-      stranger,
-      nextAdmin,
-    } = await loadFixture(fixture);
+    const { shepherd, bridge, admin, pauser, stranger, nextAdmin } =
+      await loadFixture(fixture);
 
-    await shepherd.connect(admin).proposeRecoveryOperator(stranger.address);
-    await expect(
-      shepherd.executeRecoveryOperator(stranger.address)
-    ).to.be.revertedWithCustomError(shepherd, "DelayNotPassed");
+    await shepherd.connect(admin).proposePauser(stranger.address);
+    await expect(shepherd.executePauser(stranger.address)).to.be.revertedWithCustomError(
+      shepherd,
+      "DelayNotPassed"
+    );
     await time.increase(ROLE_DELAY);
-    await shepherd.executeRecoveryOperator(stranger.address);
-    expect(await shepherd.recoveryOperators(stranger.address)).to.equal(true);
+    await shepherd.executePauser(stranger.address);
+    expect(await shepherd.pausers(stranger.address)).to.equal(true);
 
     const Bank = await ethers.getContractFactory("TellorDataBank");
     const newBank = await Bank.deploy(

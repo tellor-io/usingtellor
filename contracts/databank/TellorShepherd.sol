@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+import {IBackupOracle} from "../interfaces/IBackupOracle.sol";
 import {ITellorDataBank} from "../interfaces/ITellorDataBank.sol";
 import {ITellorShepherd} from "../interfaces/ITellorShepherd.sol";
 
 /**
  * @title TellorShepherd
  * @notice A view-first safety layer for one Tellor SpotPrice query.
- * @dev In normal operation, reads validate a delayed relay against its preceding TWAP
- *      without changing state. A recovery operator can latch a previously relayed value
- *      when the live value deviates, and the admin can return to normal after a delay.
+ * @dev Reads use a delayed DataBank relay. A persistent TWAP deviation can be
+ *      challenged permissionlessly; after the delay, a still-deviant feed
+ *      switches to the constructor-set backup oracle until that oracle says
+ *      it is safe to return.
  */
 contract TellorShepherd is ITellorShepherd {
     uint256 public constant BPS_DENOMINATOR = 10_000;
@@ -23,22 +25,15 @@ contract TellorShepherd is ITellorShepherd {
         uint256 maxTwapCoverage;
         uint256 minTwapObservations;
         uint256 deviationThresholdBps;
-        uint256 recoveryExitDelay;
+        uint256 challengeDelay;
         uint256 unpauseDelay;
         uint256 dataBankChangeDelay;
         uint256 roleChangeDelay;
         uint256 adminTransferDelay;
     }
 
-    struct RecoverySnapshot {
-        uint256 value;
-        uint256 aggregateTimestamp;
-        uint256 relayTimestamp;
-        uint256 dataIndex;
-        address sourceDataBank;
-    }
-
     ITellorDataBank public dataBank;
+    IBackupOracle public immutable backupOracle;
     address public admin;
     bytes32 public immutable queryId;
 
@@ -49,23 +44,20 @@ contract TellorShepherd is ITellorShepherd {
     uint256 public immutable MAX_TWAP_COVERAGE;
     uint256 public immutable MIN_TWAP_OBSERVATIONS;
     uint256 public immutable DEVIATION_THRESHOLD_BPS;
-    uint256 public immutable RECOVERY_EXIT_DELAY;
+    uint256 public immutable CHALLENGE_DELAY;
     uint256 public immutable UNPAUSE_DELAY;
     uint256 public immutable DATA_BANK_CHANGE_DELAY;
     uint256 public immutable ROLE_CHANGE_DELAY;
     uint256 public immutable ADMIN_TRANSFER_DELAY;
 
     bool public paused;
-    bool public recoveryActive;
-    RecoverySnapshot public recoverySnapshot;
+    bool public usingBackup;
+    uint256 public challengeStartTime;
 
     mapping(address => bool) public pausers;
-    mapping(address => bool) public recoveryOperators;
     mapping(address => uint256) public pauserAdditionProposalTime;
-    mapping(address => uint256) public recoveryOperatorAdditionProposalTime;
 
     uint256 public unpauseProposalTime;
-    uint256 public recoveryExitProposalTime;
     address public proposedDataBank;
     uint256 public dataBankProposalTime;
     address public proposedAdmin;
@@ -74,48 +66,35 @@ contract TellorShepherd is ITellorShepherd {
     error InvalidConfiguration();
     error NotAdmin();
     error NotPauser();
-    error NotRecoveryOperator();
     error ShepherdPaused();
     error PriceUnavailable(Status status);
     error InvalidProposal();
     error DelayNotPassed();
-    error RecoveryNotRequired();
-    error InvalidRecoveryValue();
+    error ChallengeNotRequired();
+    error ChallengePending();
+    error NoChallenge();
+    error UsingBackup();
+    error BackupNotReady();
+    error BackupReadyToReturn();
 
     event Paused(address indexed account);
     event Unpaused();
     event UnpauseProposed(uint256 executableAt);
     event UnpauseCancelled();
 
-    event RecoveryEntered(
-        uint256 indexed dataIndex,
-        uint256 value,
-        uint256 aggregateTimestamp,
-        address indexed operator
+    event ChallengeOpened(address indexed challenger, uint256 executableAt);
+    event ChallengeCleared(address indexed account);
+    event ChallengeExecuted(
+        address indexed account,
+        uint256 candidateValue,
+        uint256 twap,
+        uint256 deviationBps
     );
-    event RecoverySnapshotUpdated(
-        uint256 indexed dataIndex,
-        uint256 value,
-        uint256 aggregateTimestamp,
-        address indexed operator
-    );
-    event RecoveryExitProposed(uint256 executableAt);
-    event RecoveryExitCancelled();
-    event RecoveryExited(
-        uint256 indexed candidateIndex,
-        uint256 value,
-        uint256 aggregateTimestamp
-    );
+    event ReturnedToPrimary(address indexed account);
 
     event PauserAdditionProposed(address indexed account, uint256 executableAt);
     event PauserAdded(address indexed account);
     event PauserRemoved(address indexed account);
-    event RecoveryOperatorAdditionProposed(
-        address indexed account,
-        uint256 executableAt
-    );
-    event RecoveryOperatorAdded(address indexed account);
-    event RecoveryOperatorRemoved(address indexed account);
 
     event DataBankChangeProposed(
         address indexed proposedDataBank,
@@ -136,15 +115,16 @@ contract TellorShepherd is ITellorShepherd {
     constructor(
         address _dataBank,
         address _admin,
+        address _backupOracle,
         bytes32 _queryId,
         Parameters memory _parameters,
-        address[] memory _pausers,
-        address[] memory _recoveryOperators
+        address[] memory _pausers
     ) {
         if (
             _dataBank == address(0) ||
             _dataBank.code.length == 0 ||
             _admin == address(0) ||
+            _backupOracle == address(0) ||
             _queryId == bytes32(0) ||
             _parameters.twapWindow == 0 ||
             _parameters.minTwapCoverage == 0 ||
@@ -156,6 +136,7 @@ contract TellorShepherd is ITellorShepherd {
         ) revert InvalidConfiguration();
 
         dataBank = ITellorDataBank(_dataBank);
+        backupOracle = IBackupOracle(_backupOracle);
         admin = _admin;
         queryId = _queryId;
 
@@ -165,7 +146,7 @@ contract TellorShepherd is ITellorShepherd {
         MAX_TWAP_COVERAGE = _parameters.maxTwapCoverage;
         MIN_TWAP_OBSERVATIONS = _parameters.minTwapObservations;
         DEVIATION_THRESHOLD_BPS = _parameters.deviationThresholdBps;
-        RECOVERY_EXIT_DELAY = _parameters.recoveryExitDelay;
+        CHALLENGE_DELAY = _parameters.challengeDelay;
         UNPAUSE_DELAY = _parameters.unpauseDelay;
         DATA_BANK_CHANGE_DELAY = _parameters.dataBankChangeDelay;
         ROLE_CHANGE_DELAY = _parameters.roleChangeDelay;
@@ -174,10 +155,6 @@ contract TellorShepherd is ITellorShepherd {
         for (uint256 i; i < _pausers.length; ++i) {
             _addInitialRole(_pausers[i], pausers);
             emit PauserAdded(_pausers[i]);
-        }
-        for (uint256 i; i < _recoveryOperators.length; ++i) {
-            _addInitialRole(_recoveryOperators[i], recoveryOperators);
-            emit RecoveryOperatorAdded(_recoveryOperators[i]);
         }
     }
 
@@ -193,15 +170,15 @@ contract TellorShepherd is ITellorShepherd {
     {
         if (paused) revert ShepherdPaused();
 
-        if (recoveryActive) {
-            return (
-                recoverySnapshot.value,
-                recoverySnapshot.aggregateTimestamp
-            );
+        if (usingBackup) {
+            return backupOracle.getCurrentValue();
         }
 
         PricePreview memory _preview = _previewNormalValue();
-        if (_preview.status != Status.NORMAL) {
+        if (
+            _preview.status != Status.NORMAL &&
+            _preview.status != Status.DEVIATING
+        ) {
             revert PriceUnavailable(_preview.status);
         }
         return (
@@ -221,115 +198,80 @@ contract TellorShepherd is ITellorShepherd {
             return _preview;
         }
 
-        if (recoveryActive) {
-            _preview.status = Status.RECOVERY;
-            _preview.candidateIndex = recoverySnapshot.dataIndex;
-            _preview.candidateValue = recoverySnapshot.value;
-            _preview.candidateAggregateTimestamp = recoverySnapshot
-                .aggregateTimestamp;
-            _preview.candidateRelayTimestamp = recoverySnapshot.relayTimestamp;
+        if (usingBackup) {
+            (
+                uint256 _value,
+                uint256 _timestamp
+            ) = backupOracle.getCurrentValue();
+            _preview.status = Status.BACKUP;
+            _preview.candidateValue = _value;
+            _preview.candidateAggregateTimestamp = _timestamp;
             return _preview;
         }
 
-        return _previewNormalValue();
+        _preview = _previewNormalValue();
+        if (challengeStartTime != 0) {
+            _preview.status = Status.CHALLENGING;
+        }
     }
 
     // ---------------------------------------------------------------------
-    // Recovery
+    // Challenge
     // ---------------------------------------------------------------------
 
     /**
-     * @notice Latches a previously healthy, delayed DataBank value after live deviation.
-     * @param _anchorIndex Index of the relayed value to use during recovery.
+     * @notice Starts the challenge delay when the delayed relay exceeds the TWAP threshold.
+     * @dev Reads continue to return the delayed DataBank relay until `executeChallenge`.
      */
-    function enterRecovery(uint256 _anchorIndex) external onlyRecoveryOperator {
-        if (recoveryActive) revert InvalidRecoveryValue();
-
-        PricePreview memory _current = _previewNormalValue();
-        if (_current.status != Status.DEVIATING) revert RecoveryNotRequired();
-        if (_anchorIndex >= _current.candidateIndex) {
-            revert InvalidRecoveryValue();
+    function challenge() external {
+        if (usingBackup) revert UsingBackup();
+        if (challengeStartTime != 0) revert ChallengePending();
+        if (_previewNormalValue().status != Status.DEVIATING) {
+            revert ChallengeNotRequired();
         }
 
-        PricePreview memory _anchor = _previewAt(_anchorIndex);
-        if (_anchor.status != Status.NORMAL) revert InvalidRecoveryValue();
-
-        recoveryActive = true;
-        delete recoveryExitProposalTime;
-        _storeRecoverySnapshot(_anchor, msg.sender, true);
+        challengeStartTime = block.timestamp;
+        emit ChallengeOpened(msg.sender, block.timestamp + CHALLENGE_DELAY);
     }
 
     /**
-     * @notice Advances recovery to a newer value already stored in the DataBank.
-     * @dev The operator cannot publish a value; it must be an existing, delayed SpotPrice relay.
+     * @notice Completes a matured challenge. Switches to the backup oracle if still deviant.
      */
-    function updateRecoverySnapshot(uint256 _dataIndex)
-        external
-        onlyRecoveryOperator
-    {
-        if (!recoveryActive) revert InvalidRecoveryValue();
-        if (_dataIndex >= dataBank.getAggregateValueCount(queryId)) {
-            revert InvalidRecoveryValue();
+    function executeChallenge() external {
+        if (usingBackup) revert UsingBackup();
+        if (challengeStartTime == 0) revert NoChallenge();
+        if (block.timestamp < challengeStartTime + CHALLENGE_DELAY) {
+            revert DelayNotPassed();
         }
-
-        ITellorDataBank.AggregateData memory _data = dataBank
-            .getAggregateByIndex(queryId, _dataIndex);
-        if (
-            !_isMature(_data.relayTimestamp) ||
-            _data.value.length != 32 ||
-            _data.aggregateTimestamp <= recoverySnapshot.aggregateTimestamp
-        ) revert InvalidRecoveryValue();
-
-        uint256 _value = abi.decode(_data.value, (uint256));
-        if (_value == 0 || _value > dataBank.MAX_SPOT_PRICE()) {
-            revert InvalidRecoveryValue();
-        }
-
-        PricePreview memory _snapshot;
-        _snapshot.status = Status.RECOVERY;
-        _snapshot.candidateIndex = _dataIndex;
-        _snapshot.candidateValue = _value;
-        _snapshot.candidateAggregateTimestamp = _data.aggregateTimestamp;
-        _snapshot.candidateRelayTimestamp = _data.relayTimestamp;
-        _storeRecoverySnapshot(_snapshot, msg.sender, false);
-    }
-
-    function proposeRecoveryExit() external onlyAdmin {
-        if (!recoveryActive || recoveryExitProposalTime != 0) {
-            revert InvalidProposal();
-        }
-        recoveryExitProposalTime = block.timestamp;
-        emit RecoveryExitProposed(block.timestamp + RECOVERY_EXIT_DELAY);
-    }
-
-    function cancelRecoveryExit() external onlyAdmin {
-        if (recoveryExitProposalTime == 0) revert InvalidProposal();
-        delete recoveryExitProposalTime;
-        emit RecoveryExitCancelled();
-    }
-
-    function executeRecoveryExit() external onlyAdmin {
-        if (!recoveryActive || recoveryExitProposalTime == 0) {
-            revert InvalidProposal();
-        }
-        if (
-            block.timestamp <
-            recoveryExitProposalTime + RECOVERY_EXIT_DELAY
-        ) revert DelayNotPassed();
 
         PricePreview memory _preview = _previewNormalValue();
-        if (_preview.status != Status.NORMAL) {
-            revert PriceUnavailable(_preview.status);
+        if (_preview.status != Status.DEVIATING) {
+            delete challengeStartTime;
+            emit ChallengeCleared(msg.sender);
+            return;
         }
 
-        recoveryActive = false;
-        delete recoverySnapshot;
-        delete recoveryExitProposalTime;
-        emit RecoveryExited(
-            _preview.candidateIndex,
+        backupOracle.getCurrentValue();
+        if (backupOracle.readyToReturn()) revert BackupReadyToReturn();
+        usingBackup = true;
+        delete challengeStartTime;
+        emit ChallengeExecuted(
+            msg.sender,
             _preview.candidateValue,
-            _preview.candidateAggregateTimestamp
+            _preview.twap,
+            _preview.deviationBps
         );
+    }
+
+    /**
+     * @notice Returns to delayed Tellor data once the backup oracle signals it is safe.
+     */
+    function returnToPrimary() external {
+        if (!usingBackup) revert InvalidProposal();
+        if (!backupOracle.readyToReturn()) revert BackupNotReady();
+
+        usingBackup = false;
+        emit ReturnedToPrimary(msg.sender);
     }
 
     // ---------------------------------------------------------------------
@@ -373,11 +315,7 @@ contract TellorShepherd is ITellorShepherd {
     // ---------------------------------------------------------------------
 
     function proposePauser(address _account) external onlyAdmin {
-        _proposeRole(
-            _account,
-            pauserAdditionProposalTime,
-            pausers
-        );
+        _proposeRole(_account, pauserAdditionProposalTime, pausers);
         emit PauserAdditionProposed(
             _account,
             block.timestamp + ROLE_CHANGE_DELAY
@@ -385,11 +323,7 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     function executePauser(address _account) external {
-        _executeRole(
-            _account,
-            pauserAdditionProposalTime,
-            pausers
-        );
+        _executeRole(_account, pauserAdditionProposalTime, pausers);
         emit PauserAdded(_account);
     }
 
@@ -397,33 +331,6 @@ contract TellorShepherd is ITellorShepherd {
         if (!pausers[_account]) revert InvalidProposal();
         pausers[_account] = false;
         emit PauserRemoved(_account);
-    }
-
-    function proposeRecoveryOperator(address _account) external onlyAdmin {
-        _proposeRole(
-            _account,
-            recoveryOperatorAdditionProposalTime,
-            recoveryOperators
-        );
-        emit RecoveryOperatorAdditionProposed(
-            _account,
-            block.timestamp + ROLE_CHANGE_DELAY
-        );
-    }
-
-    function executeRecoveryOperator(address _account) external {
-        _executeRole(
-            _account,
-            recoveryOperatorAdditionProposalTime,
-            recoveryOperators
-        );
-        emit RecoveryOperatorAdded(_account);
-    }
-
-    function removeRecoveryOperator(address _account) external onlyAdmin {
-        if (!recoveryOperators[_account]) revert InvalidProposal();
-        recoveryOperators[_account] = false;
-        emit RecoveryOperatorRemoved(_account);
     }
 
     // ---------------------------------------------------------------------
@@ -526,28 +433,6 @@ contract TellorShepherd is ITellorShepherd {
         return _evaluate(_index, _data, _twap);
     }
 
-    function _previewAt(uint256 _index)
-        internal
-        view
-        returns (PricePreview memory _preview)
-    {
-        if (
-            _index >= dataBank.getAggregateValueCount(queryId) ||
-            block.timestamp <= RELAY_CONSUMPTION_DELAY
-        ) return _preview;
-
-        ITellorDataBank.AggregateData memory _data = dataBank
-            .getAggregateByIndex(queryId, _index);
-        if (!_isMature(_data.relayTimestamp)) return _preview;
-
-        (
-            bool _found,
-            ITellorDataBank.TwapData memory _twap
-        ) = dataBank.getTwapAt(queryId, _index, TWAP_WINDOW);
-        if (!_found) return _preview;
-        return _evaluate(_index, _data, _twap);
-    }
-
     function _evaluate(
         uint256 _index,
         ITellorDataBank.AggregateData memory _data,
@@ -614,46 +499,6 @@ contract TellorShepherd is ITellorShepherd {
         return (_difference * BPS_DENOMINATOR) / _reference;
     }
 
-    function _isMature(uint256 _relayTimestamp)
-        internal
-        view
-        returns (bool)
-    {
-        return
-            block.timestamp > RELAY_CONSUMPTION_DELAY &&
-            _relayTimestamp < block.timestamp - RELAY_CONSUMPTION_DELAY;
-    }
-
-    function _storeRecoverySnapshot(
-        PricePreview memory _snapshot,
-        address _operator,
-        bool _entering
-    ) internal {
-        recoverySnapshot = RecoverySnapshot({
-            value: _snapshot.candidateValue,
-            aggregateTimestamp: _snapshot.candidateAggregateTimestamp,
-            relayTimestamp: _snapshot.candidateRelayTimestamp,
-            dataIndex: _snapshot.candidateIndex,
-            sourceDataBank: address(dataBank)
-        });
-
-        if (_entering) {
-            emit RecoveryEntered(
-                _snapshot.candidateIndex,
-                _snapshot.candidateValue,
-                _snapshot.candidateAggregateTimestamp,
-                _operator
-            );
-        } else {
-            emit RecoverySnapshotUpdated(
-                _snapshot.candidateIndex,
-                _snapshot.candidateValue,
-                _snapshot.candidateAggregateTimestamp,
-                _operator
-            );
-        }
-    }
-
     // ---------------------------------------------------------------------
     // Internal administration
     // ---------------------------------------------------------------------
@@ -695,11 +540,6 @@ contract TellorShepherd is ITellorShepherd {
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert NotAdmin();
-        _;
-    }
-
-    modifier onlyRecoveryOperator() {
-        if (!recoveryOperators[msg.sender]) revert NotRecoveryOperator();
         _;
     }
 }

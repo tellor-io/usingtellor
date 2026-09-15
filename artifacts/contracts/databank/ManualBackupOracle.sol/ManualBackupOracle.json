@@ -1,0 +1,165 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ManualBackupOracle",
+  "sourceName": "contracts/databank/ManualBackupOracle.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_admin",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidAdmin",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotAdmin",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PriceUnset",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "ready",
+          "type": "bool"
+        }
+      ],
+      "name": "ReadyToReturnSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "ValueSet",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "admin",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCurrentValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastUpdatedAt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "readyToReturn",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bool",
+          "name": "_ready",
+          "type": "bool"
+        }
+      ],
+      "name": "setReadyToReturn",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_value",
+          "type": "uint256"
+        }
+      ],
+      "name": "setValue",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "value",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60803461008c57601f61035638819003918201601f19168301916001600160401b038311848410176100915780849260209460405283398101031261008c57516001600160a01b0381169081900361008c57801561007a57600080546001600160a01b0319169190911790556040516102ae90816100a88239f35b604051630b5eba9f60e41b8152600490fd5b600080fd5b634e487b7160e01b600052604160045260246000fdfe608060408181526004918236101561001657600080fd5b600092833560e01c9182630e968208146101f5575081630f76c114146101b55781633fa4f2451461019657816354aea1271461017757816355241077146100bf57508063f610a0431461009c5763f851a4401461007257600080fd5b34610098578160031936011261009857905490516001600160a01b039091168152602090f35b5080fd5b503461009857816003193601126100985760209060ff6003541690519015158152f35b905034610173576020366003190112610173578254813591906001600160a01b03163303610165575090817f69be06033bef8d755e18606a27d6d07393aabbd1800776e503af2c8a03b7c681926001554260025560035460ff811661012f575b508151908152426020820152a180f35b60ff19166003557f104e4c94c650c8880c0c1f2f9c02c95d61f5f7b443e106cf74f026ad5122852760208351868152a13861011f565b8251637bfa4b9f60e01b8152fd5b8280fd5b5050346100985781600319360112610098576020906002549051908152f35b5050346100985781600319360112610098576020906001549051908152f35b905082346101f257806003193601126101f257506002549081156101e457506001549082519182526020820152f35b825163bd5cf7b560e01b8152fd5b80fd5b92915034610274576020366003190112610274578035928315158094036102705784546001600160a01b0316330361026457847f104e4c94c650c8880c0c1f2f9c02c95d61f5f7b443e106cf74f026ad512285276020868660ff196003541660ff83161760035551908152a180f35b637bfa4b9f60e01b8152fd5b8480fd5b8380fdfea264697066735822122053845a401050a2d4c28919f8822df5958c418815b72df834baf927fa7f77316164736f6c63430008130033",
+  "deployedBytecode": "0x608060408181526004918236101561001657600080fd5b600092833560e01c9182630e968208146101f5575081630f76c114146101b55781633fa4f2451461019657816354aea1271461017757816355241077146100bf57508063f610a0431461009c5763f851a4401461007257600080fd5b34610098578160031936011261009857905490516001600160a01b039091168152602090f35b5080fd5b503461009857816003193601126100985760209060ff6003541690519015158152f35b905034610173576020366003190112610173578254813591906001600160a01b03163303610165575090817f69be06033bef8d755e18606a27d6d07393aabbd1800776e503af2c8a03b7c681926001554260025560035460ff811661012f575b508151908152426020820152a180f35b60ff19166003557f104e4c94c650c8880c0c1f2f9c02c95d61f5f7b443e106cf74f026ad5122852760208351868152a13861011f565b8251637bfa4b9f60e01b8152fd5b8280fd5b5050346100985781600319360112610098576020906002549051908152f35b5050346100985781600319360112610098576020906001549051908152f35b905082346101f257806003193601126101f257506002549081156101e457506001549082519182526020820152f35b825163bd5cf7b560e01b8152fd5b80fd5b92915034610274576020366003190112610274578035928315158094036102705784546001600160a01b0316330361026457847f104e4c94c650c8880c0c1f2f9c02c95d61f5f7b443e106cf74f026ad512285276020868660ff196003541660ff83161760035551908152a180f35b637bfa4b9f60e01b8152fd5b8480fd5b8380fdfea264697066735822122053845a401050a2d4c28919f8822df5958c418815b72df834baf927fa7f77316164736f6c63430008130033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
