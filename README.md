@@ -10,7 +10,12 @@ Use this package to install the Tellor user contracts and test helper functions,
 - `contracts/testing/TellorLab.sol` - A testing contract for rapid prototyping with Tellor oracle data
 - `contracts/interfaces/ITellorDataBank.sol` - The TellorDataBank interface, a standard interface for reading tellor data
 - `contracts/bridge/TellorDataBridge.sol` - The TellorDataBridge contract
+- `contracts/databank/TellorShepherd.sol` - Per-feed delayed reads, pause controls, and primary/backup source selection
+- `contracts/databank/TellorShepherdFactory.sol` - Permissionless Shepherd deployment and provenance tracking
+- `contracts/examples/StreamBackupOracle.sol` - Trusted-streamer backup example with delayed reads and admin-controlled recovery permission
 - `src/helpers/evmHelpers.js` - Helper functions for testing
+
+See the [audit handoff](docs/AUDIT-HANDOFF.md) for review scope, build/test commands, and trust assumptions. Local integration coverage does not establish deployment readiness.
 
 ## How to Use
 
@@ -29,6 +34,14 @@ MORPHO_ADAPTER_ROOT=/path/to/morpho-tellor-adapter npm run test:morpho
 The suite runs `forge build` using that checkout's configuration before loading its compiled adaptor. It then deploys the adaptor, real Shepherds, DataBridge, DataBank, and shared stream backup to Hardhat's temporary blockchain. The only source mocks inject timestamps or failures that the stream cannot normally produce. Build failures stop the suite; it does not fall back to old bytecode. It tests the selected working tree, including uncommitted changes, rather than an npm release.
 
 `npm test` remains the standalone Shepherd suite and does not require the adaptor checkout. The separate integration suite is in `integration/MorphoTellorOracle.js`. These tests exercise oracle reads and source transitions, not complete Morpho borrowing/liquidation transactions or npm installation. A local `npm pack` installation check remains part of release preparation; no publication is required for it.
+
+### Local Shepherd / Euler integration tests
+
+Run `npm run test:euler` with the same prerequisites and a sibling `../euler-tellor-adapter` checkout containing its Foundry dependencies. It builds the adaptor before testing single-feed direct/inverse quotes and source transitions; it does not exercise complete Euler vault transactions. To use another checkout:
+
+```bash
+EULER_ADAPTER_ROOT=/path/to/euler-tellor-adapter npm run test:euler
+```
 
 ### Install
 
