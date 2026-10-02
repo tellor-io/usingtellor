@@ -1,40 +1,89 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-/// @notice Consumer-facing interface for a view-first Tellor price oracle.
+/**
+ * @title ITellorShepherd
+ * @notice Consumer reads, events, and errors for a per-feed Tellor safety layer.
+ */
 interface ITellorShepherd {
-    enum Status {
-        UNAVAILABLE,
-        NORMAL,
-        BACKUP,
-        PAUSED,
-        INVALID_PRICE,
-        INVALID_COVERAGE,
-        DEVIATING,
-        CHALLENGING
-    }
+    // Events
+    event BackupChangeCancelled(address indexed proposedBackup);
+    event BackupChanged(address indexed previousBackup, address indexed newBackup);
+    event BackupChangeProposed(address indexed proposedBackup, uint256 proposedAt);
+    event ChallengeCancelled(address indexed caller);
+    event ChallengeExecuted(address indexed caller);
+    event ChallengeInvalidated();
+    event ChallengeRequested(address indexed caller, uint256 requestedAt);
+    event DataBankChangeCancelled(address indexed proposedBank);
+    event DataBankChanged(address indexed previousBank, address indexed newBank);
+    event DataBankChangeProposed(address indexed proposedBank, uint256 proposedAt);
+    event Paused(address indexed caller);
+    event PauserAdded(address indexed pauser);
+    event PauserRemoved(address indexed pauser);
+    event RecoveryCancelled(address indexed caller);
+    event RecoveryExecuted(address indexed caller);
+    event RecoveryInvalidated();
+    event RecoveryRequested(address indexed caller, uint256 requestedAt);
+    event Unpaused(address indexed caller);
 
-    struct PricePreview {
-        Status status;
-        uint256 candidateIndex;
-        uint256 candidateValue;
-        uint256 candidateAggregateTimestamp;
-        uint256 candidateRelayTimestamp;
-        uint256 twap;
-        uint256 deviationBps;
-        uint256 twapStartTimestamp;
-        uint256 twapEndTimestamp;
-        uint256 observationCount;
-    }
+    // Errors
+    error AlreadyPaused();
+    error AlreadyPauser();
+    error BackupChangeDelayNotElapsed();
+    error BackupChangePending();
+    error BackupHasNoCode();
+    error BackupOracleHasNoCode();
+    error BackupUnchanged();
+    error ChallengeAlreadyPending();
+    error ChallengeDelayNotElapsed();
+    error DataBankChangeDelayNotElapsed();
+    error DataBankChangePending();
+    error DataBankHasNoCode();
+    error DataBankUnchanged();
+    error DiagnosticUnavailable();
+    error InvalidAdmin();
+    error InvalidBackupChangeDelay();
+    error InvalidChallengeDelay();
+    error InvalidChallengeThreshold();
+    error InvalidDataBankChangeDelay();
+    error InvalidMinPauseDuration();
+    error InvalidPauser();
+    error InvalidQueryId();
+    error InvalidRecoveryDelay();
+    error InvalidRelayReadDelay();
+    error InvalidTwapReference();
+    error InvalidTwapWindow();
+    error InvalidValueLength();
+    error NoMatureData();
+    error NoPendingBackupChange();
+    error NoPendingChallenge();
+    error NoPendingDataBankChange();
+    error NoPendingRecovery();
+    error NotAdmin();
+    error NotAuthorizedToPause();
+    error NotBackupMode();
+    error NotDeviating();
+    error NotPaused();
+    error NotPauser();
+    error NotPrimaryMode();
+    error PauseDurationNotElapsed();
+    error RecoveryAlreadyPending();
+    error RecoveryDelayNotElapsed();
+    error RecoveryNotAllowed();
+    error RecoveryStillAllowed();
+    error ShepherdPaused();
+    error StillDeviating();
+    error ZeroValue();
 
-    /// @notice Returns the delayed Tellor price, or the backup price after a successful challenge.
-    /// @return value SpotPrice with 18 decimals.
-    /// @return aggregateTimestamp Tellor aggregate timestamp in milliseconds, or backup observation time.
-    function getCurrentValue()
-        external
-        view
-        returns (uint256 value, uint256 aggregateTimestamp);
+    // Getter functions
 
-    /// @notice Describes what `getCurrentValue` would return and why it may be unavailable.
-    function previewValue() external view returns (PricePreview memory preview);
+    /// @notice Returns the selected source's value and timestamp, or reverts if the read is unavailable.
+    /// @dev Preserves the primary aggregate timestamp or the backup-supplied timestamp;
+    /// never substitutes relay, submission, switch, or read time. Paused reads revert.
+    /// @return value The selected source's price, without adaptor-specific scaling.
+    /// @return aggregateTimestamp The selected source's timestamp in milliseconds.
+    function getCurrentValue() external view returns (uint256 value, uint256 aggregateTimestamp);
+
+    /// @notice Returns the immutable Tellor query ID curated by this Shepherd.
+    function queryId() external view returns (bytes32);
 }

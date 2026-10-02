@@ -11,7 +11,7 @@ import "../interfaces/ITellorDataBridge.sol";
  * data integrations. It has no data bridge validation, zero security checks, and is 
  * NOT for production use. For production contracts, use TellorDataBridge verification. 
  * See SampleLayerUser repo for usage examples: https://github.com/tellor-io/SampleLayerUser
- * This contract does not implement the production DataBank's SpotPrice TWAP extension.
+ * This contract conforms to the ITellorDataBank interface.
  */
 contract TellorLab {
     // Storage

@@ -304,7 +304,7 @@ function layerSign(message, privateKey) {
  * @param {Object} overrides - Optional overrides for any calculated values
  * @param {number} overrides.aggregateTimestamp - Custom aggregate timestamp (default: (block.timestamp - 2) * 1000)
  * @param {number} overrides.aggregatePower - Custom aggregate power (default: sum of powers)
- * @param {number} overrides.attestationTimestamp - Custom attestation timestamp (default: aggregateTimestamp)
+ * @param {number} overrides.attestationTimestamp - Custom attestation timestamp (default: aggregateTimestamp + 1000)
  * @param {number} overrides.previousTimestamp - Custom previous timestamp (default: 0)
  * @param {number} overrides.nextTimestamp - Custom next timestamp (default: 0)
  * @param {number} overrides.lastConsensusTimestamp - Custom last consensus timestamp (default: aggregateTimestamp for consensus data)
@@ -324,7 +324,7 @@ async function prepareOracleData(queryId, value, validatorSet, overrides = {}) {
   // Use overrides or defaults
   const aggregateTimestamp = overrides.aggregateTimestamp !== undefined ? overrides.aggregateTimestamp : defaultAggregateTimestamp;
   const aggregatePower = overrides.aggregatePower !== undefined ? overrides.aggregatePower : defaultAggregatePower;
-  const attestationTimestamp = overrides.attestationTimestamp !== undefined ? overrides.attestationTimestamp : aggregateTimestamp;
+  const attestationTimestamp = overrides.attestationTimestamp !== undefined ? overrides.attestationTimestamp : aggregateTimestamp + 1000;
   const previousTimestamp = overrides.previousTimestamp !== undefined ? overrides.previousTimestamp : 0;
   const nextTimestamp = overrides.nextTimestamp !== undefined ? overrides.nextTimestamp : 0;
   // Default to consensus data (aggregateTimestamp == lastConsensusTimestamp)

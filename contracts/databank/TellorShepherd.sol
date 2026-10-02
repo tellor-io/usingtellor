@@ -7,539 +7,498 @@ import {ITellorShepherd} from "../interfaces/ITellorShepherd.sol";
 
 /**
  * @title TellorShepherd
- * @notice A view-first safety layer for one Tellor SpotPrice query.
- * @dev Reads use a delayed DataBank relay. A persistent TWAP deviation can be
- *      challenged permissionlessly; after the delay, a still-deviant feed
- *      switches to the constructor-set backup oracle until that oracle says
- *      it is safe to return.
+ * @notice Per-feed Tellor safety layer with mature primary selection.
+ * @dev Freshness checks belong to adaptors. Adaptor integration and release
+ * validation remain incomplete. This version is not ready for consumer deployment.
  */
 contract TellorShepherd is ITellorShepherd {
-    uint256 public constant BPS_DENOMINATOR = 10_000;
-
-    struct Parameters {
-        // EVM-time seconds.
-        uint256 relayConsumptionDelay;
-        // Tellor aggregate-time milliseconds.
-        uint256 twapWindow;
-        uint256 minTwapCoverage;
-        uint256 maxTwapCoverage;
-        uint256 minTwapObservations;
-        uint256 deviationThresholdBps;
-        uint256 challengeDelay;
-        uint256 unpauseDelay;
-        uint256 dataBankChangeDelay;
-        uint256 roleChangeDelay;
-        uint256 adminTransferDelay;
-    }
-
-    ITellorDataBank public dataBank;
-    IBackupOracle public immutable backupOracle;
-    address public admin;
-    bytes32 public immutable queryId;
-
-    uint256 public immutable RELAY_CONSUMPTION_DELAY; // EVM-time seconds
-    // The following three values use Tellor aggregate-time milliseconds.
-    uint256 public immutable TWAP_WINDOW;
-    uint256 public immutable MIN_TWAP_COVERAGE;
-    uint256 public immutable MAX_TWAP_COVERAGE;
-    uint256 public immutable MIN_TWAP_OBSERVATIONS;
-    uint256 public immutable DEVIATION_THRESHOLD_BPS;
-    uint256 public immutable CHALLENGE_DELAY;
-    uint256 public immutable UNPAUSE_DELAY;
+    // Immutables
+    bytes32 public immutable override queryId;
+    uint256 public immutable BACKUP_CHANGE_DELAY;
+    uint256 public immutable CHALLENGE_DELAY_SECONDS;
+    uint256 public immutable CHALLENGE_THRESHOLD_BPS;
     uint256 public immutable DATA_BANK_CHANGE_DELAY;
-    uint256 public immutable ROLE_CHANGE_DELAY;
-    uint256 public immutable ADMIN_TRANSFER_DELAY;
+    uint256 public immutable MIN_PAUSE_DURATION;
+    uint256 public immutable RECOVERY_DELAY_SECONDS;
+    uint256 public immutable RELAY_READ_DELAY;
+    uint256 public immutable TWAP_WINDOW_MS;
 
+    // Storage
+    // Both source addresses change only through delayed, paused migration.
+    ITellorDataBank public dataBank;
+    address public admin;
+    address public backupOracle;
+    address public pendingBackupOracle;
+    address public pendingDataBank;
+    uint256 public backupProposedAt;
+    uint256 public challengeRequestedAt;
+    uint256 public dataBankProposedAt;
+    uint256 public pausedAt;
+    uint256 public recoveryRequestedAt;
+    bool public challengePending;
     bool public paused;
-    bool public usingBackup;
-    uint256 public challengeStartTime;
+    bool public recoveryPending;
+    Mode public mode;
 
-    mapping(address => bool) public pausers;
-    mapping(address => uint256) public pauserAdditionProposalTime;
+    // Additional operational keys; the admin's pause authority is independent.
+    mapping(address => bool) public isPauser;
 
-    uint256 public unpauseProposalTime;
-    address public proposedDataBank;
-    uint256 public dataBankProposalTime;
-    address public proposedAdmin;
-    uint256 public adminTransferProposalTime;
-
-    error InvalidConfiguration();
-    error NotAdmin();
-    error NotPauser();
-    error ShepherdPaused();
-    error PriceUnavailable(Status status);
-    error InvalidProposal();
-    error DelayNotPassed();
-    error ChallengeNotRequired();
-    error ChallengePending();
-    error NoChallenge();
-    error UsingBackup();
-    error BackupNotReady();
-    error BackupReadyToReturn();
-
-    event Paused(address indexed account);
-    event Unpaused();
-    event UnpauseProposed(uint256 executableAt);
-    event UnpauseCancelled();
-
-    event ChallengeOpened(address indexed challenger, uint256 executableAt);
-    event ChallengeCleared(address indexed account);
-    event ChallengeExecuted(
-        address indexed account,
-        uint256 candidateValue,
-        uint256 twap,
-        uint256 deviationBps
-    );
-    event ReturnedToPrimary(address indexed account);
-
-    event PauserAdditionProposed(address indexed account, uint256 executableAt);
-    event PauserAdded(address indexed account);
-    event PauserRemoved(address indexed account);
-
-    event DataBankChangeProposed(
-        address indexed proposedDataBank,
-        uint256 executableAt
-    );
-    event DataBankChangeCancelled();
-    event DataBankChanged(
-        address indexed oldDataBank,
-        address indexed newDataBank
-    );
-    event AdminTransferProposed(
-        address indexed proposedAdmin,
-        uint256 executableAt
-    );
-    event AdminTransferCancelled();
-    event AdminTransferred(address indexed oldAdmin, address indexed newAdmin);
-
-    constructor(
-        address _dataBank,
-        address _admin,
-        address _backupOracle,
-        bytes32 _queryId,
-        Parameters memory _parameters,
-        address[] memory _pausers
-    ) {
-        if (
-            _dataBank == address(0) ||
-            _dataBank.code.length == 0 ||
-            _admin == address(0) ||
-            _backupOracle == address(0) ||
-            _queryId == bytes32(0) ||
-            _parameters.twapWindow == 0 ||
-            _parameters.minTwapCoverage == 0 ||
-            _parameters.minTwapCoverage > _parameters.twapWindow ||
-            _parameters.maxTwapCoverage < _parameters.twapWindow ||
-            _parameters.minTwapObservations < 2 ||
-            _parameters.deviationThresholdBps == 0 ||
-            _parameters.deviationThresholdBps > BPS_DENOMINATOR
-        ) revert InvalidConfiguration();
-
-        dataBank = ITellorDataBank(_dataBank);
-        backupOracle = IBackupOracle(_backupOracle);
-        admin = _admin;
-        queryId = _queryId;
-
-        RELAY_CONSUMPTION_DELAY = _parameters.relayConsumptionDelay;
-        TWAP_WINDOW = _parameters.twapWindow;
-        MIN_TWAP_COVERAGE = _parameters.minTwapCoverage;
-        MAX_TWAP_COVERAGE = _parameters.maxTwapCoverage;
-        MIN_TWAP_OBSERVATIONS = _parameters.minTwapObservations;
-        DEVIATION_THRESHOLD_BPS = _parameters.deviationThresholdBps;
-        CHALLENGE_DELAY = _parameters.challengeDelay;
-        UNPAUSE_DELAY = _parameters.unpauseDelay;
-        DATA_BANK_CHANGE_DELAY = _parameters.dataBankChangeDelay;
-        ROLE_CHANGE_DELAY = _parameters.roleChangeDelay;
-        ADMIN_TRANSFER_DELAY = _parameters.adminTransferDelay;
-
-        for (uint256 i; i < _pausers.length; ++i) {
-            _addInitialRole(_pausers[i], pausers);
-            emit PauserAdded(_pausers[i]);
-        }
+    // Enums
+    enum Mode {
+        PRIMARY,
+        BACKUP
     }
 
-    // ---------------------------------------------------------------------
-    // Price reads
-    // ---------------------------------------------------------------------
-
-    function getCurrentValue()
-        external
-        view
-        override
-        returns (uint256 _value, uint256 _aggregateTimestamp)
-    {
-        if (paused) revert ShepherdPaused();
-
-        if (usingBackup) {
-            return backupOracle.getCurrentValue();
-        }
-
-        PricePreview memory _preview = _previewNormalValue();
-        if (
-            _preview.status != Status.NORMAL &&
-            _preview.status != Status.DEVIATING
-        ) {
-            revert PriceUnavailable(_preview.status);
-        }
-        return (
-            _preview.candidateValue,
-            _preview.candidateAggregateTimestamp
-        );
-    }
-
-    function previewValue()
-        external
-        view
-        override
-        returns (PricePreview memory _preview)
-    {
-        if (paused) {
-            _preview.status = Status.PAUSED;
-            return _preview;
-        }
-
-        if (usingBackup) {
-            (
-                uint256 _value,
-                uint256 _timestamp
-            ) = backupOracle.getCurrentValue();
-            _preview.status = Status.BACKUP;
-            _preview.candidateValue = _value;
-            _preview.candidateAggregateTimestamp = _timestamp;
-            return _preview;
-        }
-
-        _preview = _previewNormalValue();
-        if (challengeStartTime != 0) {
-            _preview.status = Status.CHALLENGING;
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    // Challenge
-    // ---------------------------------------------------------------------
+    // Constructor
 
     /**
-     * @notice Starts the challenge delay when the delayed relay exceeds the TWAP threshold.
-     * @dev Reads continue to return the delayed DataBank relay until `executeChallenge`.
+     * @notice Binds the feed, initial sources, administrator, and timing configuration.
+     * @dev Code presence does not establish source compatibility or trustworthiness.
+     * No existing feed history is required at deployment.
+     * @param _queryId Nonzero Tellor query ID, fixed for this instance.
+     * @param _dataBank Initial deployed DataBank contract.
+     * @param _backupOracle Initial deployed backup source contract.
+     * @param _admin Nonzero administrator, independent of the deployment caller.
+     * @param _relayReadDelay Positive delay in seconds, measured from EVM relay time.
+     * @param _minPauseDuration Positive minimum uninterrupted pause duration in seconds.
+     * @param _dataBankChangeDelay Positive notice period for replacing the bank, in seconds.
+     * @param _backupChangeDelay Positive notice period for replacing the backup, in seconds.
+     * @param _twapWindowMs Positive minimum TWAP duration in aggregate milliseconds.
+     * @param _challengeThresholdBps Strict symmetric deviation threshold, from 1 to 9999 bps.
+     * @param _transitionDelaysSeconds Challenge and recovery waits in seconds, respectively.
+     * Challenge wait must cover the rounded-up TWAP window; recovery wait must be positive.
      */
-    function challenge() external {
-        if (usingBackup) revert UsingBackup();
-        if (challengeStartTime != 0) revert ChallengePending();
-        if (_previewNormalValue().status != Status.DEVIATING) {
-            revert ChallengeNotRequired();
-        }
+    constructor(
+        bytes32 _queryId,
+        address _dataBank,
+        address _backupOracle,
+        address _admin,
+        uint256 _relayReadDelay,
+        uint256 _minPauseDuration,
+        uint256 _dataBankChangeDelay,
+        uint256 _backupChangeDelay,
+        uint256 _twapWindowMs,
+        uint256 _challengeThresholdBps,
+        uint256[2] memory _transitionDelaysSeconds
+    ) {
+        if (_queryId == bytes32(0)) revert InvalidQueryId();
+        if (_dataBank.code.length == 0) revert DataBankHasNoCode();
+        if (_backupOracle.code.length == 0) revert BackupOracleHasNoCode();
+        if (_admin == address(0)) revert InvalidAdmin();
+        if (_relayReadDelay == 0) revert InvalidRelayReadDelay();
+        if (_minPauseDuration == 0) revert InvalidMinPauseDuration();
+        if (_dataBankChangeDelay == 0) revert InvalidDataBankChangeDelay();
+        if (_backupChangeDelay == 0) revert InvalidBackupChangeDelay();
+        if (_twapWindowMs == 0) revert InvalidTwapWindow();
 
-        challengeStartTime = block.timestamp;
-        emit ChallengeOpened(msg.sender, block.timestamp + CHALLENGE_DELAY);
+        if (_challengeThresholdBps == 0 || _challengeThresholdBps >= 10000) revert InvalidChallengeThreshold();
+        // Division plus remainder avoids overflowing when converting the window to seconds.
+        uint256 minimumChallengeDelay = _twapWindowMs / 1000;
+        if (_twapWindowMs % 1000 != 0) minimumChallengeDelay += 1;
+        if (_transitionDelaysSeconds[0] < minimumChallengeDelay) revert InvalidChallengeDelay();
+
+        if (_transitionDelaysSeconds[1] == 0) revert InvalidRecoveryDelay();
+
+        queryId = _queryId;
+        dataBank = ITellorDataBank(_dataBank);
+        backupOracle = _backupOracle;
+        admin = _admin;
+        RELAY_READ_DELAY = _relayReadDelay;
+        MIN_PAUSE_DURATION = _minPauseDuration;
+        DATA_BANK_CHANGE_DELAY = _dataBankChangeDelay;
+        BACKUP_CHANGE_DELAY = _backupChangeDelay;
+        TWAP_WINDOW_MS = _twapWindowMs;
+        CHALLENGE_THRESHOLD_BPS = _challengeThresholdBps;
+        CHALLENGE_DELAY_SECONDS = _transitionDelaysSeconds[0];
+        RECOVERY_DELAY_SECONDS = _transitionDelaysSeconds[1];
+        mode = Mode.PRIMARY;
+    }
+
+    // State-changing functions
+
+    /**
+     * @notice Immediately grants pauser membership; callable only by the admin.
+     * @dev Membership grants no authority to manage other pausers or unpause.
+     * @param _pauser Nonzero address not already in the pauser set.
+     */
+    function addPauser(address _pauser) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (_pauser == address(0)) revert InvalidPauser();
+        if (isPauser[_pauser]) revert AlreadyPauser();
+
+        isPauser[_pauser] = true;
+        emit PauserAdded(_pauser);
     }
 
     /**
-     * @notice Completes a matured challenge. Switches to the backup oracle if still deviant.
+     * @notice Cancels the backup proposal; admin only, including while paused.
+     * @dev Does not call the target, so a broken backup cannot prevent cancellation.
+     */
+    function cancelBackupChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedBackup = pendingBackupOracle;
+        if (proposedBackup == address(0)) revert NoPendingBackupChange();
+
+        pendingBackupOracle = address(0);
+        backupProposedAt = 0;
+        emit BackupChangeCancelled(proposedBackup);
+    }
+
+    /**
+     * @notice Anyone may cancel a pending primary challenge when deviation has resolved.
+     * @dev No waiting period or pause restriction. Missing or broken diagnostics cannot
+     * establish resolution, so failures preserve the original challenge and its clock.
+     */
+    function cancelChallenge() external {
+        if (mode != Mode.PRIMARY) revert NotPrimaryMode();
+        if (!challengePending) revert NoPendingChallenge();
+        (bool available, bool deviating) = _readDeviation();
+        if (!available) revert DiagnosticUnavailable();
+        if (deviating) revert StillDeviating();
+
+        challengePending = false;
+        challengeRequestedAt = 0;
+        emit ChallengeCancelled(msg.sender);
+    }
+
+    /**
+     * @notice Cancels the pending bank proposal; admin only, including while paused.
+     * @dev Cancellation does not consult the proposed bank, which may have stopped working.
+     */
+    function cancelDataBankChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedBank = pendingDataBank;
+        if (proposedBank == address(0)) revert NoPendingDataBankChange();
+
+        pendingDataBank = address(0);
+        dataBankProposedAt = 0;
+        emit DataBankChangeCancelled(proposedBank);
+    }
+
+    /**
+     * @notice Anyone may cancel a pending recovery when the backup explicitly returns false.
+     * @dev No delay or pause restriction. Failed assessments revert without clearing state.
+     * A transient false assessment does not reset the clock unless cancellation is submitted.
+     */
+    function cancelRecovery() external {
+        if (mode != Mode.BACKUP) revert NotBackupMode();
+        if (!recoveryPending) revert NoPendingRecovery();
+        if (IBackupOracle(backupOracle).canRecover(queryId)) revert RecoveryStillAllowed();
+
+        recoveryPending = false;
+        recoveryRequestedAt = 0;
+        emit RecoveryCancelled(msg.sender);
+    }
+
+    /**
+     * @notice Replaces the backup after its notice period; admin only and paused.
+     * @dev Equality permits execution. Invalidates transition requests; preserves mode, pause clock, and any bank proposal.
+     */
+    function executeBackupChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedBackup = pendingBackupOracle;
+        if (proposedBackup == address(0)) revert NoPendingBackupChange();
+        if (!paused) revert NotPaused();
+        if (block.timestamp - backupProposedAt < BACKUP_CHANGE_DELAY) revert BackupChangeDelayNotElapsed();
+        _checkBackupCompatibility(proposedBackup);
+
+        address previousBackup = backupOracle;
+        backupOracle = proposedBackup;
+        _invalidatePendingTransitions();
+        pendingBackupOracle = address(0);
+        backupProposedAt = 0;
+        emit BackupChanged(previousBackup, proposedBackup);
+    }
+
+    /**
+     * @notice Anyone may select backup after the challenge delay if deviation is re-established.
+     * @dev Equality permits execution. Pause and its clock survive the switch.
+     * Backup availability does not gate selection; failed backup reads subsequently revert.
+     * Request and execution checks do not prove continuous deviation between calls.
      */
     function executeChallenge() external {
-        if (usingBackup) revert UsingBackup();
-        if (challengeStartTime == 0) revert NoChallenge();
-        if (block.timestamp < challengeStartTime + CHALLENGE_DELAY) {
-            revert DelayNotPassed();
-        }
+        if (mode != Mode.PRIMARY) revert NotPrimaryMode();
+        if (!challengePending) revert NoPendingChallenge();
+        if (block.timestamp - challengeRequestedAt < CHALLENGE_DELAY_SECONDS) revert ChallengeDelayNotElapsed();
+        (bool available, bool deviating) = _readDeviation();
+        if (!available) revert DiagnosticUnavailable();
+        if (!deviating) revert NotDeviating();
 
-        PricePreview memory _preview = _previewNormalValue();
-        if (_preview.status != Status.DEVIATING) {
-            delete challengeStartTime;
-            emit ChallengeCleared(msg.sender);
-            return;
-        }
-
-        backupOracle.getCurrentValue();
-        if (backupOracle.readyToReturn()) revert BackupReadyToReturn();
-        usingBackup = true;
-        delete challengeStartTime;
-        emit ChallengeExecuted(
-            msg.sender,
-            _preview.candidateValue,
-            _preview.twap,
-            _preview.deviationBps
-        );
+        challengePending = false;
+        challengeRequestedAt = 0;
+        mode = Mode.BACKUP;
+        emit ChallengeExecuted(msg.sender);
     }
 
     /**
-     * @notice Returns to delayed Tellor data once the backup oracle signals it is safe.
+     * @notice Executes a pending bank change after its notice period; admin only and paused.
+     * @dev Equality permits execution. Rechecks compatibility, invalidates transition requests, and preserves mode and pause clock.
      */
-    function returnToPrimary() external {
-        if (!usingBackup) revert InvalidProposal();
-        if (!backupOracle.readyToReturn()) revert BackupNotReady();
+    function executeDataBankChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedBank = pendingDataBank;
+        if (proposedBank == address(0)) revert NoPendingDataBankChange();
+        if (!paused) revert NotPaused();
+        if (block.timestamp - dataBankProposedAt < DATA_BANK_CHANGE_DELAY) revert DataBankChangeDelayNotElapsed();
+        _checkDataBankCompatibility(proposedBank);
 
-        usingBackup = false;
-        emit ReturnedToPrimary(msg.sender);
+        address previousBank = address(dataBank);
+        dataBank = ITellorDataBank(proposedBank);
+        _invalidatePendingTransitions();
+        pendingDataBank = address(0);
+        dataBankProposedAt = 0;
+        emit DataBankChanged(previousBank, proposedBank);
     }
 
-    // ---------------------------------------------------------------------
-    // Pause controls
-    // ---------------------------------------------------------------------
+    /**
+     * @notice Anyone may return to primary after the recovery delay and a fresh approval.
+     * @dev Equality permits execution; failed assessments preserve the pending timer.
+     * Pause survives the switch. Primary readability is not an additional prerequisite.
+     */
+    function executeRecovery() external {
+        if (mode != Mode.BACKUP) revert NotBackupMode();
+        if (!recoveryPending) revert NoPendingRecovery();
+        if (block.timestamp - recoveryRequestedAt < RECOVERY_DELAY_SECONDS) revert RecoveryDelayNotElapsed();
+        if (!IBackupOracle(backupOracle).canRecover(queryId)) revert RecoveryNotAllowed();
 
+        recoveryPending = false;
+        recoveryRequestedAt = 0;
+        mode = Mode.PRIMARY;
+        emit RecoveryExecuted(msg.sender);
+    }
+
+    /**
+     * @notice Immediately blocks consumer reads; callable by the admin or an active pauser.
+     * @dev Repeated calls revert so a pauser cannot extend the current pause's clock.
+     * Source mode and elapsed-time checks are independent of pause state.
+     */
     function pause() external {
-        if (msg.sender != admin && !pausers[msg.sender]) revert NotPauser();
-        if (paused) revert InvalidProposal();
+        if (msg.sender != admin && !isPauser[msg.sender]) revert NotAuthorizedToPause();
+        if (paused) revert AlreadyPaused();
 
         paused = true;
-        delete unpauseProposalTime;
+        pausedAt = block.timestamp;
         emit Paused(msg.sender);
     }
 
-    function proposeUnpause() external onlyAdmin {
-        if (!paused || unpauseProposalTime != 0) revert InvalidProposal();
-        unpauseProposalTime = block.timestamp;
-        emit UnpauseProposed(block.timestamp + UNPAUSE_DELAY);
+    /**
+     * @notice Proposes a backup replacement; admin only, paused or unpaused.
+     * @dev Cancel before replacing a proposal. Requires a decodable getCurrentValue(queryId)
+     * response at proposal and execution; this does not establish price truth or future availability.
+     * @param _newBackupOracle Deployed backup that can currently answer the configured query.
+     */
+    function proposeBackupChange(address _newBackupOracle) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingBackupOracle != address(0)) revert BackupChangePending();
+        if (_newBackupOracle == backupOracle) revert BackupUnchanged();
+        _checkBackupCompatibility(_newBackupOracle);
+
+        pendingBackupOracle = _newBackupOracle;
+        backupProposedAt = block.timestamp;
+        emit BackupChangeProposed(_newBackupOracle, block.timestamp);
     }
 
-    function cancelUnpause() external onlyAdmin {
-        if (unpauseProposalTime == 0) revert InvalidProposal();
-        delete unpauseProposalTime;
-        emit UnpauseCancelled();
+    /**
+     * @notice Announces a replacement bank; admin only, whether paused or unpaused.
+     * @dev Cancel an existing proposal before replacing it so every target gets fresh notice.
+     * Empty history is allowed. Compatibility does not establish source trust or read readiness.
+     * @param _newDataBank Deployed bank distinct from the current bank.
+     */
+    function proposeDataBankChange(address _newDataBank) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingDataBank != address(0)) revert DataBankChangePending();
+        if (_newDataBank == address(dataBank)) revert DataBankUnchanged();
+        _checkDataBankCompatibility(_newDataBank);
+
+        pendingDataBank = _newDataBank;
+        dataBankProposedAt = block.timestamp;
+        emit DataBankChangeProposed(_newDataBank, block.timestamp);
     }
 
-    function executeUnpause() external onlyAdmin {
-        if (!paused || unpauseProposalTime == 0) revert InvalidProposal();
-        if (block.timestamp < unpauseProposalTime + UNPAUSE_DELAY) {
-            revert DelayNotPassed();
-        }
+    /**
+     * @notice Immediately revokes pauser membership; callable only by the admin.
+     * @dev Removing the admin from this set does not revoke its independent role.
+     * @param _pauser Nonzero address currently in the pauser set.
+     */
+    function removePauser(address _pauser) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (_pauser == address(0)) revert InvalidPauser();
+        if (!isPauser[_pauser]) revert NotPauser();
+
+        isPauser[_pauser] = false;
+        emit PauserRemoved(_pauser);
+    }
+
+    /**
+     * @notice Anyone may request a challenge in primary mode when deviation is established.
+     * @dev Pause does not block diagnostics. Duplicate requests cannot restart the timer.
+     * A pending challenge does not halt reads or prove continuous deviation.
+     */
+    function requestChallenge() external {
+        if (mode != Mode.PRIMARY) revert NotPrimaryMode();
+        if (challengePending) revert ChallengeAlreadyPending();
+        (bool available, bool deviating) = _readDeviation();
+        if (!available) revert DiagnosticUnavailable();
+        if (!deviating) revert NotDeviating();
+
+        challengePending = true;
+        challengeRequestedAt = block.timestamp;
+        emit ChallengeRequested(msg.sender, block.timestamp);
+    }
+
+    /**
+     * @notice Anyone may request recovery in backup mode when the backup approves the primary.
+     * @dev Duplicate requests cannot reset the clock. Pause and backup price availability
+     * do not gate assessment. The backup owns identifying and assessing the current primary.
+     */
+    function requestRecovery() external {
+        if (mode != Mode.BACKUP) revert NotBackupMode();
+        if (recoveryPending) revert RecoveryAlreadyPending();
+        if (!IBackupOracle(backupOracle).canRecover(queryId)) revert RecoveryNotAllowed();
+
+        recoveryPending = true;
+        recoveryRequestedAt = block.timestamp;
+        emit RecoveryRequested(msg.sender, block.timestamp);
+    }
+
+    /**
+     * @notice Restores consumer reads after the minimum pause duration; admin only.
+     * @dev Equality is sufficient. Elapsed time is measured in EVM seconds.
+     * Both pending source proposals must be executed or cancelled first.
+     */
+    function unpause() external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (!paused) revert NotPaused();
+        if (pendingDataBank != address(0)) revert DataBankChangePending();
+        if (pendingBackupOracle != address(0)) revert BackupChangePending();
+        if (block.timestamp - pausedAt < MIN_PAUSE_DURATION) revert PauseDurationNotElapsed();
 
         paused = false;
-        delete unpauseProposalTime;
-        emit Unpaused();
+        pausedAt = 0;
+        emit Unpaused(msg.sender);
     }
 
-    // ---------------------------------------------------------------------
-    // Roles
-    // ---------------------------------------------------------------------
+    // Getter functions
 
-    function proposePauser(address _account) external onlyAdmin {
-        _proposeRole(_account, pauserAdditionProposalTime, pausers);
-        emit PauserAdditionProposed(
-            _account,
-            block.timestamp + ROLE_CHANGE_DELAY
-        );
+    /**
+     * @notice Returns the selected source's value and supplied timestamp, unless paused.
+     * @dev Primary eligibility is strict: relayTimestamp < block.timestamp - RELAY_READ_DELAY.
+     * Primary payloads need one ABI word; trailing bytes are accepted. Backup reads have no
+     * Shepherd maturity delay and do not consult the primary. Invalid values or dependency
+     * failures revert without substituting another source. Freshness belongs to adaptors.
+     * @return value The selected source's nonzero value.
+     * @return aggregateTimestamp The unchanged source timestamp in milliseconds.
+     */
+    function getCurrentValue() external view override returns (uint256 value, uint256 aggregateTimestamp) {
+        if (paused) revert ShepherdPaused();
+        if (mode == Mode.BACKUP) return _readBackup();
+        uint256 cutoff = block.timestamp - RELAY_READ_DELAY;
+        (bool found, ITellorDataBank.AggregateData memory record) = dataBank.getRelayBefore(queryId, cutoff);
+        if (!found) revert NoMatureData();
+        if (record.value.length < 32) revert InvalidValueLength();
+
+        value = abi.decode(record.value, (uint256));
+        if (value == 0) revert ZeroValue();
+        return (value, record.aggregateTimestamp);
     }
 
-    function executePauser(address _account) external {
-        _executeRole(_account, pauserAdditionProposalTime, pausers);
-        emit PauserAdded(_account);
+    // Internal functions
+
+    /**
+     * @dev Requires a successful, decodable getCurrentValue(queryId) response.
+     * Does not validate price, timestamp, or recovery permission; unreadable targets are rejected.
+     * A reverting call or undecodable response rejects the target; failures propagate.
+     */
+    function _checkBackupCompatibility(address _backup) internal view {
+        if (_backup.code.length == 0) revert BackupHasNoCode();
+        IBackupOracle(_backup).getCurrentValue(queryId);
     }
 
-    function removePauser(address _account) external onlyAdmin {
-        if (!pausers[_account]) revert InvalidProposal();
-        pausers[_account] = false;
-        emit PauserRemoved(_account);
+    /**
+     * @dev Exercises the lookup ABI without requiring history or applying read eligibility.
+     * A reverting call or undecodable response rejects the target; failures propagate.
+     */
+    function _checkDataBankCompatibility(address _bank) internal view {
+        if (_bank.code.length == 0) revert DataBankHasNoCode();
+        ITellorDataBank(_bank).getRelayBefore(queryId, block.timestamp);
     }
 
-    // ---------------------------------------------------------------------
-    // DataBank and admin changes
-    // ---------------------------------------------------------------------
-
-    function proposeDataBank(address _newDataBank) external onlyAdmin {
-        if (
-            proposedDataBank != address(0) ||
-            _newDataBank == address(0) ||
-            _newDataBank.code.length == 0 ||
-            _newDataBank == address(dataBank)
-        ) revert InvalidProposal();
-
-        proposedDataBank = _newDataBank;
-        dataBankProposalTime = block.timestamp;
-        emit DataBankChangeProposed(
-            _newDataBank,
-            block.timestamp + DATA_BANK_CHANGE_DELAY
-        );
-    }
-
-    function cancelDataBankChange() external onlyAdmin {
-        if (proposedDataBank == address(0)) revert InvalidProposal();
-        delete proposedDataBank;
-        delete dataBankProposalTime;
-        emit DataBankChangeCancelled();
-    }
-
-    function executeDataBankChange() external onlyAdmin {
-        if (proposedDataBank == address(0)) revert InvalidProposal();
-        if (block.timestamp < dataBankProposalTime + DATA_BANK_CHANGE_DELAY) {
-            revert DelayNotPassed();
+    /// @dev A changed dependency requires fresh assessment and a fresh transition timer.
+    /// Called only after migration checks succeed; never consults the replaced sources.
+    function _invalidatePendingTransitions() internal {
+        if (challengePending) {
+            challengePending = false;
+            challengeRequestedAt = 0;
+            emit ChallengeInvalidated();
         }
-        if (!paused) revert ShepherdPaused();
-
-        address _oldDataBank = address(dataBank);
-        dataBank = ITellorDataBank(proposedDataBank);
-        delete proposedDataBank;
-        delete dataBankProposalTime;
-        emit DataBankChanged(_oldDataBank, address(dataBank));
-    }
-
-    function proposeAdmin(address _newAdmin) external onlyAdmin {
-        if (_newAdmin == address(0) || proposedAdmin != address(0)) {
-            revert InvalidProposal();
+        if (recoveryPending) {
+            recoveryPending = false;
+            recoveryRequestedAt = 0;
+            emit RecoveryInvalidated();
         }
-        proposedAdmin = _newAdmin;
-        adminTransferProposalTime = block.timestamp;
-        emit AdminTransferProposed(
-            _newAdmin,
-            block.timestamp + ADMIN_TRANSFER_DELAY
-        );
     }
 
-    function cancelAdminTransfer() external onlyAdmin {
-        if (proposedAdmin == address(0)) revert InvalidProposal();
-        delete proposedAdmin;
-        delete adminTransferProposalTime;
-        emit AdminTransferCancelled();
+    /**
+     * @dev Reads the configured backup without substituting another source on failure.
+     * Observation eligibility belongs to the backup; timestamp checks belong to adaptors.
+     * Preserve the supplied millisecond timestamp, including zero or future timestamps.
+     * Consumer pause enforcement belongs to the read entry point, not this source helper.
+     */
+    function _readBackup() internal view returns (uint256 value, uint256 timestamp) {
+        (value, timestamp) = IBackupOracle(backupOracle).getCurrentValue(queryId);
+        if (value == 0) revert ZeroValue();
     }
 
-    function acceptAdmin() external {
-        if (msg.sender != proposedAdmin) revert NotAdmin();
-        if (
-            block.timestamp <
-            adminTransferProposalTime + ADMIN_TRANSFER_DELAY
-        ) revert DelayNotPassed();
+    /**
+     * @dev Shared diagnostic for future challenge actions; independent of pause and consumer reads.
+     * Missing reference history is not evidence of resolved deviation. Broken dependencies revert.
+     * Inspect the latest candidate immediately, even when its relay is not yet consumable.
+     */
+    function _readDeviation() internal view returns (bool available, bool deviating) {
+        ITellorDataBank.TwapData memory twap;
+        (available, twap) = _readTwapReference();
+        if (!available) return (false, false);
 
-        address _oldAdmin = admin;
-        admin = msg.sender;
-        delete proposedAdmin;
-        delete adminTransferProposalTime;
-        emit AdminTransferred(_oldAdmin, msg.sender);
+        ITellorDataBank.AggregateData memory candidate = dataBank.getCurrentAggregateData(queryId);
+        if (candidate.value.length < 32) revert InvalidValueLength();
+        uint256 value = abi.decode(candidate.value, (uint256));
+        if (value == 0) revert ZeroValue();
+        uint256 difference = value > twap.value ? value - twap.value : twap.value - value;
+        // Exactly floor(reference * threshold / 10000), without an overflowing product.
+        // threshold < 10000 bounds the total by reference; the remainder product is < 1e8.
+        // Integer difference > this floor is equivalent to the strict rational comparison.
+        uint256 allowedDifference = (twap.value / 10000) * CHALLENGE_THRESHOLD_BPS
+            + ((twap.value % 10000) * CHALLENGE_THRESHOLD_BPS) / 10000;
+        return (true, difference > allowedDifference);
     }
 
-    // ---------------------------------------------------------------------
-    // Internal price evaluation
-    // ---------------------------------------------------------------------
-
-    function _previewNormalValue()
-        internal
-        view
-        returns (PricePreview memory _preview)
-    {
-        if (block.timestamp <= RELAY_CONSUMPTION_DELAY) return _preview;
-
-        (
-            bool _found,
-            uint256 _index,
-            ITellorDataBank.AggregateData memory _data,
-            ITellorDataBank.TwapData memory _twap
-        ) = dataBank.getRelayWithTwapBefore(
-                queryId,
-                block.timestamp - RELAY_CONSUMPTION_DELAY,
-                TWAP_WINDOW
-            );
-
-        if (!_found) return _preview;
-        return _evaluate(_index, _data, _twap);
-    }
-
-    function _evaluate(
-        uint256 _index,
-        ITellorDataBank.AggregateData memory _data,
-        ITellorDataBank.TwapData memory _twap
-    ) internal view returns (PricePreview memory _preview) {
-        _preview.candidateIndex = _index;
-        _preview.candidateAggregateTimestamp = _data.aggregateTimestamp;
-        _preview.candidateRelayTimestamp = _data.relayTimestamp;
-        _preview.twap = _twap.price;
-        _preview.twapStartTimestamp = _twap.startAggregateTimestamp;
-        _preview.twapEndTimestamp = _twap.endAggregateTimestamp;
-        _preview.observationCount = _twap.observationCount;
-
-        uint256 _maxSpotPrice = dataBank.MAX_SPOT_PRICE();
-        if (
-            _data.value.length != 32 ||
-            _twap.price == 0 ||
-            _twap.price > _maxSpotPrice
-        ) {
-            _preview.status = Status.INVALID_PRICE;
-            return _preview;
+    /**
+     * @dev Reads a diagnostic reference independently of consumer reads and pause state.
+     * Missing history returns unavailable; malformed responses and dependency failures revert.
+     * A two-record interval with one contributing price is sufficient. No maximum duration,
+     * age, or gap policy is applied. Consistency checks do not authenticate a malicious bank's math.
+     */
+    function _readTwapReference() internal view returns (bool available, ITellorDataBank.TwapData memory twap) {
+        uint256 cutoff = block.timestamp - RELAY_READ_DELAY;
+        (available, twap) = dataBank.getTwapBefore(queryId, cutoff, TWAP_WINDOW_MS);
+        if (!available) {
+            // Never expose an unavailable dependency's payload as a usable reference.
+            ITellorDataBank.TwapData memory empty;
+            return (false, empty);
         }
-        _preview.candidateValue = abi.decode(_data.value, (uint256));
-        if (
-            _preview.candidateValue == 0 ||
-            _preview.candidateValue > _maxSpotPrice
-        ) {
-            _preview.status = Status.INVALID_PRICE;
-            return _preview;
-        }
+        if (twap.value == 0 || twap.startIndex >= twap.endIndex
+            || twap.startTimestamp >= twap.endTimestamp) revert InvalidTwapReference();
+        if (twap.observationCount != twap.endIndex - twap.startIndex
+            || twap.endTimestamp - twap.startTimestamp < TWAP_WINDOW_MS) revert InvalidTwapReference();
 
-        uint256 _coverage =
-            _twap.endAggregateTimestamp -
-            _twap.startAggregateTimestamp;
-        if (
-            _coverage < MIN_TWAP_COVERAGE ||
-            _coverage > MAX_TWAP_COVERAGE ||
-            _twap.observationCount < MIN_TWAP_OBSERVATIONS
-        ) {
-            _preview.status = Status.INVALID_COVERAGE;
-            return _preview;
-        }
-
-        _preview.deviationBps = _calculateDeviationBps(
-            _preview.candidateValue,
-            _twap.price
-        );
-        _preview.status = _preview.deviationBps > DEVIATION_THRESHOLD_BPS
-            ? Status.DEVIATING
-            : Status.NORMAL;
+        ITellorDataBank.AggregateData memory start = dataBank.getAggregateByIndex(queryId, twap.startIndex);
+        ITellorDataBank.AggregateData memory end = dataBank.getAggregateByIndex(queryId, twap.endIndex);
+        (bool found, ITellorDataBank.AggregateData memory selectedEnd) = dataBank.getRelayBefore(queryId, cutoff);
+        if (!found || start.aggregateTimestamp != twap.startTimestamp
+            || end.aggregateTimestamp != twap.endTimestamp
+            || selectedEnd.aggregateTimestamp != twap.endTimestamp
+            || selectedEnd.relayTimestamp != end.relayTimestamp
+            || end.relayTimestamp >= cutoff) revert InvalidTwapReference();
     }
 
-    function _calculateDeviationBps(uint256 _value, uint256 _reference)
-        internal
-        pure
-        returns (uint256)
-    {
-        uint256 _difference = _value > _reference
-            ? _value - _reference
-            : _reference - _value;
-        if (_difference > type(uint256).max / BPS_DENOMINATOR) {
-            return type(uint256).max;
-        }
-        return (_difference * BPS_DENOMINATOR) / _reference;
-    }
-
-    // ---------------------------------------------------------------------
-    // Internal administration
-    // ---------------------------------------------------------------------
-
-    function _addInitialRole(
-        address _account,
-        mapping(address => bool) storage _role
-    ) internal {
-        if (_account == address(0)) revert InvalidConfiguration();
-        _role[_account] = true;
-    }
-
-    function _proposeRole(
-        address _account,
-        mapping(address => uint256) storage _proposalTime,
-        mapping(address => bool) storage _role
-    ) internal {
-        if (
-            _account == address(0) ||
-            _role[_account] ||
-            _proposalTime[_account] != 0
-        ) revert InvalidProposal();
-        _proposalTime[_account] = block.timestamp;
-    }
-
-    function _executeRole(
-        address _account,
-        mapping(address => uint256) storage _proposalTime,
-        mapping(address => bool) storage _role
-    ) internal {
-        uint256 _proposedAt = _proposalTime[_account];
-        if (_proposedAt == 0) revert InvalidProposal();
-        if (block.timestamp < _proposedAt + ROLE_CHANGE_DELAY) {
-            revert DelayNotPassed();
-        }
-        _role[_account] = true;
-        delete _proposalTime[_account];
-    }
-
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert NotAdmin();
-        _;
-    }
 }

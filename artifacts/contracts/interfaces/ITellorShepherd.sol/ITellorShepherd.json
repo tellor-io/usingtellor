@@ -5,6 +5,497 @@
   "abi": [
     {
       "inputs": [],
+      "name": "AlreadyPaused",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "AlreadyPauser",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BackupChangeDelayNotElapsed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BackupChangePending",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BackupHasNoCode",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BackupOracleHasNoCode",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BackupUnchanged",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ChallengeAlreadyPending",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ChallengeDelayNotElapsed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DataBankChangeDelayNotElapsed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DataBankChangePending",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DataBankHasNoCode",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DataBankUnchanged",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DiagnosticUnavailable",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidAdmin",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidBackupChangeDelay",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidChallengeDelay",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidChallengeThreshold",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidDataBankChangeDelay",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidMinPauseDuration",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidPauser",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidQueryId",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidRecoveryDelay",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidRelayReadDelay",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidTwapReference",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidTwapWindow",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidValueLength",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoMatureData",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoPendingBackupChange",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoPendingChallenge",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoPendingDataBankChange",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoPendingRecovery",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotAdmin",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotAuthorizedToPause",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotBackupMode",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotDeviating",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotPaused",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotPauser",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotPrimaryMode",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PauseDurationNotElapsed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RecoveryAlreadyPending",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RecoveryDelayNotElapsed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RecoveryNotAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RecoveryStillAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ShepherdPaused",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "StillDeviating",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroValue",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposedBackup",
+          "type": "address"
+        }
+      ],
+      "name": "BackupChangeCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposedBackup",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "proposedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "BackupChangeProposed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousBackup",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newBackup",
+          "type": "address"
+        }
+      ],
+      "name": "BackupChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "ChallengeCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "ChallengeExecuted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "ChallengeInvalidated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "requestedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "ChallengeRequested",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposedBank",
+          "type": "address"
+        }
+      ],
+      "name": "DataBankChangeCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposedBank",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "proposedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "DataBankChangeProposed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousBank",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newBank",
+          "type": "address"
+        }
+      ],
+      "name": "DataBankChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "Paused",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "pauser",
+          "type": "address"
+        }
+      ],
+      "name": "PauserAdded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "pauser",
+          "type": "address"
+        }
+      ],
+      "name": "PauserRemoved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "RecoveryCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "RecoveryExecuted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "RecoveryInvalidated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "requestedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "RecoveryRequested",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "Unpaused",
+      "type": "event"
+    },
+    {
+      "inputs": [],
       "name": "getCurrentValue",
       "outputs": [
         {
@@ -23,64 +514,12 @@
     },
     {
       "inputs": [],
-      "name": "previewValue",
+      "name": "queryId",
       "outputs": [
         {
-          "components": [
-            {
-              "internalType": "enum ITellorShepherd.Status",
-              "name": "status",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "candidateIndex",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "candidateValue",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "candidateAggregateTimestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "candidateRelayTimestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "twap",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "deviationBps",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "twapStartTimestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "twapEndTimestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "observationCount",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct ITellorShepherd.PricePreview",
-          "name": "preview",
-          "type": "tuple"
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
         }
       ],
       "stateMutability": "view",
