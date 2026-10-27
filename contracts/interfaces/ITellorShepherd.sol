@@ -10,8 +10,8 @@ interface ITellorShepherd {
     event BackupChangeCancelled(address indexed proposedBackup);
     event BackupChanged(address indexed previousBackup, address indexed newBackup);
     event BackupChangeProposed(address indexed proposedBackup, uint256 proposedAt);
-    event ChallengeCancelled(address indexed caller);
     event ChallengeExecuted(address indexed caller);
+    event ChallengeExpired(address indexed caller);
     event ChallengeInvalidated();
     event ChallengeRequested(address indexed caller, uint256 requestedAt);
     event DataBankChangeCancelled(address indexed proposedBank);
@@ -46,15 +46,18 @@ interface ITellorShepherd {
     error InvalidChallengeDelay();
     error InvalidChallengeThreshold();
     error InvalidDataBankChangeDelay();
+    error InvalidMaxPriceAge();
     error InvalidMinPauseDuration();
     error InvalidPauser();
     error InvalidQueryId();
     error InvalidRecoveryDelay();
     error InvalidRelayReadDelay();
+    error InvalidTimestamp();
     error InvalidTwapReference();
     error InvalidTwapWindow();
     error InvalidValueLength();
     error NoMatureData();
+    error NoNewerReport();
     error NoPendingBackupChange();
     error NoPendingChallenge();
     error NoPendingDataBankChange();
@@ -67,11 +70,13 @@ interface ITellorShepherd {
     error NotPauser();
     error NotPrimaryMode();
     error PauseDurationNotElapsed();
+    error PriceOutOfRange();
     error RecoveryAlreadyPending();
     error RecoveryDelayNotElapsed();
     error RecoveryNotAllowed();
     error RecoveryStillAllowed();
     error ShepherdPaused();
+    error StalePrice();
     error StillDeviating();
     error ZeroValue();
 
@@ -79,10 +84,21 @@ interface ITellorShepherd {
 
     /// @notice Returns the selected source's value and timestamp, or reverts if the read is unavailable.
     /// @dev Preserves the primary aggregate timestamp or the backup-supplied timestamp;
-    /// never substitutes relay, submission, switch, or read time. Paused reads revert.
+    /// never substitutes relay, switch, or read time. Paused reads and zero, future,
+    /// or over-age timestamps revert. Exact maximum age is allowed.
     /// @return value The selected source's price, without adaptor-specific scaling.
     /// @return aggregateTimestamp The selected source's timestamp in milliseconds.
     function getCurrentValue() external view returns (uint256 value, uint256 aggregateTimestamp);
+
+    /// @notice Returns the immutable source price precision; no rescaling is performed.
+    function decimals() external view returns (uint8);
+
+    /// @notice Reads with the same freshness and pause policy as getCurrentValue.
+    /// @dev Source timestamps are floored to seconds. Round IDs are zero sentinels;
+    /// historical Chainlink rounds are not supported. Prices must fit a positive int256.
+    function latestRoundData() external view returns (
+        uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound
+    );
 
     /// @notice Returns the immutable Tellor query ID curated by this Shepherd.
     function queryId() external view returns (bytes32);

@@ -18,15 +18,9 @@ describe("TellorShepherdFactory", function () {
       queryId, dataBank: bank.target, backupOracle: backup.target, admin: admin.address,
       relayReadDelay: 61n, minPauseDuration: 122n, dataBankChangeDelay: 303n,
       backupChangeDelay: 604n, twapWindowMs: 30001n, challengeThresholdBps: 2005n,
-      challengeDelaySeconds: 31n, recoveryDelaySeconds: 97n,
+      challengeDelaySeconds: 31n, recoveryDelaySeconds: 97n, maxPriceAge: 7205n, decimals: 8n,
     };
     return { deployer, caller, admin, otherAdmin, bank, backup, Factory, factory, Shepherd, configuration };
-  }
-
-  function constructorArgs(c) {
-    return [c.queryId, c.dataBank, c.backupOracle, c.admin, c.relayReadDelay,
-      c.minPauseDuration, c.dataBankChangeDelay, c.backupChangeDelay, c.twapWindowMs,
-      c.challengeThresholdBps, [c.challengeDelaySeconds, c.recoveryDelaySeconds]];
   }
 
   async function create(factory, caller, configuration) {
@@ -48,6 +42,7 @@ describe("TellorShepherdFactory", function () {
       dataBankChangeDelay: "DATA_BANK_CHANGE_DELAY", backupChangeDelay: "BACKUP_CHANGE_DELAY",
       twapWindowMs: "TWAP_WINDOW_MS", challengeThresholdBps: "CHALLENGE_THRESHOLD_BPS",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
+      maxPriceAge: "MAX_PRICE_AGE", decimals: "decimals",
     };
     for (const [field, getter] of Object.entries(getters)) {
       expect(await shepherd[getter](), field).to.equal(c[field]);
@@ -97,7 +92,7 @@ describe("TellorShepherdFactory", function () {
 
   it("registers only its own deployments, not equivalent direct or other-factory instances", async function () {
     const f = await loadFixture(deployFixture);
-    const direct = await f.Shepherd.deploy(...constructorArgs(f.configuration));
+    const direct = await f.Shepherd.deploy(f.configuration);
     const otherFactory = await f.Factory.deploy();
     const other = await create(otherFactory, f.caller, f.configuration);
     for (const address of [ethers.ZeroAddress, f.caller.address, f.bank.target, direct.target, other.target]) {
@@ -112,12 +107,15 @@ describe("TellorShepherdFactory", function () {
     ["admin", ethers.ZeroAddress, "InvalidAdmin"],
     ["relayReadDelay", 0n, "InvalidRelayReadDelay"],
     ["minPauseDuration", 0n, "InvalidMinPauseDuration"],
+    ["maxPriceAge", 0n, "InvalidMaxPriceAge"],
+    ["maxPriceAge", ethers.MaxUint256 / 1000n + 1n, "InvalidMaxPriceAge"],
     ["dataBankChangeDelay", 0n, "InvalidDataBankChangeDelay"],
     ["backupChangeDelay", 0n, "InvalidBackupChangeDelay"],
     ["twapWindowMs", 0n, "InvalidTwapWindow"],
     ["challengeThresholdBps", 0n, "InvalidChallengeThreshold"],
     ["challengeThresholdBps", 10000n, "InvalidChallengeThreshold"],
     ["challengeDelaySeconds", 30n, "InvalidChallengeDelay"],
+    ["challengeDelaySeconds", 61n, "InvalidChallengeDelay"],
     ["recoveryDelaySeconds", 0n, "InvalidRecoveryDelay"],
   ];
 

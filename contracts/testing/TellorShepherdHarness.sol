@@ -6,26 +6,10 @@ import {TellorShepherd} from "../databank/TellorShepherd.sol";
 
 /**
  * @notice TEST ONLY: exposes internal backup, TWAP, and deviation helpers for focused tests.
- * @dev Helpers bypass consumer pause policy and are not consumer oracle endpoints.
+ * @dev Helpers bypass consumer pause/freshness policy and are not consumer oracle endpoints.
  */
 contract TellorShepherdHarness is TellorShepherd {
-    constructor(
-        bytes32 _queryId,
-        address _dataBank,
-        address _backupOracle,
-        address _admin,
-        uint256 _relayReadDelay,
-        uint256 _minPauseDuration,
-        uint256 _dataBankChangeDelay,
-        uint256 _backupChangeDelay,
-        uint256 _twapWindowMs,
-        uint256 _challengeThresholdBps,
-        uint256[2] memory _transitionDelaysSeconds
-    ) TellorShepherd(
-        _queryId, _dataBank, _backupOracle, _admin,
-        _relayReadDelay, _minPauseDuration, _dataBankChangeDelay, _backupChangeDelay, _twapWindowMs,
-        _challengeThresholdBps, _transitionDelaysSeconds
-    ) {}
+    constructor(Configuration memory _configuration) TellorShepherd(_configuration) {}
 
     // TEST ONLY: isolate mode guards without executing a production challenge.
     function setModeForTest(Mode _mode) external {
@@ -33,7 +17,7 @@ contract TellorShepherdHarness is TellorShepherd {
     }
 
     function readDeviation() external view returns (bool available, bool deviating) {
-        return _readDeviation();
+        (available, deviating,,) = _readDeviation();
     }
 
     function readBackup() external view returns (uint256 value, uint256 timestamp) {

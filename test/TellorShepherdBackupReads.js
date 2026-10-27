@@ -21,7 +21,13 @@ describe("TellorShepherd - Validated backup helper", function () {
     const backup = await Backup.deploy(queryId);
     const replacement = await Backup.deploy(queryId);
     const Harness = await ethers.getContractFactory("TellorShepherdHarness");
-    const shepherd = await Harness.deploy(queryId, bank.target, backup.target, admin.address, 60, 120, 300, 600, 30000, 2000, [30, 90]);
+    const shepherd = await Harness.deploy({
+      queryId, dataBank: bank.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    });
     await time.increase(61);
     expect((await shepherd.getCurrentValue())[0]).to.equal(999);
     return { admin, backup, replacement, shepherd };
@@ -38,7 +44,7 @@ describe("TellorShepherd - Validated backup helper", function () {
     expect(await shepherd.readBackup()).to.deep.equal([ethers.MaxUint256, timestamp]);
   });
 
-  it("leaves zero and future timestamp rejection to adaptors", async function () {
+  it("leaves timestamp rejection to the consumer entry point", async function () {
     const { backup, shepherd } = await loadFixture(fixture);
     for (const timestamp of [0n, ethers.MaxUint256]) {
       await backup.configureRead(100, timestamp, 0);

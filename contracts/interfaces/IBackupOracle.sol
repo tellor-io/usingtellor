@@ -10,7 +10,7 @@ interface IBackupOracle {
     /// @notice Returns a source observation, or reverts when unavailable.
     /// @dev Implementations must document timestamp meaning. The trusted-streamer example
     /// returns submission time; it does not establish underlying observation freshness.
-    /// Shepherd preserves the supplied timestamp; adaptors enforce their freshness policy.
+    /// Shepherd preserves the supplied timestamp and enforces its configured maximum age.
     /// @param _queryId Requested feed; unavailable or unsupported feeds must revert.
     /// @return value Nonzero price in the primary feed's units and scaling.
     /// @return timestamp Source-defined timestamp in milliseconds; never refreshed on reads.

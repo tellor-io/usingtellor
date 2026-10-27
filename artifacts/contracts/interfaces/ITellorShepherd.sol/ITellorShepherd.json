@@ -100,6 +100,11 @@
     },
     {
       "inputs": [],
+      "name": "InvalidMaxPriceAge",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "InvalidMinPauseDuration",
       "type": "error"
     },
@@ -125,6 +130,11 @@
     },
     {
       "inputs": [],
+      "name": "InvalidTimestamp",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "InvalidTwapReference",
       "type": "error"
     },
@@ -141,6 +151,11 @@
     {
       "inputs": [],
       "name": "NoMatureData",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoNewerReport",
       "type": "error"
     },
     {
@@ -205,6 +220,11 @@
     },
     {
       "inputs": [],
+      "name": "PriceOutOfRange",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "RecoveryAlreadyPending",
       "type": "error"
     },
@@ -226,6 +246,11 @@
     {
       "inputs": [],
       "name": "ShepherdPaused",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "StalePrice",
       "type": "error"
     },
     {
@@ -299,7 +324,7 @@
           "type": "address"
         }
       ],
-      "name": "ChallengeCancelled",
+      "name": "ChallengeExecuted",
       "type": "event"
     },
     {
@@ -312,7 +337,7 @@
           "type": "address"
         }
       ],
-      "name": "ChallengeExecuted",
+      "name": "ChallengeExpired",
       "type": "event"
     },
     {
@@ -496,6 +521,19 @@
     },
     {
       "inputs": [],
+      "name": "decimals",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "getCurrentValue",
       "outputs": [
         {
@@ -507,6 +545,39 @@
           "internalType": "uint256",
           "name": "aggregateTimestamp",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "latestRoundData",
+      "outputs": [
+        {
+          "internalType": "uint80",
+          "name": "roundId",
+          "type": "uint80"
+        },
+        {
+          "internalType": "int256",
+          "name": "answer",
+          "type": "int256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "startedAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "updatedAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint80",
+          "name": "answeredInRound",
+          "type": "uint80"
         }
       ],
       "stateMutability": "view",
