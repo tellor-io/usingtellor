@@ -40,7 +40,7 @@ describe("TellorShepherd - Configuration", function () {
     expect(await shepherd.mode()).to.equal(0); // Mode.PRIMARY
     expect(await shepherd.PARAM_CHANGE_DELAY()).to.equal(300);
     expect(await shepherd.TWAP_WINDOW_MS()).to.equal(30000);
-    expect(await shepherd.CHALLENGE_THRESHOLD_BPS()).to.equal(2000);
+    expect(await shepherd.challengeThresholdBps()).to.equal(2000);
     expect(await shepherd.CHALLENGE_DELAY_SECONDS()).to.equal(30);
     expect(await shepherd.RECOVERY_DELAY_SECONDS()).to.equal(90);
     expect(await shepherd.pendingBackupOracle()).to.equal(ethers.ZeroAddress);
@@ -90,7 +90,7 @@ describe("TellorShepherd - Configuration", function () {
     }
     for (const threshold of [1, 9999]) {
       args.challengeThresholdBps = threshold;
-      expect(await (await Shepherd.deploy(args)).CHALLENGE_THRESHOLD_BPS()).to.equal(threshold);
+      expect(await (await Shepherd.deploy(args)).challengeThresholdBps()).to.equal(threshold);
     }
   });
 
@@ -1035,11 +1035,11 @@ describe("TellorShepherd - TWAP reference validation", function () {
           }
           const recoveryAt = await f.shepherd.recoveryRequestedAt();
           for (const threshold of [1, 9999]) {
-            const previous = await f.shepherd.CHALLENGE_THRESHOLD_BPS();
+            const previous = await f.shepherd.challengeThresholdBps();
             await expect(f.shepherd.proposeThresholdChange(threshold))
               .to.emit(f.shepherd, "ThresholdChangeProposed").withArgs(threshold, await time.latest() + 1);
             const start = await f.shepherd.thresholdProposedAt();
-            expect(await f.shepherd.CHALLENGE_THRESHOLD_BPS()).to.equal(previous);
+            expect(await f.shepherd.challengeThresholdBps()).to.equal(previous);
             await time.setNextBlockTimestamp(start + 299n);
             await expect(f.shepherd.executeThresholdChange())
               .to.be.revertedWithCustomError(f.shepherd, "ThresholdChangeDelayNotElapsed");
@@ -1048,7 +1048,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
             await time.setNextBlockTimestamp(start + 300n);
             await expect(f.shepherd.executeThresholdChange())
               .to.emit(f.shepherd, "ThresholdChanged").withArgs(previous, threshold);
-            expect(await f.shepherd.CHALLENGE_THRESHOLD_BPS()).to.equal(threshold);
+            expect(await f.shepherd.challengeThresholdBps()).to.equal(threshold);
             expect(await f.shepherd.pendingThresholdBps()).to.equal(0);
             expect(await f.shepherd.thresholdProposedAt()).to.equal(0);
             expect(await f.shepherd.paused()).to.equal(paused);
@@ -1075,7 +1075,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
       }
       expect(await f.shepherd.pendingThresholdBps()).to.equal(2500);
       expect(await f.shepherd.thresholdProposedAt()).to.equal(start);
-      expect(await f.shepherd.CHALLENGE_THRESHOLD_BPS()).to.equal(2000);
+      expect(await f.shepherd.challengeThresholdBps()).to.equal(2000);
     });
 
     it("rejects invalid, unchanged, absent, and replacement proposals; cancellation starts fresh notice", async function () {
@@ -1102,7 +1102,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
         expect(await f.shepherd.thresholdProposedAt()).to.be.greaterThan(start);
         await expect(f.shepherd.executeThresholdChange()).to.be.revertedWithCustomError(f.shepherd, "ThresholdChangeDelayNotElapsed");
         await f.shepherd.cancelThresholdChange();
-        expect(await f.shepherd.CHALLENGE_THRESHOLD_BPS()).to.equal(2000);
+        expect(await f.shepherd.challengeThresholdBps()).to.equal(2000);
       }
     });
 

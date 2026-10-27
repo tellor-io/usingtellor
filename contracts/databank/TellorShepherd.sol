@@ -29,7 +29,7 @@ contract TellorShepherd is ITellorShepherd {
     address public backupOracle;
     address public pendingBackupOracle;
     address public pendingDataBank;
-    uint256 public CHALLENGE_THRESHOLD_BPS;
+    uint256 public challengeThresholdBps;
     uint256 public pendingThresholdBps;
     uint256 public thresholdProposedAt;
     uint256 public challengeThresholdSnapshotBps;
@@ -113,7 +113,7 @@ contract TellorShepherd is ITellorShepherd {
         RELAY_READ_DELAY = _configuration.relayReadDelay;
         PARAM_CHANGE_DELAY = _configuration.paramChangeDelay;
         TWAP_WINDOW_MS = _configuration.twapWindowMs;
-        CHALLENGE_THRESHOLD_BPS = _configuration.challengeThresholdBps;
+        challengeThresholdBps = _configuration.challengeThresholdBps;
         CHALLENGE_DELAY_SECONDS = _configuration.challengeDelaySeconds;
         RECOVERY_DELAY_SECONDS = _configuration.recoveryDelaySeconds;
         MAX_PRICE_AGE = _configuration.maxPriceAge;
@@ -256,8 +256,8 @@ contract TellorShepherd is ITellorShepherd {
         if (proposedThreshold == 0) revert NoPendingThresholdChange();
         if (block.timestamp - thresholdProposedAt < PARAM_CHANGE_DELAY) revert ThresholdChangeDelayNotElapsed();
 
-        uint256 previousThreshold = CHALLENGE_THRESHOLD_BPS;
-        CHALLENGE_THRESHOLD_BPS = proposedThreshold;
+        uint256 previousThreshold = challengeThresholdBps;
+        challengeThresholdBps = proposedThreshold;
         pendingThresholdBps = 0;
         thresholdProposedAt = 0;
         emit ThresholdChanged(previousThreshold, proposedThreshold);
@@ -318,7 +318,7 @@ contract TellorShepherd is ITellorShepherd {
         if (msg.sender != admin) revert NotAdmin();
         if (pendingThresholdBps != 0) revert ThresholdChangePending();
         if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
-        if (_newThresholdBps == CHALLENGE_THRESHOLD_BPS) revert ThresholdUnchanged();
+        if (_newThresholdBps == challengeThresholdBps) revert ThresholdUnchanged();
 
         pendingThresholdBps = _newThresholdBps;
         thresholdProposedAt = block.timestamp;
@@ -354,7 +354,7 @@ contract TellorShepherd is ITellorShepherd {
         challengePending = true;
         challengeAggregateTimestamp = aggregateTimestamp;
         challengeReferenceValue = referenceValue;
-        challengeThresholdSnapshotBps = CHALLENGE_THRESHOLD_BPS;
+        challengeThresholdSnapshotBps = challengeThresholdBps;
         challengeRequestedAt = block.timestamp;
         emit ChallengeRequested(msg.sender, block.timestamp);
     }
@@ -548,7 +548,7 @@ contract TellorShepherd is ITellorShepherd {
         if (!available) return (false, false, 0, 0);
 
         ITellorDataBank.AggregateData memory candidate = dataBank.getCurrentAggregateData(queryId);
-        return (true, _isDeviating(candidate.value, twap.value, CHALLENGE_THRESHOLD_BPS), twap.value, candidate.aggregateTimestamp);
+        return (true, _isDeviating(candidate.value, twap.value, challengeThresholdBps), twap.value, candidate.aggregateTimestamp);
     }
 
     /**

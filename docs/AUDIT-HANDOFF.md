@@ -89,7 +89,7 @@ One positive immutable `PARAM_CHANGE_DELAY` governs source and threshold changes
 
 Threshold proposals, cancellation, and execution are admin-only in either mode, paused or unpaused. Execution permits exact delay equality. Thresholds remain 1–9999 bps; zero marks no pending proposal. An existing proposal must be cancelled before replacement, and unchanged thresholds are rejected. Threshold updates preserve pending transitions, source proposals, and pause. They do not block unpause. Challenges snapshot the active threshold at request and clear it on resolution, expiry, or source migration. New challenges use the updated threshold.
 
-Deployment configuration replaces `dataBankChangeDelay` and `backupChangeDelay` with `paramChangeDelay`; the factory event uses that same tuple. The existing `CHALLENGE_THRESHOLD_BPS()` getter is retained but is now mutable through delayed execution. There is no independent veto over any admin proposal.
+Deployment configuration replaces `dataBankChangeDelay` and `backupChangeDelay` with `paramChangeDelay`; the factory event uses that same tuple. The current threshold getter is `challengeThresholdBps()` (renamed from the former uppercase getter); its value changes only through delayed execution. There is no independent veto over any admin proposal.
 
 ## Resubmission checkpoint
 

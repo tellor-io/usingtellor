@@ -40,7 +40,7 @@ describe("TellorShepherdFactory", function () {
       queryId: "queryId", dataBank: "dataBank", backupOracle: "backupOracle", admin: "admin",
       relayReadDelay: "RELAY_READ_DELAY",
       paramChangeDelay: "PARAM_CHANGE_DELAY",
-      twapWindowMs: "TWAP_WINDOW_MS", challengeThresholdBps: "CHALLENGE_THRESHOLD_BPS",
+      twapWindowMs: "TWAP_WINDOW_MS", challengeThresholdBps: "challengeThresholdBps",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
       maxPriceAge: "MAX_PRICE_AGE", decimals: "decimals",
     };
