@@ -13,11 +13,11 @@ describe("TellorShepherdFactory", function () {
     const Factory = await ethers.getContractFactory("TellorShepherdFactory");
     const factory = await Factory.deploy();
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
-    // Distinct numbers expose field swaps; 30001 ms requires 31 challenge seconds.
+    // Distinct settings expose field swaps; the TWAP window exceeds both delays.
     const configuration = {
       queryId, dataBank: bank.target, backupOracle: backup.target, admin: admin.address,
-      relayReadDelay: 61n, dataBankChangeDelay: 303n,
-      backupChangeDelay: 604n, twapWindowMs: 30001n, challengeThresholdBps: 2005n,
+      relayReadDelay: 92n, dataBankChangeDelay: 303n,
+      backupChangeDelay: 604n, twapWindowMs: 1800001n, challengeThresholdBps: 2005n,
       challengeDelaySeconds: 31n, recoveryDelaySeconds: 97n, maxPriceAge: 7205n, decimals: 8n,
     };
     return { deployer, caller, admin, otherAdmin, bank, backup, Factory, factory, Shepherd, configuration };
@@ -106,6 +106,7 @@ describe("TellorShepherdFactory", function () {
     ["backupOracle", ethers.ZeroAddress, "BackupOracleHasNoCode"],
     ["admin", ethers.ZeroAddress, "InvalidAdmin"],
     ["relayReadDelay", 0n, "InvalidRelayReadDelay"],
+    ["relayReadDelay", 91n, "InvalidChallengeDelay"],
     ["maxPriceAge", 0n, "InvalidMaxPriceAge"],
     ["maxPriceAge", ethers.MaxUint256 / 1000n + 1n, "InvalidMaxPriceAge"],
     ["dataBankChangeDelay", 0n, "InvalidDataBankChangeDelay"],
@@ -113,8 +114,8 @@ describe("TellorShepherdFactory", function () {
     ["twapWindowMs", 0n, "InvalidTwapWindow"],
     ["challengeThresholdBps", 0n, "InvalidChallengeThreshold"],
     ["challengeThresholdBps", 10000n, "InvalidChallengeThreshold"],
-    ["challengeDelaySeconds", 30n, "InvalidChallengeDelay"],
-    ["challengeDelaySeconds", 61n, "InvalidChallengeDelay"],
+    ["challengeDelaySeconds", 0n, "InvalidChallengeDelay"],
+    ["challengeDelaySeconds", 92n, "InvalidChallengeDelay"],
     ["recoveryDelaySeconds", 0n, "InvalidRecoveryDelay"],
   ];
 

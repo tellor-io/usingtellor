@@ -78,7 +78,7 @@ contract TellorShepherd is ITellorShepherd {
      * values are never rescaled. Maximum source age must accommodate source and relay delays.
      * @param _configuration Nonzero query ID and admin, deployed sources, and positive durations.
      * Durations are seconds except twapWindowMs. The threshold is 1 to 9999 basis points.
-     * Challenge wait must cover the rounded-up TWAP window and be shorter than the relay delay.
+     * Challenge wait must be positive and leave more than 60 seconds before the relay delay.
      */
     constructor(Configuration memory _configuration) {
         if (_configuration.queryId == bytes32(0)) revert InvalidQueryId();
@@ -92,11 +92,12 @@ contract TellorShepherd is ITellorShepherd {
 
         if (_configuration.challengeThresholdBps == 0
             || _configuration.challengeThresholdBps >= 10000) revert InvalidChallengeThreshold();
-        // Division plus remainder avoids overflowing when converting the window to seconds.
-        uint256 minimumChallengeDelay = _configuration.twapWindowMs / 1000;
-        if (_configuration.twapWindowMs % 1000 != 0) minimumChallengeDelay += 1;
-        if (_configuration.challengeDelaySeconds < minimumChallengeDelay
-            || _configuration.challengeDelaySeconds >= _configuration.relayReadDelay) revert InvalidChallengeDelay();
+        // Check ordering first so the resolution-window subtraction cannot underflow.
+        if (_configuration.challengeDelaySeconds == 0
+            || _configuration.challengeDelaySeconds >= _configuration.relayReadDelay
+            || _configuration.relayReadDelay - _configuration.challengeDelaySeconds <= 60 seconds) {
+            revert InvalidChallengeDelay();
+        }
 
         if (_configuration.recoveryDelaySeconds == 0) revert InvalidRecoveryDelay();
         if (_configuration.maxPriceAge == 0

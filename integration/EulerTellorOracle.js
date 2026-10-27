@@ -42,7 +42,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: maxAge, decimals: feedDecimals
@@ -79,7 +79,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const f = await fixture();
     await relay(f, primaryPrice, f.startMs);
     const at = await relay(f, primaryPrice, f.startMs + 30000);
-    await time.increaseTo(at + 61n);
+    await time.increaseTo(at + 121n);
     return f;
   }
 
@@ -147,7 +147,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const f = await loadFixture(fixture);
     await expectRefusal(f, f.shepherd, "NoMatureData");
     const at = await relay(f, primaryPrice, f.startMs);
-    await time.increaseTo(at + 60n);
+    await time.increaseTo(at + 120n);
     await expectRefusal(f, f.shepherd, "NoMatureData");
     await time.increase(1);
     await expectQuotes(f, primaryPrice);
@@ -208,7 +208,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
       const quote = (await f.Token.deploy(example.decimals[1])).target;
       const oracle = await deployAdaptor(f, { base, quote, decimals: example.decimals[2] });
       await relay(f, example.price, f.startMs);
-      await time.increase(61);
+      await time.increase(121);
       await expectQuotes({ ...f, base, quote, oracle }, example.price, example);
     });
   }
@@ -238,7 +238,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await expect(f.shepherd.connect(f.outsider).requestRecovery())
       .to.be.revertedWithCustomError(f.shepherd, "RecoveryNotAllowed");
     const recoveredPrice = 3100n * unit;
-    await relay(f, recoveredPrice, f.startMs + 50000);
+    const recoveredRelay = await relay(f, recoveredPrice, f.startMs + 50000);
     await f.shepherd.pause();
     const pausedAt = await f.shepherd.pausedAt();
     await f.backup.setCanRecover(f.queryId, true);
@@ -263,6 +263,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
     await f.shepherd.unpause();
+    await time.increaseTo(recoveredRelay + 121n);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([recoveredPrice, BigInt(f.startMs + 50000)]);
     await expectQuotes(f, recoveredPrice);
   });

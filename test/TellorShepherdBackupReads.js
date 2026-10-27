@@ -23,12 +23,12 @@ describe("TellorShepherd - Validated backup helper", function () {
     const Harness = await ethers.getContractFactory("TellorShepherdHarness");
     const shepherd = await Harness.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
     });
-    await time.increase(61);
+    await time.increase(121);
     expect((await shepherd.getCurrentValue())[0]).to.equal(999);
     return { admin, backup, replacement, shepherd };
   }

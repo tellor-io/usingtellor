@@ -42,7 +42,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     for (const [leg, id] of ids.entries()) {
       shepherds.push(await Shepherd.deploy({
         queryId: id, dataBank: bank.target, backupOracle: backup.target,
-        admin: admin.address, relayReadDelay: 60,
+        admin: admin.address, relayReadDelay: 120,
         dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
         challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
         maxPriceAge: 3600, decimals: feedDecimals[leg]
@@ -73,7 +73,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       await relay(f, leg, price, f.startMs);
       await relay(f, leg, price, f.startMs + 30000);
     }
-    await time.increase(61);
+    await time.increase(121);
     return f;
   }
 
@@ -133,11 +133,11 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       const f = await loadFixture(fixture);
       const stamp = (await time.latest() - 120) * 1000;
       await relay(f, 1 - leg, leg === 0 ? loanPrice : collateralPrice, stamp);
-      await time.increase(61);
+      await time.increase(121);
       await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "NoMatureData");
       await relay(f, leg, leg === 0 ? collateralPrice : loanPrice, stamp);
       const relayAt = BigInt(await time.latest());
-      await time.increaseTo(relayAt + 60n);
+      await time.increaseTo(relayAt + 120n);
       await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "NoMatureData");
       await time.increase(1);
       expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
@@ -178,7 +178,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
           await relay(f, leg, leg === 0 ? collateralPrice : loanPrice,
             baseMs - (leg === olderLeg ? 600000 + excess : 0));
         }
-        await time.increase(61);
+        await time.increase(121);
         // Both feeds are within 3600 seconds; only the skew differs between cases.
         if (excess) await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "CrossFeedSkew");
         else expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
@@ -234,7 +234,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       const oracle = await deployAdaptor(f, { decimals: example.decimals });
       const stamp = (await time.latest() - 120) * 1000 + 17;
       for (const leg of [0, 1]) await relay(f, leg, example.prices[leg], stamp);
-      await time.increase(61);
+      await time.increase(121);
       expect(await oracle.price()).to.equal(example.prices[0] * example.scale / example.prices[1]);
     });
   }
@@ -244,7 +244,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     const stamp = (await time.latest() - 120) * 1000;
     await relay(f, 0, 1n, stamp);
     await relay(f, 1, 10n ** 25n, stamp);
-    await time.increase(61);
+    await time.increase(121);
     await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "ZeroPrice");
   });
 
@@ -255,7 +255,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     const collateral = (1n << 192n) - 1n;
     await relay(f, 0, collateral, stamp);
     await relay(f, 1, 1n, stamp);
-    await time.increase(61);
+    await time.increase(121);
     expect(collateral * 10n ** 77n).to.be.greaterThan(ethers.MaxUint256);
     await expect(oracle.price()).to.be.revertedWithCustomError(oracle, "MulDivOverflow");
   });

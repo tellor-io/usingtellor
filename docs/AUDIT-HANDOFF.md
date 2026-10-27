@@ -34,7 +34,7 @@ npm run test:euler
 
 The integration commands build each adaptor before loading its bytecode. Run `forge test` from each adaptor repository for its native tests.
 
-Local validation after removing the minimum pause duration: 270 Hardhat tests, 31 custom Morpho integration tests, 17 Euler integration tests, and 6 direct Morpho V2 integration tests pass. The direct V2 suite builds unmodified `morpho-blue-oracles` at `9d2a0b66589d0669c52e47310af8eb804facf97e` with its submodules and Solidity 0.8.21. Run `MORPHO_CHAINLINK_ROOT=/path/to/morpho-blue-oracles npm run test:morpho-chainlink` separately. Native `forge test --offline` now passes 27 Morpho tests and 26 Euler tests, including fuzz coverage and the Euler deployment-script test. The custom Morpho adaptor reports a `forge-std` revision mismatch; Euler has dependency files present but its submodule is uninitialized, and automatic registration fails under the local sandbox. Fresh-checkout reproduction of those adaptors remains unverified.
+Local validation after enforcing the challenge-resolution margin: 271 Hardhat tests, 31 custom Morpho integration tests, 17 Euler integration tests, and 6 direct Morpho V2 integration tests pass. The direct V2 suite builds unmodified `morpho-blue-oracles` at `9d2a0b66589d0669c52e47310af8eb804facf97e` with its submodules and Solidity 0.8.21. Run `MORPHO_CHAINLINK_ROOT=/path/to/morpho-blue-oracles npm run test:morpho-chainlink` separately. Native `forge test --offline` now passes 27 Morpho tests and 26 Euler tests, including fuzz coverage and the Euler deployment-script test. The custom Morpho adaptor reports a `forge-std` revision mismatch; Euler has dependency files present but its submodule is uninitialized, and automatic registration fails under the local sandbox. Fresh-checkout reproduction of those adaptors remains unverified.
 
 ## Invariants and trust assumptions
 
@@ -50,7 +50,10 @@ Local validation after removing the minimum pause duration: 270 Hardhat tests, 3
 ## Challenge resolution
 
 `resolveChallenge()` replaces `executeChallenge()` and `cancelChallenge()`. The constructor requires
-`ceil(TWAP_WINDOW_MS / 1000) <= CHALLENGE_DELAY_SECONDS < RELAY_READ_DELAY`.
+`TWAP_WINDOW_MS > 0`, `CHALLENGE_DELAY_SECONDS > 0`, and
+`RELAY_READ_DELAY - CHALLENGE_DELAY_SECONDS > 60 seconds`. The TWAP window is independent of both delays:
+resolution compares against the frozen reference, so it need not wait for a full TWAP window. Ordering is validated before subtraction;
+a gap of exactly 60 seconds fails and 61 succeeds. This configuration margin does not compensate for a late challenge.
 Let `C` be the challenge request time, `D` the challenge delay, and `R` the relay read delay:
 
 | Resolution time / evidence | Result |
@@ -81,6 +84,6 @@ The constructor now accepts the same named `TellorShepherd.Configuration` struct
 
 ## Rebuild checkpoint
 
-The shared-read and adaptor cleanup are committed in the current workspace. The next AGENT-WRITES increment removes the minimum pause duration, its configuration field, and its errors. It retains `pausedAt` for monitoring, admin-only unpause, both pending-source guards, and delayed source execution while paused. Tests cover zero elapsed time, repeated pauses, authority, and migration/transition interactions. Implementation and validation are complete; human review, comprehension, and commit are pending. Changes are unstaged in `usingtellor` only.
+The shared-read, adaptor cleanup, and minimum-pause removal are committed in the current workspace. The current AGENT-WRITES increment enforces the strict 60-second challenge-resolution margin and removes the obsolete TWAP/challenge-delay coupling. Boundary and maximum-uint256 tests cover direct deployment; factory tests cover rejection at 60 and acceptance at 61 seconds. Positive TWAP windows longer than both delays are accepted, while zero challenge delay is explicitly rejected. Integration fixtures use longer relay delays while retaining their independent backup and recovery timing. Implementation and validation are complete; human review, comprehension, and commit are pending. Changes are unstaged in `usingtellor` only.
 
-Approved follow-ups, not yet implemented: admin-only threshold propose/cancel/execute with deployment-set `THRESHOLD_CHANGE_DELAY` and a per-challenge threshold snapshot; strict `RELAY_READ_DELAY - CHALLENGE_DELAY_SECONDS > 60 seconds`. Source migration remains solely the admin's decision, with no independent veto.
+Approved follow-up, not yet implemented: admin-only threshold propose/cancel/execute with deployment-set `THRESHOLD_CHANGE_DELAY` and a per-challenge threshold snapshot. Source migration remains solely the admin's decision, with no independent veto.

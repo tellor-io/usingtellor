@@ -17,7 +17,7 @@ describe("TellorShepherd - Configuration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const args = {
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -36,7 +36,7 @@ describe("TellorShepherd - Configuration", function () {
     expect(await shepherd.backupOracle()).to.equal(backup.target);
     expect(await shepherd.admin()).to.equal(admin.address);
     expect(await shepherd.admin()).not.to.equal(deployer.address);
-    expect(await shepherd.RELAY_READ_DELAY()).to.equal(60);
+    expect(await shepherd.RELAY_READ_DELAY()).to.equal(120);
     expect(await shepherd.mode()).to.equal(0); // Mode.PRIMARY
     expect(await shepherd.DATA_BANK_CHANGE_DELAY()).to.equal(300);
     expect(await shepherd.BACKUP_CHANGE_DELAY()).to.equal(600);
@@ -68,9 +68,8 @@ describe("TellorShepherd - Configuration", function () {
     ["100 percent threshold", "challengeThresholdBps", () => 10000, "InvalidChallengeThreshold"],
     ["oversized threshold", "challengeThresholdBps", () => ethers.MaxUint256, "InvalidChallengeThreshold"],
     ["zero challenge delay", "challengeDelaySeconds", () => 0, "InvalidChallengeDelay"],
-    ["challenge delay shorter than window", "challengeDelaySeconds", () => 29, "InvalidChallengeDelay"],
-    ["challenge delay equals read delay", "challengeDelaySeconds", () => 60, "InvalidChallengeDelay"],
-    ["challenge delay exceeds read delay", "challengeDelaySeconds", () => 61, "InvalidChallengeDelay"],
+    ["challenge delay equals read delay", "challengeDelaySeconds", () => 120, "InvalidChallengeDelay"],
+    ["challenge delay exceeds read delay", "challengeDelaySeconds", () => 121, "InvalidChallengeDelay"],
   ];
 
   for (const [label, field, invalidValue, error] of invalidCases) {
@@ -82,22 +81,38 @@ describe("TellorShepherd - Configuration", function () {
     });
   }
 
-  it("rounds challenge windows upward, including maximum uint256, without overflow", async function () {
+  it("accepts positive TWAP windows independently of challenge and read delays", async function () {
     const { Shepherd, args: fixtureArgs } = await loadFixture(deployFixture);
-    const args = { ...fixtureArgs };
-    for (const window of [1n, 1000n, 1001n, ethers.MaxUint256]) {
+    const args = { ...fixtureArgs, challengeDelaySeconds: 1, relayReadDelay: 62 };
+    for (const window of [1n, 30000n, 30001n, 1800000n, ethers.MaxUint256]) {
       args.twapWindowMs = window;
-      const minimumSeconds = (window + 999n) / 1000n; // JS bigint is unbounded.
-      args.relayReadDelay = minimumSeconds + 1n;
-      Object.assign(args, { challengeDelaySeconds: minimumSeconds - 1n, recoveryDelaySeconds: 90 });
-      await expect(Shepherd.deploy(args)).to.be.revertedWithCustomError(Shepherd, "InvalidChallengeDelay");
-      Object.assign(args, { challengeDelaySeconds: minimumSeconds, recoveryDelaySeconds: 90 });
       const shepherd = await Shepherd.deploy(args);
-      expect(await shepherd.CHALLENGE_DELAY_SECONDS()).to.equal(minimumSeconds);
+      expect(await shepherd.TWAP_WINDOW_MS()).to.equal(window);
+      expect(await shepherd.CHALLENGE_DELAY_SECONDS()).to.equal(1);
     }
     for (const threshold of [1, 9999]) {
       args.challengeThresholdBps = threshold;
       expect(await (await Shepherd.deploy(args)).CHALLENGE_THRESHOLD_BPS()).to.equal(threshold);
+    }
+  });
+
+  it("requires more than 60 seconds of resolution time without arithmetic overflow", async function () {
+    const { Shepherd, args } = await loadFixture(deployFixture);
+    for (const challengeDelaySeconds of [30n, ethers.MaxUint256 - 61n]) {
+      for (const gap of [0n, 1n, 59n, 60n, 61n]) {
+        const configuration = { ...args, challengeDelaySeconds, relayReadDelay: challengeDelaySeconds + gap };
+        if (gap <= 60n) {
+          await expect(Shepherd.deploy(configuration)).to.be.revertedWithCustomError(Shepherd, "InvalidChallengeDelay");
+        } else {
+          const shepherd = await Shepherd.deploy(configuration);
+          expect(await shepherd.RELAY_READ_DELAY() - await shepherd.CHALLENGE_DELAY_SECONDS()).to.equal(61);
+        }
+      }
+    }
+    // Reject ordering before subtraction; adding 60 to this challenge delay would overflow.
+    for (const relayReadDelay of [1n, ethers.MaxUint256]) {
+      await expect(Shepherd.deploy({ ...args, relayReadDelay, challengeDelaySeconds: ethers.MaxUint256 }))
+        .to.be.revertedWithCustomError(Shepherd, "InvalidChallengeDelay");
     }
   });
 
@@ -113,13 +128,13 @@ describe("TellorShepherd - Configuration", function () {
   it("accepts the minimum delays with a nonempty challenge resolution window", async function () {
     const { Shepherd, args: fixtureArgs } = await loadFixture(deployFixture);
     const args = { ...fixtureArgs };
-    args.relayReadDelay = 2;
+    args.relayReadDelay = 62;
     args.dataBankChangeDelay = 1;
     args.backupChangeDelay = 1;
     args.twapWindowMs = 1;
     Object.assign(args, { challengeDelaySeconds: 1, recoveryDelaySeconds: 1 });
     const shepherd = await Shepherd.deploy(args);
-    expect(await shepherd.RELAY_READ_DELAY()).to.equal(2);
+    expect(await shepherd.RELAY_READ_DELAY()).to.equal(62);
     expect(await shepherd.DATA_BANK_CHANGE_DELAY()).to.equal(1);
     expect(await shepherd.BACKUP_CHANGE_DELAY()).to.equal(1);
     expect(await shepherd.TWAP_WINDOW_MS()).to.equal(1);
@@ -130,7 +145,7 @@ describe("TellorShepherd - Mature primary reads", function () {
   const { time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
   const h = require("../src/helpers/evmHelpers");
   const coder = ethers.AbiCoder.defaultAbiCoder();
-  const delay = 60;
+  const delay = 120;
   const encode = (value) => coder.encode(["uint256"], [value]);
 
   async function deployReadFixture() {
@@ -187,7 +202,7 @@ describe("TellorShepherd - Mature primary reads", function () {
     await f.shepherd.connect(f.admin).pause();
     await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
     const second = await relay(f, encode(200));
-    await time.increaseTo(Number(await f.shepherd.pausedAt()) + 120);
+    await time.increaseTo(second.relayTime + delay + 1);
     await f.shepherd.connect(f.admin).unpause();
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([200n, second.aggregateTimestamp]);
     expect(await f.shepherd.mode()).to.equal(0);
@@ -338,7 +353,7 @@ describe("TellorShepherd - Pauser membership", function () {
     // Membership operations do not read either source.
     const shepherd = await Shepherd.deploy({
       queryId: ethers.id("pauser-test-feed"), dataBank: source.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -436,7 +451,7 @@ describe("TellorShepherd - Pause and unpause", function () {
     // This dependency cannot answer primary reads, allowing pause precedence tests.
     const shepherd = await Shepherd.deploy({
       queryId: ethers.id("pause-test-feed"), dataBank: source.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -547,7 +562,7 @@ describe("TellorShepherd - DataBank migration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId: ethers.id("migration-feed"), dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: changeDelay, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -691,7 +706,7 @@ describe("TellorShepherd - Backup migration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const args = {
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -923,7 +938,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
     const Harness = await ethers.getContractFactory("TellorShepherdHarness");
     const args = {
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -946,11 +961,11 @@ describe("TellorShepherd - TWAP reference validation", function () {
     const f = await loadFixture(fixture);
     expect(await f.shepherd.readTwapReference()).to.deep.equal(empty);
     const firstRelay = await append(f, 0, 100);
-    await time.increaseTo(firstRelay + 61n);
+    await time.increaseTo(firstRelay + 121n);
     expect(await f.shepherd.readTwapReference()).to.deep.equal(empty);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([100n, BigInt(f.startTime)]);
     const lastRelay = await append(f, 30000, 900);
-    await time.increaseTo(lastRelay + 60n);
+    await time.increaseTo(lastRelay + 120n);
     expect(await f.shepherd.readTwapReference()).to.deep.equal(empty);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
     await time.increase(1);
@@ -963,7 +978,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
     const f = await loadFixture(fixture);
     await append(f, 0, 100);
     const lastRelay = await append(f, 7200000, 900);
-    await time.increaseTo(lastRelay + 61n);
+    await time.increaseTo(lastRelay + 121n);
     const expected = [true, [100n, 0n, 1n, BigInt(f.startTime), BigInt(f.startTime + 7200000), 1n]];
     expect(await f.shepherd.readTwapReference()).to.deep.equal(expected);
     await f.shepherd.pause();
@@ -978,14 +993,14 @@ describe("TellorShepherd - TWAP reference validation", function () {
     await append(f, 0, 100);
     await append(f, 10001, 120);
     const endpoint = await append(f, 30003, 900);
-    await time.increaseTo(endpoint + 61n);
+    await time.increaseTo(endpoint + 122n);
     await append(f, 40000, (1n << 192n) - 1n);
     expect(await f.shepherd.readTwapReference())
       .to.deep.equal([true, [113n, 0n, 2n, BigInt(f.startTime), BigInt(f.startTime + 30003), 2n]]);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(900);
     const args = { ...f.args };
     args.twapWindowMs = 60000;
-    args.relayReadDelay = 61;
+    args.relayReadDelay = 121;
     Object.assign(args, { challengeDelaySeconds: 60, recoveryDelaySeconds: 90 });
     const longerWindow = await f.Harness.deploy(args);
     expect(await longerWindow.readTwapReference()).to.deep.equal(empty);
@@ -1069,13 +1084,13 @@ describe("TellorShepherd - TWAP reference validation", function () {
     expect(await f.shepherd.readDeviation()).to.deep.equal([false, false]);
     await append(f, 0, 100);
     const endpoint = await append(f, 30000, 100);
-    await time.increaseTo(endpoint + 61n);
+    await time.increaseTo(endpoint + 121n);
     expect(await f.shepherd.readDeviation()).to.deep.equal([true, false]);
     const latestRelay = await append(f, 40000, 121);
     expect(BigInt(await time.latest())).to.equal(latestRelay);
     expect(await f.shepherd.readDeviation()).to.deep.equal([true, true]);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
-    await time.increaseTo(latestRelay + 61n);
+    await time.increaseTo(latestRelay + 121n);
     expect(await f.shepherd.readDeviation()).to.deep.equal([true, true]);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(121);
     await f.shepherd.pause();
@@ -1086,7 +1101,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
   it("keeps unavailable history distinct from in-band data without blocking a mature read", async function () {
     const f = await loadFixture(fixture);
     const first = await append(f, 0, 100);
-    await time.increaseTo(first + 61n);
+    await time.increaseTo(first + 121n);
     expect(await f.shepherd.readDeviation()).to.deep.equal([false, false]);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
     await f.shepherd.pause();
@@ -1150,7 +1165,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
       const [, requester, canceller] = await ethers.getSigners();
       await append(f, 0, 100);
       const endpoint = await append(f, 30000, 100);
-      await time.increaseTo(endpoint + 61n);
+      await time.increaseTo(endpoint + 121n);
       await append(f, 40000, 121);
       return { ...f, requester, canceller };
     }
@@ -1193,7 +1208,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
         await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "DiagnosticUnavailable");
         await append(f, 0, 100);
         const endpoint = await append(f, 30000, 80);
-        await time.increaseTo(endpoint + 61n);
+        await time.increaseTo(endpoint + 121n);
         await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotDeviating");
         await expectPending(f.shepherd, false, 0);
       });
@@ -1276,7 +1291,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
       await append(f, 60000, 79);
       await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "StillDeviating");
       await append(f, 70000, 100);
-      await time.setNextBlockTimestamp(start + 60n);
+      await time.setNextBlockTimestamp(start + 120n);
       await expect(f.shepherd.resolveChallenge()).to.emit(f.shepherd, "ChallengeExecuted");
       await expectPending(f.shepherd, false, 0);
       expect(await f.shepherd.mode()).to.equal(1);
@@ -1296,7 +1311,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
             await setCode(f.bank.target, "0x60006000fd");
             await setCode(f.backup.target, "0x60006000fd");
           }
-          await time.setNextBlockTimestamp(start + 61n);
+          await time.setNextBlockTimestamp(start + 121n);
           await expect(f.shepherd.connect(f.canceller).resolveChallenge())
             .to.emit(f.shepherd, "ChallengeExpired").withArgs(f.canceller.address);
           await expectPending(f.shepherd, false, 0);
@@ -1312,7 +1327,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
       const f = await loadFixture(challengeFixture);
       await f.shepherd.requestChallenge();
       const start = await f.shepherd.challengeRequestedAt();
-      for (const age of [30n, 60n]) {
+      for (const age of [30n, 120n]) {
         await time.setNextBlockTimestamp(start + age);
         await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "NoNewerReport");
         await expectPending(f.shepherd, true, start);
@@ -1575,7 +1590,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
       const f = await loadFixture(challengeFixture);
       await f.shepherd.requestChallenge();
       const start = await f.shepherd.challengeRequestedAt();
-      await time.increase(100);
+      await time.increase(121);
       await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "ChallengeAlreadyPending");
       await expectPending(f.shepherd, true, start);
       expect(await f.shepherd.challengeReferenceValue()).to.equal(100);
@@ -1587,7 +1602,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
       const f = await loadFixture(challengeFixture);
       await f.shepherd.requestChallenge();
       expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
-      await time.increase(61);
+      await time.increase(121);
       expect((await f.shepherd.getCurrentValue())[0]).to.equal(121);
       expect(await f.shepherd.challengePending()).to.equal(true);
     });
@@ -1644,7 +1659,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
         await expectPending(f.shepherd, true, start);
         expect(await f.shepherd.challengeReferenceValue()).to.equal(100);
         expect(await f.shepherd.challengeAggregateTimestamp()).to.equal(f.end[2]);
-        await time.setNextBlockTimestamp(start + 61n);
+        await time.setNextBlockTimestamp(start + 121n);
         await expect(f.shepherd.resolveChallenge()).to.emit(f.shepherd, "ChallengeExpired");
         await expectPending(f.shepherd, false, 0);
         expect(await f.shepherd.paused()).to.equal(true);

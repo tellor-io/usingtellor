@@ -27,6 +27,8 @@ Deploy Shepherd with a single `TellorShepherd.Configuration` struct, also used b
 
 `getCurrentValue()` and `latestRoundData()` are external wrappers around `_getCurrentValue()` and share pause, source selection, and freshness checks: zero, future, or over-age source timestamps revert, with exact maximum age allowed. `getCurrentValue()` preserves milliseconds; `latestRoundData()` converts source timestamps to seconds and additionally requires the price to fit `int256`. Neither rescales the price. The latter, together with `decimals()`, supports [MorphoChainlinkOracleV2](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/MorphoChainlinkOracleV2.sol). Round IDs are zero sentinels; historical Chainlink rounds are not implemented. Standard Morpho V2 does not enforce cross-feed timestamp skew. The custom Tellor adaptor below retains that additional policy. Both custom adaptors delegate individual-feed freshness to Shepherd; configure the intended age limit there when deploying.
 
+Deployment requires `RELAY_READ_DELAY - CHALLENGE_DELAY_SECONDS > 60 seconds`, with positive challenge delay and TWAP window configured independently. This leaves time to submit resolution; timely monitoring and relay availability are still required.
+
 Admin can unpause immediately when neither source migration is pending. Source migrations still require their own notice delay and paused execution. Deployment configuration no longer includes `minPauseDuration`; `pausedAt` remains available for monitoring.
 
 For direct V2 integration tests, initialize the upstream `morpho-blue-oracles` checkout and its submodules, then run:

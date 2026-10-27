@@ -18,7 +18,7 @@ describe("TellorShepherd - Real source integration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60,
+      admin: admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -49,7 +49,7 @@ describe("TellorShepherd - Real source integration", function () {
     const f = await fixture();
     await relay(f, 0, 100);
     const endpoint = await relay(f, 30000, 100);
-    await time.increaseTo(endpoint + 61n);
+    await time.increaseTo(endpoint + 121n);
     await relay(f, 40000, 150);
     return f;
   }
@@ -73,7 +73,7 @@ describe("TellorShepherd - Real source integration", function () {
       const backupReport = await submit(f, 99);
       await relay(f, 0, 100);
       const endpoint = await relay(f, 30000, 100);
-      await time.increaseTo(endpoint + 61n);
+      await time.increaseTo(endpoint + 121n);
       const outlierRelay = await relay(f, 40000, outlier);
       await f.shepherd.requestChallenge();
       const requestedAt = await f.shepherd.challengeRequestedAt();
@@ -86,11 +86,11 @@ describe("TellorShepherd - Real source integration", function () {
       await time.setNextBlockTimestamp(requestedAt + 40n);
       await relay(f, 50000, 100);
       await expect(f.shepherd.resolveChallenge()).to.emit(f.shepherd, "ChallengeExecuted");
-      expect(BigInt(await time.latest())).to.be.lessThan(outlierRelay + 60n);
+      expect(BigInt(await time.latest())).to.be.lessThan(outlierRelay + 120n);
       expect(await f.shepherd.getCurrentValue()).to.deep.equal(backupReport.pair);
-      await time.increaseTo(outlierRelay + 61n);
+      await time.increaseTo(outlierRelay + 121n);
       // The bank's mature selection is now the outlier; Shepherd already serves backup.
-      const [, mature] = await f.bank.getRelayBefore(f.queryId, BigInt(await time.latest()) - 60n);
+      const [, mature] = await f.bank.getRelayBefore(f.queryId, BigInt(await time.latest()) - 120n);
       expect(ethers.AbiCoder.defaultAbiCoder().decode(["uint256"], mature.value)[0]).to.equal(outlier);
       expect(await f.shepherd.getCurrentValue()).to.deep.equal(backupReport.pair);
     });
@@ -99,14 +99,14 @@ describe("TellorShepherd - Real source integration", function () {
       const f = await loadFixture(fixture);
       await relay(f, 0, 100);
       const endpoint = await relay(f, 30000, 100);
-      await time.increaseTo(endpoint + 61n);
+      await time.increaseTo(endpoint + 121n);
       await relay(f, 40000, outlier);
       await f.shepherd.requestChallenge();
       const requestedAt = await f.shepherd.challengeRequestedAt();
       await relay(f, 50000, outlier);
       await time.setNextBlockTimestamp(requestedAt + 30n);
       await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "StillDeviating");
-      await time.increaseTo(requestedAt + 61n);
+      await time.increaseTo(requestedAt + 121n);
       expect(await f.shepherd.challengePending()).to.equal(true);
       expect((await f.shepherd.getCurrentValue())[0]).to.equal(outlier);
       await expect(f.shepherd.resolveChallenge()).to.emit(f.shepherd, "ChallengeExpired");
@@ -121,7 +121,7 @@ describe("TellorShepherd - Real source integration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: f.bank.target, backupOracle: f.backup.target,
-      admin: f.admin.address, relayReadDelay: 60,
+      admin: f.admin.address, relayReadDelay: 120,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -129,7 +129,7 @@ describe("TellorShepherd - Real source integration", function () {
     const other = { ...f, queryId, shepherd };
     await relay(other, 0, 200);
     const endpoint = await relay(other, 30000, 200);
-    await time.increaseTo(endpoint + 61n);
+    await time.increaseTo(endpoint + 121n);
     await relay(other, 40000, 300);
     const firstReport = await submit(f, 97);
     const otherReport = await submit(other, 211);
@@ -215,7 +215,7 @@ describe("TellorShepherd - Real source integration", function () {
   it("keeps mature primary reads available without TWAP coverage and excludes the candidate's price weight", async function () {
     const f = await loadFixture(fixture);
     const first = await relay(f, 0, 100);
-    await time.increaseTo(first + 60n);
+    await time.increaseTo(first + 120n);
     await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "NoMatureData");
     await time.increase(1);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([100n, BigInt(f.aggregateStart)]);
@@ -223,7 +223,7 @@ describe("TellorShepherd - Real source integration", function () {
       .to.be.revertedWithCustomError(f.shepherd, "DiagnosticUnavailable");
 
     const candidate = await relay(f, 30000, 150);
-    await time.increaseTo(candidate + 60n);
+    await time.increaseTo(candidate + 120n);
     expect((await f.bank.getTwapBefore(f.queryId, candidate, 30000))[0]).to.equal(false);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
     await time.increase(1);
@@ -278,7 +278,7 @@ describe("TellorShepherd - Real source integration", function () {
     expect(await f.shepherd.getCurrentValue()).to.deep.equal(first.pair);
     await f.backup.disputeValue(f.queryId, first.index);
     // Primary history is mature and readable at the bank, but cannot rescue backup mode.
-    expect((await f.bank.getRelayBefore(f.queryId, BigInt(await time.latest()) - 60n))[0]).to.equal(true);
+    expect((await f.bank.getRelayBefore(f.queryId, BigInt(await time.latest()) - 120n))[0]).to.equal(true);
     await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "NoUsableReport");
     expect(await f.shepherd.mode()).to.equal(1);
   });
@@ -304,7 +304,7 @@ describe("TellorShepherd - Real source integration", function () {
     await selectBackup(f);
     await expect(f.shepherd.connect(f.requester).requestRecovery())
       .to.be.revertedWithCustomError(f.shepherd, "RecoveryNotAllowed");
-    await relay(f, 50000, 101);
+    const recoveredRelay = await relay(f, 50000, 101);
     await f.shepherd.pause();
     const pauseClock = await f.shepherd.pausedAt();
     await f.backup.setCanRecover(f.queryId, true);
@@ -325,6 +325,8 @@ describe("TellorShepherd - Real source integration", function () {
     expect(await f.shepherd.recoveryRequestedAt()).to.equal(0);
     await expectPaused(f, pauseClock);
     await f.shepherd.unpause();
+    expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
+    await time.increaseTo(recoveredRelay + 121n);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([101n, BigInt(f.aggregateStart + 50000)]);
   });
 
