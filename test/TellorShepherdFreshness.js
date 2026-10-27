@@ -14,7 +14,7 @@ describe("TellorShepherd - Shared freshness and latest-price interface", functio
     const Shepherd = await ethers.getContractFactory("TellorShepherdHarness");
     const configuration = {
       queryId, dataBank: bank.target, backupOracle: backup.target, admin: admin.address,
-      relayReadDelay: 120, dataBankChangeDelay: 300, backupChangeDelay: 600,
+      relayReadDelay: 120, paramChangeDelay: 300,
       twapWindowMs: 30000, challengeThresholdBps: 2000, challengeDelaySeconds: 30,
       recoveryDelaySeconds: 90, maxPriceAge: 3600, decimals: 8,
     };

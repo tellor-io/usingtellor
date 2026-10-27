@@ -24,6 +24,9 @@ interface ITellorShepherd {
     event RecoveryExecuted(address indexed caller);
     event RecoveryInvalidated();
     event RecoveryRequested(address indexed caller, uint256 requestedAt);
+    event ThresholdChangeProposed(uint256 proposedThresholdBps, uint256 proposedAt);
+    event ThresholdChangeCancelled(uint256 proposedThresholdBps);
+    event ThresholdChanged(uint256 previousThresholdBps, uint256 newThresholdBps);
     event Unpaused(address indexed caller);
 
     // Errors
@@ -42,11 +45,10 @@ interface ITellorShepherd {
     error DataBankUnchanged();
     error DiagnosticUnavailable();
     error InvalidAdmin();
-    error InvalidBackupChangeDelay();
     error InvalidChallengeDelay();
     error InvalidChallengeThreshold();
-    error InvalidDataBankChangeDelay();
     error InvalidMaxPriceAge();
+    error InvalidParamChangeDelay();
     error InvalidPauser();
     error InvalidQueryId();
     error InvalidRecoveryDelay();
@@ -61,6 +63,7 @@ interface ITellorShepherd {
     error NoPendingChallenge();
     error NoPendingDataBankChange();
     error NoPendingRecovery();
+    error NoPendingThresholdChange();
     error NotAdmin();
     error NotAuthorizedToPause();
     error NotBackupMode();
@@ -76,6 +79,9 @@ interface ITellorShepherd {
     error ShepherdPaused();
     error StalePrice();
     error StillDeviating();
+    error ThresholdChangePending();
+    error ThresholdChangeDelayNotElapsed();
+    error ThresholdUnchanged();
     error ZeroValue();
 
     // Getter functions

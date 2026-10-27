@@ -23,7 +23,7 @@ contract TellorShepherdFactory {
      * @dev Shepherd's constructor owns validation. Reverts leave no registration
      * or creation event. Duplicate configurations are allowed. Event source
      * addresses describe deployment; read Shepherd getters after source migration.
-     * @param configuration Initial sources, authority, and immutable settings.
+     * @param configuration Initial sources, authority, threshold, and immutable settings.
      * All durations are seconds except twapWindowMs; threshold is basis points.
      * Read configuration supplies maximum source age and price decimals for both APIs.
      * @return shepherd Address of the newly deployed and registered instance.

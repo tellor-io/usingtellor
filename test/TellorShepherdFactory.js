@@ -16,8 +16,8 @@ describe("TellorShepherdFactory", function () {
     // Distinct settings expose field swaps; the TWAP window exceeds both delays.
     const configuration = {
       queryId, dataBank: bank.target, backupOracle: backup.target, admin: admin.address,
-      relayReadDelay: 92n, dataBankChangeDelay: 303n,
-      backupChangeDelay: 604n, twapWindowMs: 1800001n, challengeThresholdBps: 2005n,
+      relayReadDelay: 92n, paramChangeDelay: 303n,
+      twapWindowMs: 1800001n, challengeThresholdBps: 2005n,
       challengeDelaySeconds: 31n, recoveryDelaySeconds: 97n, maxPriceAge: 7205n, decimals: 8n,
     };
     return { deployer, caller, admin, otherAdmin, bank, backup, Factory, factory, Shepherd, configuration };
@@ -39,7 +39,7 @@ describe("TellorShepherdFactory", function () {
     const getters = {
       queryId: "queryId", dataBank: "dataBank", backupOracle: "backupOracle", admin: "admin",
       relayReadDelay: "RELAY_READ_DELAY",
-      dataBankChangeDelay: "DATA_BANK_CHANGE_DELAY", backupChangeDelay: "BACKUP_CHANGE_DELAY",
+      paramChangeDelay: "PARAM_CHANGE_DELAY",
       twapWindowMs: "TWAP_WINDOW_MS", challengeThresholdBps: "CHALLENGE_THRESHOLD_BPS",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
       maxPriceAge: "MAX_PRICE_AGE", decimals: "decimals",
@@ -109,8 +109,7 @@ describe("TellorShepherdFactory", function () {
     ["relayReadDelay", 91n, "InvalidChallengeDelay"],
     ["maxPriceAge", 0n, "InvalidMaxPriceAge"],
     ["maxPriceAge", ethers.MaxUint256 / 1000n + 1n, "InvalidMaxPriceAge"],
-    ["dataBankChangeDelay", 0n, "InvalidDataBankChangeDelay"],
-    ["backupChangeDelay", 0n, "InvalidBackupChangeDelay"],
+    ["paramChangeDelay", 0n, "InvalidParamChangeDelay"],
     ["twapWindowMs", 0n, "InvalidTwapWindow"],
     ["challengeThresholdBps", 0n, "InvalidChallengeThreshold"],
     ["challengeThresholdBps", 10000n, "InvalidChallengeThreshold"],

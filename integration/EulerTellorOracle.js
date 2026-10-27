@@ -43,7 +43,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
       admin: admin.address, relayReadDelay: 120,
-      dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
+      paramChangeDelay: 300, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: maxAge, decimals: feedDecimals
     });
@@ -290,7 +290,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
       await f.shepherd.pause();
       const pausedAt = await f.shepherd.pausedAt();
       const proposedAt = source === "bank" ? await f.shepherd.dataBankProposedAt() : await f.shepherd.backupProposedAt();
-      await time.setNextBlockTimestamp(proposedAt + (source === "bank" ? 300n : 600n));
+      await time.setNextBlockTimestamp(proposedAt + 300n);
       if (source === "bank") await f.shepherd.executeDataBankChange();
       else await f.shepherd.executeBackupChange();
       expect(await f.shepherd.mode()).to.equal(1);

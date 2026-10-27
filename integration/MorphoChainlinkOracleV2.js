@@ -40,7 +40,7 @@ describe("MorphoChainlinkOracleV2 - Direct Shepherd feeds", function () {
     const shepherds = [];
     for (const leg of [0, 1]) shepherds.push(await Shepherd.deploy({
       queryId: ids[leg], dataBank: bank.target, backupOracle: backup.target, admin: admin.address,
-      relayReadDelay: 120, dataBankChangeDelay: 300, backupChangeDelay: 600,
+      relayReadDelay: 120, paramChangeDelay: 300,
       twapWindowMs: 30000, challengeThresholdBps: 2000, challengeDelaySeconds: 30,
       recoveryDelaySeconds: 90, maxPriceAge: 3600, decimals: leg === 0 ? 8 : 18,
     }));

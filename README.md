@@ -29,7 +29,11 @@ Deploy Shepherd with a single `TellorShepherd.Configuration` struct, also used b
 
 Deployment requires `RELAY_READ_DELAY - CHALLENGE_DELAY_SECONDS > 60 seconds`, with positive challenge delay and TWAP window configured independently. This leaves time to submit resolution; timely monitoring and relay availability are still required.
 
-Admin can unpause immediately when neither source migration is pending. Source migrations still require their own notice delay and paused execution. Deployment configuration no longer includes `minPauseDuration`; `pausedAt` remains available for monitoring.
+Admin can unpause immediately when neither source migration is pending. Source migrations require delayed, paused execution. Deployment configuration no longer includes `minPauseDuration`; `pausedAt` remains available for monitoring.
+
+`paramChangeDelay` is the positive, immutable notice period shared by DataBank, backup, and threshold updates (`PARAM_CHANGE_DELAY`). It replaces the two source-delay configuration fields and getters. Each proposal keeps its own timer. Challenge and recovery delays remain separate.
+
+Admin may call `proposeThresholdChange`, `cancelThresholdChange`, and `executeThresholdChange` while paused or unpaused. Thresholds are 1–9999 bps; cancel before replacing a proposal. `CHALLENGE_THRESHOLD_BPS()` returns the current threshold. Active challenges retain their saved threshold and TWAP reference, and a pending threshold update does not block unpause.
 
 For direct V2 integration tests, initialize the upstream `morpho-blue-oracles` checkout and its submodules, then run:
 

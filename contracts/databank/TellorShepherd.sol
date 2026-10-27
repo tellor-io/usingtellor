@@ -15,10 +15,8 @@ contract TellorShepherd is ITellorShepherd {
     // Immutables
     bytes32 public immutable override queryId;
     uint8 public immutable override decimals;
-    uint256 public immutable BACKUP_CHANGE_DELAY;
     uint256 public immutable CHALLENGE_DELAY_SECONDS;
-    uint256 public immutable CHALLENGE_THRESHOLD_BPS;
-    uint256 public immutable DATA_BANK_CHANGE_DELAY;
+    uint256 public immutable PARAM_CHANGE_DELAY;
     uint256 public immutable MAX_PRICE_AGE;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
     uint256 public immutable RELAY_READ_DELAY;
@@ -31,6 +29,10 @@ contract TellorShepherd is ITellorShepherd {
     address public backupOracle;
     address public pendingBackupOracle;
     address public pendingDataBank;
+    uint256 public CHALLENGE_THRESHOLD_BPS;
+    uint256 public pendingThresholdBps;
+    uint256 public thresholdProposedAt;
+    uint256 public challengeThresholdSnapshotBps;
     uint256 public backupProposedAt;
     uint256 public challengeAggregateTimestamp;
     uint256 public challengeReferenceValue;
@@ -59,8 +61,7 @@ contract TellorShepherd is ITellorShepherd {
         address backupOracle;
         address admin;
         uint256 relayReadDelay;
-        uint256 dataBankChangeDelay;
-        uint256 backupChangeDelay;
+        uint256 paramChangeDelay;
         uint256 twapWindowMs;
         uint256 challengeThresholdBps;
         uint256 challengeDelaySeconds;
@@ -86,8 +87,7 @@ contract TellorShepherd is ITellorShepherd {
         if (_configuration.backupOracle.code.length == 0) revert BackupOracleHasNoCode();
         if (_configuration.admin == address(0)) revert InvalidAdmin();
         if (_configuration.relayReadDelay == 0) revert InvalidRelayReadDelay();
-        if (_configuration.dataBankChangeDelay == 0) revert InvalidDataBankChangeDelay();
-        if (_configuration.backupChangeDelay == 0) revert InvalidBackupChangeDelay();
+        if (_configuration.paramChangeDelay == 0) revert InvalidParamChangeDelay();
         if (_configuration.twapWindowMs == 0) revert InvalidTwapWindow();
 
         if (_configuration.challengeThresholdBps == 0
@@ -108,8 +108,7 @@ contract TellorShepherd is ITellorShepherd {
         backupOracle = _configuration.backupOracle;
         admin = _configuration.admin;
         RELAY_READ_DELAY = _configuration.relayReadDelay;
-        DATA_BANK_CHANGE_DELAY = _configuration.dataBankChangeDelay;
-        BACKUP_CHANGE_DELAY = _configuration.backupChangeDelay;
+        PARAM_CHANGE_DELAY = _configuration.paramChangeDelay;
         TWAP_WINDOW_MS = _configuration.twapWindowMs;
         CHALLENGE_THRESHOLD_BPS = _configuration.challengeThresholdBps;
         CHALLENGE_DELAY_SECONDS = _configuration.challengeDelaySeconds;
@@ -187,7 +186,7 @@ contract TellorShepherd is ITellorShepherd {
         address proposedBackup = pendingBackupOracle;
         if (proposedBackup == address(0)) revert NoPendingBackupChange();
         if (!paused) revert NotPaused();
-        if (block.timestamp - backupProposedAt < BACKUP_CHANGE_DELAY) revert BackupChangeDelayNotElapsed();
+        if (block.timestamp - backupProposedAt < PARAM_CHANGE_DELAY) revert BackupChangeDelayNotElapsed();
         _checkBackupCompatibility(proposedBackup);
 
         address previousBackup = backupOracle;
@@ -207,7 +206,7 @@ contract TellorShepherd is ITellorShepherd {
         address proposedBank = pendingDataBank;
         if (proposedBank == address(0)) revert NoPendingDataBankChange();
         if (!paused) revert NotPaused();
-        if (block.timestamp - dataBankProposedAt < DATA_BANK_CHANGE_DELAY) revert DataBankChangeDelayNotElapsed();
+        if (block.timestamp - dataBankProposedAt < PARAM_CHANGE_DELAY) revert DataBankChangeDelayNotElapsed();
         _checkDataBankCompatibility(proposedBank);
 
         address previousBank = address(dataBank);
@@ -299,7 +298,7 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @notice Anyone may request a challenge in primary mode when deviation is established.
-     * @dev Freezes the reference and challenged aggregate timestamp. Pause does not block
+     * @dev Freezes the reference, threshold, and challenged aggregate timestamp. Pause does not block
      * diagnostics. Duplicate requests cannot restart the timer; pending challenges do not halt reads.
      */
     function requestChallenge() external {
@@ -312,6 +311,7 @@ contract TellorShepherd is ITellorShepherd {
         challengePending = true;
         challengeAggregateTimestamp = aggregateTimestamp;
         challengeReferenceValue = referenceValue;
+        challengeThresholdSnapshotBps = CHALLENGE_THRESHOLD_BPS;
         challengeRequestedAt = block.timestamp;
         emit ChallengeRequested(msg.sender, block.timestamp);
     }
@@ -333,7 +333,7 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @notice Selects backup on a newer in-band report after the challenge wait, or expires the request.
-     * @dev The reference is frozen at request. Exact delay equality permits switching; exact
+     * @dev The reference and threshold are frozen at request. Exact delay equality permits switching; exact
      * read-delay equality still permits switching. After that, expiry clears state without source calls.
      * Expiry is measured from the request, not the report's relay time; timely monitoring remains essential.
      * Failed evidence preserves the request. Neither outcome changes pause or its clock.
@@ -352,7 +352,7 @@ contract TellorShepherd is ITellorShepherd {
 
         ITellorDataBank.AggregateData memory candidate = dataBank.getCurrentAggregateData(queryId);
         if (candidate.aggregateTimestamp <= challengeAggregateTimestamp) revert NoNewerReport();
-        if (_isDeviating(candidate.value, challengeReferenceValue)) revert StillDeviating();
+        if (_isDeviating(candidate.value, challengeReferenceValue, challengeThresholdSnapshotBps)) revert StillDeviating();
 
         _clearChallenge();
         mode = Mode.BACKUP;
@@ -372,6 +372,45 @@ contract TellorShepherd is ITellorShepherd {
         paused = false;
         pausedAt = 0;
         emit Unpaused(msg.sender);
+    }
+
+    /// @notice Proposes a threshold of 1–9999 bps; admin only, paused or unpaused.
+    /// @dev Cancel before replacing a proposal. Existing challenges retain their saved threshold.
+    function proposeThresholdChange(uint256 _newThresholdBps) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingThresholdBps != 0) revert ThresholdChangePending();
+        if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
+        if (_newThresholdBps == CHALLENGE_THRESHOLD_BPS) revert ThresholdUnchanged();
+
+        pendingThresholdBps = _newThresholdBps;
+        thresholdProposedAt = block.timestamp;
+        emit ThresholdChangeProposed(_newThresholdBps, block.timestamp);
+    }
+
+    /// @notice Cancels a threshold proposal immediately; admin only, paused or unpaused.
+    function cancelThresholdChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        uint256 proposedThreshold = pendingThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingThresholdChange();
+
+        pendingThresholdBps = 0;
+        thresholdProposedAt = 0;
+        emit ThresholdChangeCancelled(proposedThreshold);
+    }
+
+    /// @notice Applies a threshold after the shared notice period; admin only, paused or unpaused.
+    /// @dev Does not change pending challenges, source proposals, recovery, or pause state.
+    function executeThresholdChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        uint256 proposedThreshold = pendingThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingThresholdChange();
+        if (block.timestamp - thresholdProposedAt < PARAM_CHANGE_DELAY) revert ThresholdChangeDelayNotElapsed();
+
+        uint256 previousThreshold = CHALLENGE_THRESHOLD_BPS;
+        CHALLENGE_THRESHOLD_BPS = proposedThreshold;
+        pendingThresholdBps = 0;
+        thresholdProposedAt = 0;
+        emit ThresholdChanged(previousThreshold, proposedThreshold);
     }
 
     // Getter functions
@@ -431,6 +470,7 @@ contract TellorShepherd is ITellorShepherd {
         challengePending = false;
         challengeAggregateTimestamp = 0;
         challengeReferenceValue = 0;
+        challengeThresholdSnapshotBps = 0;
         challengeRequestedAt = 0;
     }
 
@@ -467,15 +507,15 @@ contract TellorShepherd is ITellorShepherd {
         }
     }
 
-    function _isDeviating(bytes memory _value, uint256 _reference) internal view returns (bool) {
+    function _isDeviating(bytes memory _value, uint256 _reference, uint256 _thresholdBps) internal pure returns (bool) {
         if (_value.length < 32) revert InvalidValueLength();
         uint256 value = abi.decode(_value, (uint256));
         if (value == 0) revert ZeroValue();
         uint256 difference = value > _reference ? value - _reference : _reference - value;
         // Exactly floor(reference * threshold / 10000), without an overflowing product.
         // Integer difference > this floor is equivalent to the strict rational comparison.
-        uint256 allowedDifference = (_reference / 10000) * CHALLENGE_THRESHOLD_BPS
-            + ((_reference % 10000) * CHALLENGE_THRESHOLD_BPS) / 10000;
+        uint256 allowedDifference = (_reference / 10000) * _thresholdBps
+            + ((_reference % 10000) * _thresholdBps) / 10000;
         return difference > allowedDifference;
     }
 
@@ -502,7 +542,7 @@ contract TellorShepherd is ITellorShepherd {
         if (!available) return (false, false, 0, 0);
 
         ITellorDataBank.AggregateData memory candidate = dataBank.getCurrentAggregateData(queryId);
-        return (true, _isDeviating(candidate.value, twap.value), twap.value, candidate.aggregateTimestamp);
+        return (true, _isDeviating(candidate.value, twap.value, CHALLENGE_THRESHOLD_BPS), twap.value, candidate.aggregateTimestamp);
     }
 
     /**

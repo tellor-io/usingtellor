@@ -19,7 +19,7 @@ describe("TellorShepherd - Real source integration", function () {
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
       admin: admin.address, relayReadDelay: 120,
-      dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
+      paramChangeDelay: 300, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
     });
@@ -122,7 +122,7 @@ describe("TellorShepherd - Real source integration", function () {
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: f.bank.target, backupOracle: f.backup.target,
       admin: f.admin.address, relayReadDelay: 120,
-      dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
+      paramChangeDelay: 300, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
     });
@@ -360,7 +360,7 @@ describe("TellorShepherd - Real source integration", function () {
         const pauseClock = await f.shepherd.pausedAt();
         const proposedAt = source === "bank"
           ? await f.shepherd.dataBankProposedAt() : await f.shepherd.backupProposedAt();
-        await time.setNextBlockTimestamp(proposedAt + (source === "bank" ? 300n : 600n));
+        await time.setNextBlockTimestamp(proposedAt + 300n);
         const execution = source === "bank"
           ? f.shepherd.executeDataBankChange() : f.shepherd.executeBackupChange();
         await expect(execution).to.emit(f.shepherd, pending === "challenge" ? "ChallengeInvalidated" : "RecoveryInvalidated");
