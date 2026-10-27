@@ -54,19 +54,22 @@ contract TellorShepherd is ITellorShepherd {
         BACKUP
     }
 
-    // Shared with the factory to keep deployment settings explicit and avoid constructor stack limits.
+    // Structs
+
+    /// @dev Shared deployment configuration; durations are seconds except twapWindowMs.
+    /// Both sources must use the same query meaning and decimals; prices are not rescaled.
     struct Configuration {
         bytes32 queryId;
         address dataBank;
         address backupOracle;
         address admin;
         uint256 relayReadDelay;
-        uint256 paramChangeDelay;
+        uint256 paramChangeDelay; // Notice for source and threshold changes.
         uint256 twapWindowMs;
-        uint256 challengeThresholdBps;
+        uint256 challengeThresholdBps; // Initial threshold, from 1 to 9999 bps.
         uint256 challengeDelaySeconds;
         uint256 recoveryDelaySeconds;
-        uint256 maxPriceAge;
+        uint256 maxPriceAge; // Maximum source timestamp age for both consumer APIs.
         uint8 decimals;
     }
 
@@ -177,6 +180,17 @@ contract TellorShepherd is ITellorShepherd {
         emit RecoveryCancelled(msg.sender);
     }
 
+    /// @notice Cancels a threshold proposal immediately; admin only, paused or unpaused.
+    function cancelThresholdChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        uint256 proposedThreshold = pendingThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingThresholdChange();
+
+        pendingThresholdBps = 0;
+        thresholdProposedAt = 0;
+        emit ThresholdChangeCancelled(proposedThreshold);
+    }
+
     /**
      * @notice Replaces the backup after its notice period; admin only and paused.
      * @dev Equality permits execution. Invalidates transition requests; preserves mode, pause clock, and any bank proposal.
@@ -234,6 +248,21 @@ contract TellorShepherd is ITellorShepherd {
         emit RecoveryExecuted(msg.sender);
     }
 
+    /// @notice Applies a threshold after the shared notice period; admin only, paused or unpaused.
+    /// @dev Exact delay equality permits execution. Preserves challenges, source proposals, recovery, and pause.
+    function executeThresholdChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        uint256 proposedThreshold = pendingThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingThresholdChange();
+        if (block.timestamp - thresholdProposedAt < PARAM_CHANGE_DELAY) revert ThresholdChangeDelayNotElapsed();
+
+        uint256 previousThreshold = CHALLENGE_THRESHOLD_BPS;
+        CHALLENGE_THRESHOLD_BPS = proposedThreshold;
+        pendingThresholdBps = 0;
+        thresholdProposedAt = 0;
+        emit ThresholdChanged(previousThreshold, proposedThreshold);
+    }
+
     /**
      * @notice Immediately blocks consumer reads; callable by the admin or an active pauser.
      * @dev Repeated calls revert so a pauser cannot extend the current pause's clock.
@@ -280,6 +309,20 @@ contract TellorShepherd is ITellorShepherd {
         pendingDataBank = _newDataBank;
         dataBankProposedAt = block.timestamp;
         emit DataBankChangeProposed(_newDataBank, block.timestamp);
+    }
+
+    /// @notice Proposes a threshold of 1–9999 bps; admin only, paused or unpaused.
+    /// @dev Cancel before replacing a proposal. Existing challenges retain their saved threshold.
+    /// @param _newThresholdBps New deviation threshold, distinct from the current threshold.
+    function proposeThresholdChange(uint256 _newThresholdBps) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingThresholdBps != 0) revert ThresholdChangePending();
+        if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
+        if (_newThresholdBps == CHALLENGE_THRESHOLD_BPS) revert ThresholdUnchanged();
+
+        pendingThresholdBps = _newThresholdBps;
+        thresholdProposedAt = block.timestamp;
+        emit ThresholdChangeProposed(_newThresholdBps, block.timestamp);
     }
 
     /**
@@ -374,45 +417,6 @@ contract TellorShepherd is ITellorShepherd {
         emit Unpaused(msg.sender);
     }
 
-    /// @notice Proposes a threshold of 1–9999 bps; admin only, paused or unpaused.
-    /// @dev Cancel before replacing a proposal. Existing challenges retain their saved threshold.
-    function proposeThresholdChange(uint256 _newThresholdBps) external {
-        if (msg.sender != admin) revert NotAdmin();
-        if (pendingThresholdBps != 0) revert ThresholdChangePending();
-        if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
-        if (_newThresholdBps == CHALLENGE_THRESHOLD_BPS) revert ThresholdUnchanged();
-
-        pendingThresholdBps = _newThresholdBps;
-        thresholdProposedAt = block.timestamp;
-        emit ThresholdChangeProposed(_newThresholdBps, block.timestamp);
-    }
-
-    /// @notice Cancels a threshold proposal immediately; admin only, paused or unpaused.
-    function cancelThresholdChange() external {
-        if (msg.sender != admin) revert NotAdmin();
-        uint256 proposedThreshold = pendingThresholdBps;
-        if (proposedThreshold == 0) revert NoPendingThresholdChange();
-
-        pendingThresholdBps = 0;
-        thresholdProposedAt = 0;
-        emit ThresholdChangeCancelled(proposedThreshold);
-    }
-
-    /// @notice Applies a threshold after the shared notice period; admin only, paused or unpaused.
-    /// @dev Does not change pending challenges, source proposals, recovery, or pause state.
-    function executeThresholdChange() external {
-        if (msg.sender != admin) revert NotAdmin();
-        uint256 proposedThreshold = pendingThresholdBps;
-        if (proposedThreshold == 0) revert NoPendingThresholdChange();
-        if (block.timestamp - thresholdProposedAt < PARAM_CHANGE_DELAY) revert ThresholdChangeDelayNotElapsed();
-
-        uint256 previousThreshold = CHALLENGE_THRESHOLD_BPS;
-        CHALLENGE_THRESHOLD_BPS = proposedThreshold;
-        pendingThresholdBps = 0;
-        thresholdProposedAt = 0;
-        emit ThresholdChanged(previousThreshold, proposedThreshold);
-    }
-
     // Getter functions
 
     /**
@@ -430,6 +434,7 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
+     * @inheritdoc ITellorShepherd
      * @notice Latest-price feed interface for consumers such as MorphoChainlinkOracleV2.
      * @dev Uses the same read policy as getCurrentValue; also requires an int256 price.
      * Timestamps are source milliseconds floored to seconds, never the current read time.
@@ -507,6 +512,7 @@ contract TellorShepherd is ITellorShepherd {
         }
     }
 
+    /// @dev Strict symmetric comparison; equality is in-band. Callers supply a validated 1–9999 bps threshold.
     function _isDeviating(bytes memory _value, uint256 _reference, uint256 _thresholdBps) internal pure returns (bool) {
         if (_value.length < 32) revert InvalidValueLength();
         uint256 value = abi.decode(_value, (uint256));

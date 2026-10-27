@@ -34,7 +34,7 @@ npm run test:euler
 
 The integration commands build each adaptor before loading its bytecode. Run `forge test` from each adaptor repository for its native tests.
 
-Local validation after shared parameter notice and threshold governance: 278 Hardhat tests, 31 custom Morpho integration tests, 17 Euler integration tests, and 6 direct Morpho V2 integration tests pass. The direct V2 suite builds unmodified `morpho-blue-oracles` at `9d2a0b66589d0669c52e47310af8eb804facf97e` with its submodules and Solidity 0.8.21. Run `MORPHO_CHAINLINK_ROOT=/path/to/morpho-blue-oracles npm run test:morpho-chainlink` separately. Native `forge test --offline` now passes 27 Morpho tests and 26 Euler tests, including fuzz coverage and the Euler deployment-script test. The custom Morpho adaptor reports a `forge-std` revision mismatch; Euler has dependency files present but its submodule is uninitialized, and automatic registration fails under the local sandbox. Fresh-checkout reproduction of those adaptors remains unverified.
+Local validation after pre-resubmission organization and NatSpec cleanup: 278 Hardhat tests, 31 custom Morpho integration tests, 17 Euler integration tests, and 6 direct Morpho V2 integration tests pass. The direct V2 suite builds unmodified `morpho-blue-oracles` at `9d2a0b66589d0669c52e47310af8eb804facf97e` with its submodules and Solidity 0.8.21. Run `MORPHO_CHAINLINK_ROOT=/path/to/morpho-blue-oracles npm run test:morpho-chainlink` separately. Native `forge test --offline` now passes 27 Morpho tests and 26 Euler tests, including fuzz coverage and the Euler deployment-script test. The custom Morpho adaptor reports a `forge-std` revision mismatch; Euler has dependency files present but its submodule is uninitialized, and automatic registration fails under the local sandbox. Fresh-checkout reproduction of those adaptors remains unverified.
 
 ## Invariants and trust assumptions
 
@@ -91,6 +91,8 @@ Threshold proposals, cancellation, and execution are admin-only in either mode, 
 
 Deployment configuration replaces `dataBankChangeDelay` and `backupChangeDelay` with `paramChangeDelay`; the factory event uses that same tuple. The existing `CHALLENGE_THRESHOLD_BPS()` getter is retained but is now mutable through delayed execution. There is no independent veto over any admin proposal.
 
-## Rebuild checkpoint
+## Resubmission checkpoint
 
-The AGENT-WRITES shared-delay and threshold-governance increment is implemented. Tests cover admin authority, range limits, cancellation/reproposal, exact timing, independent proposals, paused/unpaused operation in either mode, recovery preservation, and both tightening and widening a threshold during a challenge. Human review, comprehension, and commit are pending. Changes are unstaged in `usingtellor` only. The agreed functional follow-ups are complete; release validation and packaged artifact refresh remain separate work.
+The agreed functional updates are committed through `9214ede` in `usingtellor`: frozen-reference challenge resolution, shared consumer freshness and Chainlink-compatible reads, immediate admin unpause, independent TWAP/challenge timing with a strict resolution margin, and delayed threshold governance with shared parameter notice. The custom adaptors delegate freshness to Shepherd.
+
+The final cleanup alphabetizes functions within subsections and clarifies NatSpec for threshold state, deployment units, backup reports, and read returns. Function signatures, executable bodies, and state declarations were compared against the committed versions and are unchanged. Cleanup is uncommitted across the three repositories. No agreed functional updates remain. Packaged artifact refresh and the outstanding fresh-checkout reproduction check remain release-preparation work; review the source and build it using the commands above.
