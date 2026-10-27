@@ -42,7 +42,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     for (const [leg, id] of ids.entries()) {
       shepherds.push(await Shepherd.deploy({
         queryId: id, dataBank: bank.target, backupOracle: backup.target,
-        admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+        admin: admin.address, relayReadDelay: 60,
         dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
         challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
         maxPriceAge: 3600, decimals: feedDecimals[leg]

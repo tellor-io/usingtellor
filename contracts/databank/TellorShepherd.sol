@@ -20,7 +20,6 @@ contract TellorShepherd is ITellorShepherd {
     uint256 public immutable CHALLENGE_THRESHOLD_BPS;
     uint256 public immutable DATA_BANK_CHANGE_DELAY;
     uint256 public immutable MAX_PRICE_AGE;
-    uint256 public immutable MIN_PAUSE_DURATION;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
     uint256 public immutable RELAY_READ_DELAY;
     uint256 public immutable TWAP_WINDOW_MS;
@@ -60,7 +59,6 @@ contract TellorShepherd is ITellorShepherd {
         address backupOracle;
         address admin;
         uint256 relayReadDelay;
-        uint256 minPauseDuration;
         uint256 dataBankChangeDelay;
         uint256 backupChangeDelay;
         uint256 twapWindowMs;
@@ -88,7 +86,6 @@ contract TellorShepherd is ITellorShepherd {
         if (_configuration.backupOracle.code.length == 0) revert BackupOracleHasNoCode();
         if (_configuration.admin == address(0)) revert InvalidAdmin();
         if (_configuration.relayReadDelay == 0) revert InvalidRelayReadDelay();
-        if (_configuration.minPauseDuration == 0) revert InvalidMinPauseDuration();
         if (_configuration.dataBankChangeDelay == 0) revert InvalidDataBankChangeDelay();
         if (_configuration.backupChangeDelay == 0) revert InvalidBackupChangeDelay();
         if (_configuration.twapWindowMs == 0) revert InvalidTwapWindow();
@@ -110,7 +107,6 @@ contract TellorShepherd is ITellorShepherd {
         backupOracle = _configuration.backupOracle;
         admin = _configuration.admin;
         RELAY_READ_DELAY = _configuration.relayReadDelay;
-        MIN_PAUSE_DURATION = _configuration.minPauseDuration;
         DATA_BANK_CHANGE_DELAY = _configuration.dataBankChangeDelay;
         BACKUP_CHANGE_DELAY = _configuration.backupChangeDelay;
         TWAP_WINDOW_MS = _configuration.twapWindowMs;
@@ -363,16 +359,14 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Restores consumer reads after the minimum pause duration; admin only.
-     * @dev Equality is sufficient. Elapsed time is measured in EVM seconds.
-     * Both pending source proposals must be executed or cancelled first.
+     * @notice Restores consumer reads immediately; admin only.
+     * @dev Both pending source proposals must be executed or cancelled first.
      */
     function unpause() external {
         if (msg.sender != admin) revert NotAdmin();
         if (!paused) revert NotPaused();
         if (pendingDataBank != address(0)) revert DataBankChangePending();
         if (pendingBackupOracle != address(0)) revert BackupChangePending();
-        if (block.timestamp - pausedAt < MIN_PAUSE_DURATION) revert PauseDurationNotElapsed();
 
         paused = false;
         pausedAt = 0;

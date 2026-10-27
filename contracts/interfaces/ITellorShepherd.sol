@@ -47,7 +47,6 @@ interface ITellorShepherd {
     error InvalidChallengeThreshold();
     error InvalidDataBankChangeDelay();
     error InvalidMaxPriceAge();
-    error InvalidMinPauseDuration();
     error InvalidPauser();
     error InvalidQueryId();
     error InvalidRecoveryDelay();
@@ -69,7 +68,6 @@ interface ITellorShepherd {
     error NotPaused();
     error NotPauser();
     error NotPrimaryMode();
-    error PauseDurationNotElapsed();
     error PriceOutOfRange();
     error RecoveryAlreadyPending();
     error RecoveryDelayNotElapsed();

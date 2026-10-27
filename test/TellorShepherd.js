@@ -17,7 +17,7 @@ describe("TellorShepherd - Configuration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const args = {
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -38,7 +38,6 @@ describe("TellorShepherd - Configuration", function () {
     expect(await shepherd.admin()).not.to.equal(deployer.address);
     expect(await shepherd.RELAY_READ_DELAY()).to.equal(60);
     expect(await shepherd.mode()).to.equal(0); // Mode.PRIMARY
-    expect(await shepherd.MIN_PAUSE_DURATION()).to.equal(120);
     expect(await shepherd.DATA_BANK_CHANGE_DELAY()).to.equal(300);
     expect(await shepherd.BACKUP_CHANGE_DELAY()).to.equal(600);
     expect(await shepherd.TWAP_WINDOW_MS()).to.equal(30000);
@@ -61,7 +60,6 @@ describe("TellorShepherd - Configuration", function () {
     ["wallet backup address", "backupOracle", ({ deployer }) => deployer.address, "BackupOracleHasNoCode"],
     ["zero admin", "admin", () => ethers.ZeroAddress, "InvalidAdmin"],
     ["zero read delay", "relayReadDelay", () => 0, "InvalidRelayReadDelay"],
-    ["zero pause duration", "minPauseDuration", () => 0, "InvalidMinPauseDuration"],
     ["zero bank change delay", "dataBankChangeDelay", () => 0, "InvalidDataBankChangeDelay"],
     ["zero backup change delay", "backupChangeDelay", () => 0, "InvalidBackupChangeDelay"],
     ["zero recovery delay", "recoveryDelaySeconds", () => 0, "InvalidRecoveryDelay"],
@@ -116,14 +114,12 @@ describe("TellorShepherd - Configuration", function () {
     const { Shepherd, args: fixtureArgs } = await loadFixture(deployFixture);
     const args = { ...fixtureArgs };
     args.relayReadDelay = 2;
-    args.minPauseDuration = 1;
     args.dataBankChangeDelay = 1;
     args.backupChangeDelay = 1;
     args.twapWindowMs = 1;
     Object.assign(args, { challengeDelaySeconds: 1, recoveryDelaySeconds: 1 });
     const shepherd = await Shepherd.deploy(args);
     expect(await shepherd.RELAY_READ_DELAY()).to.equal(2);
-    expect(await shepherd.MIN_PAUSE_DURATION()).to.equal(1);
     expect(await shepherd.DATA_BANK_CHANGE_DELAY()).to.equal(1);
     expect(await shepherd.BACKUP_CHANGE_DELAY()).to.equal(1);
     expect(await shepherd.TWAP_WINDOW_MS()).to.equal(1);
@@ -151,7 +147,7 @@ describe("TellorShepherd - Mature primary reads", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: delay, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: delay,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -305,7 +301,7 @@ describe("TellorShepherd - Mature primary reads", function () {
     // BackupOracleMock has deployed code but no getRelayBefore function; it reverts on this selector.
     const shepherd = await f.Shepherd.deploy({
       queryId: f.queryId, dataBank: f.backup.target, backupOracle: f.backup.target,
-      admin: f.admin.address, relayReadDelay: delay, minPauseDuration: 120,
+      admin: f.admin.address, relayReadDelay: delay,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -318,7 +314,7 @@ describe("TellorShepherd - Mature primary reads", function () {
     const futureDelay = (await time.latest()) + 100;
     const shepherd = await f.Shepherd.deploy({
       queryId: f.queryId, dataBank: f.bank.target, backupOracle: f.backup.target,
-      admin: f.admin.address, relayReadDelay: futureDelay, minPauseDuration: 120,
+      admin: f.admin.address, relayReadDelay: futureDelay,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -342,7 +338,7 @@ describe("TellorShepherd - Pauser membership", function () {
     // Membership operations do not read either source.
     const shepherd = await Shepherd.deploy({
       queryId: ethers.id("pauser-test-feed"), dataBank: source.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -429,7 +425,6 @@ describe("TellorShepherd - Pauser membership", function () {
 
 describe("TellorShepherd - Pause and unpause", function () {
   const { time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
-  const duration = 120;
 
   async function deployPauseFixture() {
     const [deployer, admin, pauser, outsider] = await ethers.getSigners();
@@ -441,7 +436,7 @@ describe("TellorShepherd - Pause and unpause", function () {
     // This dependency cannot answer primary reads, allowing pause precedence tests.
     const shepherd = await Shepherd.deploy({
       queryId: ethers.id("pause-test-feed"), dataBank: source.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: duration,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -481,15 +476,13 @@ describe("TellorShepherd - Pause and unpause", function () {
       await expect(shepherd.connect(caller).pause()).to.be.revertedWithCustomError(shepherd, "AlreadyPaused");
       expect(await shepherd.pausedAt()).to.equal(start);
     }
-    await time.setNextBlockTimestamp(start + duration);
     await shepherd.connect(admin).unpause();
     expect(await shepherd.paused()).to.equal(false);
   });
 
-  it("requires admin unpause even after the full duration", async function () {
+  it("requires admin unpause even when a pauser initiated the pause", async function () {
     const { deployer, admin, pauser, outsider, shepherd } = await loadFixture(deployPauseFixture);
     await shepherd.connect(pauser).pause();
-    await time.increase(duration);
     for (const caller of [deployer, outsider, pauser]) {
       await expect(shepherd.connect(caller).unpause()).to.be.revertedWithCustomError(shepherd, "NotAdmin");
     }
@@ -498,27 +491,24 @@ describe("TellorShepherd - Pause and unpause", function () {
     expect(await shepherd.paused()).to.equal(true);
   });
 
-  it("rejects unpaused and early unpause, accepts equality, and starts a fresh clock next time", async function () {
+  it("allows immediate admin unpause and records each new pause independently", async function () {
     const { admin, pauser, shepherd } = await loadFixture(deployPauseFixture);
     await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "NotPaused");
-    await shepherd.connect(pauser).pause();
-    const start = Number(await shepherd.pausedAt());
-    await time.setNextBlockTimestamp(start + duration - 1);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
-    expect(await shepherd.paused()).to.equal(true);
-    expect(await shepherd.pausedAt()).to.equal(start);
-    await time.setNextBlockTimestamp(start + duration);
-    await expect(shepherd.connect(admin).unpause()).to.emit(shepherd, "Unpaused").withArgs(admin.address);
-    expect(await shepherd.paused()).to.equal(false);
-    expect(await shepherd.pausedAt()).to.equal(0);
-    expect(await shepherd.mode()).to.equal(0);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "NotPaused");
-    await shepherd.connect(pauser).pause();
-    const nextStart = Number(await shepherd.pausedAt());
-    expect(nextStart).to.be.greaterThan(start + duration);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(nextStart + duration);
-    await shepherd.connect(admin).unpause();
+    let previousStart = 0n;
+    for (const caller of [pauser, admin]) {
+      await shepherd.connect(caller).pause();
+      const start = await shepherd.pausedAt();
+      expect(start).to.be.greaterThan(previousStart);
+      // Simulate at the pause block's timestamp: even zero elapsed seconds is sufficient.
+      await shepherd.connect(admin).unpause.staticCall();
+      expect(await shepherd.paused()).to.equal(true);
+      await expect(shepherd.connect(admin).unpause()).to.emit(shepherd, "Unpaused").withArgs(admin.address);
+      expect(await shepherd.paused()).to.equal(false);
+      expect(await shepherd.pausedAt()).to.equal(0);
+      expect(await shepherd.mode()).to.equal(0);
+      await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "NotPaused");
+      previousStart = start;
+    }
   });
 
   it("reports pause before dependency failure or cutoff underflow", async function () {
@@ -528,7 +518,7 @@ describe("TellorShepherd - Pause and unpause", function () {
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "ShepherdPaused");
     const underflow = await Shepherd.deploy({
       queryId: ethers.id("pause-test-feed"), dataBank: source.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: ethers.MaxUint256, minPauseDuration: duration,
+      admin: admin.address, relayReadDelay: ethers.MaxUint256,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -557,7 +547,7 @@ describe("TellorShepherd - DataBank migration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId: ethers.id("migration-feed"), dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: changeDelay, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -622,7 +612,7 @@ describe("TellorShepherd - DataBank migration", function () {
       .to.be.revertedWithCustomError(shepherd, "DataBankChangeDelayNotElapsed");
   });
 
-  it("rejects one second early, allows equality with empty history, and preserves the pause minimum", async function () {
+  it("preserves the migration delay and allows immediate unpause after execution", async function () {
     const { admin, bank, replacement, shepherd } = await loadFixture(deployMigrationFixture);
     await shepherd.connect(admin).proposeDataBankChange(replacement.target);
     const start = Number(await shepherd.dataBankProposedAt());
@@ -638,8 +628,6 @@ describe("TellorShepherd - DataBank migration", function () {
     expect(await shepherd.dataBank()).to.equal(replacement.target);
     expect(await shepherd.paused()).to.equal(true);
     expect(await shepherd.pausedAt()).to.equal(pausedAt);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(Number(pausedAt) + 120);
     await shepherd.connect(admin).unpause();
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "NoMatureData");
   });
@@ -650,7 +638,6 @@ describe("TellorShepherd - DataBank migration", function () {
     await time.increase(changeDelay);
     await expect(shepherd.connect(admin).executeDataBankChange()).to.be.revertedWithCustomError(shepherd, "NotPaused");
     await shepherd.connect(admin).pause();
-    await time.increase(120);
     await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "DataBankChangePending");
     await shepherd.connect(admin).cancelDataBankChange();
     await shepherd.connect(admin).unpause();
@@ -704,7 +691,7 @@ describe("TellorShepherd - Backup migration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const args = {
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -803,8 +790,6 @@ describe("TellorShepherd - Backup migration", function () {
     expect(await shepherd.mode()).to.equal(0);
     expect(await shepherd.queryId()).to.equal(queryId);
     expect(await shepherd.dataBank()).to.equal(bank.target);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(Number(pausedAt) + 120);
     await shepherd.connect(admin).unpause();
     await expect(shepherd.connect(admin).executeBackupChange()).to.be.revertedWithCustomError(shepherd, "NoPendingBackupChange");
   });
@@ -938,7 +923,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
     const Harness = await ethers.getContractFactory("TellorShepherdHarness");
     const args = {
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -1253,10 +1238,8 @@ describe("TellorShepherd - TWAP reference validation", function () {
       expect(await f.shepherd.pausedAt()).to.equal(pauseClock);
       await expectPending(f.shepherd, false, 0);
       await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
-      await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
       const backupTimestamp = BigInt(await time.latest()) * 1000n + 17n;
       await f.backup.configureRead(777, backupTimestamp, 0);
-      await time.setNextBlockTimestamp(pauseClock + await f.shepherd.MIN_PAUSE_DURATION());
       await f.shepherd.unpause();
       expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, backupTimestamp]);
     });
@@ -1408,8 +1391,6 @@ describe("TellorShepherd - TWAP reference validation", function () {
         expect(await f.shepherd.recoveryPending()).to.equal(false);
         expect(await f.shepherd.recoveryRequestedAt()).to.equal(0);
         await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
-        await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
-        await time.setNextBlockTimestamp(pauseClock + await f.shepherd.MIN_PAUSE_DURATION());
         await f.shepherd.unpause();
         expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
       });

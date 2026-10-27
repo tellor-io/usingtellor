@@ -23,7 +23,7 @@ describe("TellorShepherd - Validated backup helper", function () {
     const Harness = await ethers.getContractFactory("TellorShepherdHarness");
     const shepherd = await Harness.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18

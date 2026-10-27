@@ -16,7 +16,7 @@ describe("TellorShepherdFactory", function () {
     // Distinct numbers expose field swaps; 30001 ms requires 31 challenge seconds.
     const configuration = {
       queryId, dataBank: bank.target, backupOracle: backup.target, admin: admin.address,
-      relayReadDelay: 61n, minPauseDuration: 122n, dataBankChangeDelay: 303n,
+      relayReadDelay: 61n, dataBankChangeDelay: 303n,
       backupChangeDelay: 604n, twapWindowMs: 30001n, challengeThresholdBps: 2005n,
       challengeDelaySeconds: 31n, recoveryDelaySeconds: 97n, maxPriceAge: 7205n, decimals: 8n,
     };
@@ -38,7 +38,7 @@ describe("TellorShepherdFactory", function () {
     const shepherd = await create(f.factory, f.caller, c);
     const getters = {
       queryId: "queryId", dataBank: "dataBank", backupOracle: "backupOracle", admin: "admin",
-      relayReadDelay: "RELAY_READ_DELAY", minPauseDuration: "MIN_PAUSE_DURATION",
+      relayReadDelay: "RELAY_READ_DELAY",
       dataBankChangeDelay: "DATA_BANK_CHANGE_DELAY", backupChangeDelay: "BACKUP_CHANGE_DELAY",
       twapWindowMs: "TWAP_WINDOW_MS", challengeThresholdBps: "CHALLENGE_THRESHOLD_BPS",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
@@ -106,7 +106,6 @@ describe("TellorShepherdFactory", function () {
     ["backupOracle", ethers.ZeroAddress, "BackupOracleHasNoCode"],
     ["admin", ethers.ZeroAddress, "InvalidAdmin"],
     ["relayReadDelay", 0n, "InvalidRelayReadDelay"],
-    ["minPauseDuration", 0n, "InvalidMinPauseDuration"],
     ["maxPriceAge", 0n, "InvalidMaxPriceAge"],
     ["maxPriceAge", ethers.MaxUint256 / 1000n + 1n, "InvalidMaxPriceAge"],
     ["dataBankChangeDelay", 0n, "InvalidDataBankChangeDelay"],

@@ -42,7 +42,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: maxAge, decimals: feedDecimals
@@ -229,8 +229,6 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
     await time.increaseTo(report.at + 60n);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
-    await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(pausedAt + 120n);
     await f.shepherd.unpause();
     await expectQuotes(f, backupPrice);
   });
@@ -264,7 +262,6 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     expect(await f.shepherd.recoveryPending()).to.equal(false);
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
-    await time.setNextBlockTimestamp(pausedAt + 120n);
     await f.shepherd.unpause();
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([recoveredPrice, BigInt(f.startMs + 50000)]);
     await expectQuotes(f, recoveredPrice);

@@ -18,7 +18,7 @@ describe("TellorShepherd - Real source integration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: bank.target, backupOracle: backup.target,
-      admin: admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -121,7 +121,7 @@ describe("TellorShepherd - Real source integration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherd = await Shepherd.deploy({
       queryId, dataBank: f.bank.target, backupOracle: f.backup.target,
-      admin: f.admin.address, relayReadDelay: 60, minPauseDuration: 120,
+      admin: f.admin.address, relayReadDelay: 60,
       dataBankChangeDelay: 300, backupChangeDelay: 600, twapWindowMs: 30000,
       challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
       maxPriceAge: 604800, decimals: 18
@@ -254,11 +254,9 @@ describe("TellorShepherd - Real source integration", function () {
     expect(await f.shepherd.challengePending()).to.equal(false);
     expect(await f.shepherd.challengeRequestedAt()).to.equal(0);
     await expectPaused(f, pauseClock);
-    await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
     await time.increaseTo(report.at + 60n);
     expect(await f.backup.getCurrentValue(f.queryId)).to.deep.equal(report.pair);
     await expectPaused(f, pauseClock);
-    await time.setNextBlockTimestamp(pauseClock + 120n);
     await f.shepherd.unpause();
     expect(await f.shepherd.getCurrentValue()).to.deep.equal(report.pair);
   });
@@ -326,7 +324,6 @@ describe("TellorShepherd - Real source integration", function () {
     expect(await f.shepherd.recoveryPending()).to.equal(false);
     expect(await f.shepherd.recoveryRequestedAt()).to.equal(0);
     await expectPaused(f, pauseClock);
-    await time.setNextBlockTimestamp(pauseClock + 120n);
     await f.shepherd.unpause();
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([101n, BigInt(f.aggregateStart + 50000)]);
   });
