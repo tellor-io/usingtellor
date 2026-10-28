@@ -41,6 +41,12 @@ contract StreamBackupOracle is IBackupOracle {
     error AlreadyDisputed();
     error NoUsableReport();
 
+    // Constructor
+
+    /// @notice Deploys a shared backup with one initial trusted streamer.
+    /// @param _admin Authority for streamer membership, disputes, and recovery permission.
+    /// @param _initialStreamer Initial address allowed to author reports for any feed.
+    /// @param _readDelaySeconds Positive submission-to-read delay in seconds.
     constructor(address _admin, address _initialStreamer, uint256 _readDelaySeconds) {
         if (_admin == address(0) || _initialStreamer == address(0)) revert InvalidAddress();
         if (_readDelaySeconds == 0) revert InvalidReadDelay();
@@ -48,6 +54,27 @@ contract StreamBackupOracle is IBackupOracle {
         READ_DELAY_SECONDS = _readDelaySeconds;
         isStreamer[_initialStreamer] = true;
         emit StreamerChanged(_initialStreamer, true);
+    }
+
+    // State-changing functions
+
+    /// @notice Permanently excludes a report, including one that was already readable.
+    /// @dev Disputes preserve the original value and author for inspection.
+    function disputeValue(bytes32 _queryId, uint256 _index) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (_index >= reports[_queryId].length) revert InvalidReportIndex();
+        if (isDisputed[_queryId][_index]) revert AlreadyDisputed();
+        isDisputed[_queryId][_index] = true;
+        emit ReportDisputed(_queryId, _index);
+    }
+
+    /// @notice Sets the admin's recovery decision; it is not a computed health assessment.
+    /// @dev Defaults false per feed. Admin must reassess after primary migration; flags persist.
+    function setCanRecover(bytes32 _queryId, bool _allowed) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (_queryId == bytes32(0)) revert InvalidQueryId();
+        recoveryAllowed[_queryId] = _allowed;
+        emit RecoveryPermissionChanged(_queryId, _allowed);
     }
 
     /// @notice Admin may grant/revoke authorship, including its own, for every feed; history remains intact.
@@ -70,21 +97,15 @@ contract StreamBackupOracle is IBackupOracle {
         emit ReportSubmitted(_queryId, index, msg.sender, _value, block.timestamp);
     }
 
-    /// @notice Permanently excludes a report, including one that was already readable.
-    /// @dev Disputes preserve the original value and author for inspection.
-    function disputeValue(bytes32 _queryId, uint256 _index) external {
-        if (msg.sender != admin) revert NotAdmin();
-        if (_index >= reports[_queryId].length) revert InvalidReportIndex();
-        if (isDisputed[_queryId][_index]) revert AlreadyDisputed();
-        isDisputed[_queryId][_index] = true;
-        emit ReportDisputed(_queryId, _index);
-    }
+    // Getter functions
 
-    function reportCount(bytes32 _queryId) external view returns (uint256) {
-        return reports[_queryId].length;
+    /// @inheritdoc IBackupOracle
+    function canRecover(bytes32 _queryId) external view override returns (bool) {
+        return recoveryAllowed[_queryId];
     }
 
     /**
+     * @inheritdoc IBackupOracle
      * @notice Returns the newest mature, undisputed report within the bounded search.
      * @dev Equality permits maturity. Binary search skips immature history, then at most
      * 32 mature reports are inspected backwards. Reverts if that range has no usable report,
@@ -112,16 +133,10 @@ contract StreamBackupOracle is IBackupOracle {
         revert NoUsableReport();
     }
 
-    /// @notice Sets the admin's recovery decision; it is not a computed health assessment.
-    /// @dev Defaults false per feed. Admin must reassess after primary migration; flags persist.
-    function setCanRecover(bytes32 _queryId, bool _allowed) external {
-        if (msg.sender != admin) revert NotAdmin();
-        if (_queryId == bytes32(0)) revert InvalidQueryId();
-        recoveryAllowed[_queryId] = _allowed;
-        emit RecoveryPermissionChanged(_queryId, _allowed);
-    }
-
-    function canRecover(bytes32 _queryId) external view override returns (bool) {
-        return recoveryAllowed[_queryId];
+    /// @notice Returns the number of submitted reports, including disputed and immature reports.
+    /// @param _queryId Feed whose history is counted.
+    /// @return Number of reports; also the next submission's index.
+    function reportCount(bytes32 _queryId) external view returns (uint256) {
+        return reports[_queryId].length;
     }
 }

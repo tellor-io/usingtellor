@@ -15,14 +15,20 @@ describe("TellorShepherd - Configuration", function () {
     const backup = await Backup.deploy(queryId);
     await backup.waitForDeployment();
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
-    const args = [queryId, bank.target, backup.target, admin.address, 60, 120, 300, 600, 30000, 2000, [30, 90]];
+    const args = {
+      queryId, dataBank: bank.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: 120,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    };
     return { deployer, admin, queryId, bank, backup, Shepherd, args };
   }
 
   it("preserves explicit configuration and starts in primary mode with an empty bank", async function () {
     const { deployer, admin, queryId, bank, backup, Shepherd, args } = await loadFixture(deployFixture);
     expect(await bank.getAggregateValueCount(queryId)).to.equal(0);
-    const shepherd = await Shepherd.deploy(...args);
+    const shepherd = await Shepherd.deploy(args);
     await shepherd.waitForDeployment();
 
     expect(await shepherd.queryId()).to.equal(queryId);
@@ -30,13 +36,11 @@ describe("TellorShepherd - Configuration", function () {
     expect(await shepherd.backupOracle()).to.equal(backup.target);
     expect(await shepherd.admin()).to.equal(admin.address);
     expect(await shepherd.admin()).not.to.equal(deployer.address);
-    expect(await shepherd.RELAY_READ_DELAY()).to.equal(60);
+    expect(await shepherd.RELAY_READ_DELAY()).to.equal(120);
     expect(await shepherd.mode()).to.equal(0); // Mode.PRIMARY
-    expect(await shepherd.MIN_PAUSE_DURATION()).to.equal(120);
-    expect(await shepherd.DATA_BANK_CHANGE_DELAY()).to.equal(300);
-    expect(await shepherd.BACKUP_CHANGE_DELAY()).to.equal(600);
+    expect(await shepherd.PARAM_CHANGE_DELAY()).to.equal(300);
     expect(await shepherd.TWAP_WINDOW_MS()).to.equal(30000);
-    expect(await shepherd.CHALLENGE_THRESHOLD_BPS()).to.equal(2000);
+    expect(await shepherd.challengeThresholdBps()).to.equal(2000);
     expect(await shepherd.CHALLENGE_DELAY_SECONDS()).to.equal(30);
     expect(await shepherd.RECOVERY_DELAY_SECONDS()).to.equal(90);
     expect(await shepherd.pendingBackupOracle()).to.equal(ethers.ZeroAddress);
@@ -48,74 +52,87 @@ describe("TellorShepherd - Configuration", function () {
   });
 
   const invalidCases = [
-    ["zero query ID", 0, () => ethers.ZeroHash, "InvalidQueryId"],
-    ["zero bank address", 1, () => ethers.ZeroAddress, "DataBankHasNoCode"],
-    ["wallet bank address", 1, ({ deployer }) => deployer.address, "DataBankHasNoCode"],
-    ["zero backup address", 2, () => ethers.ZeroAddress, "BackupOracleHasNoCode"],
-    ["wallet backup address", 2, ({ deployer }) => deployer.address, "BackupOracleHasNoCode"],
-    ["zero admin", 3, () => ethers.ZeroAddress, "InvalidAdmin"],
-    ["zero read delay", 4, () => 0, "InvalidRelayReadDelay"],
-    ["zero pause duration", 5, () => 0, "InvalidMinPauseDuration"],
-    ["zero bank change delay", 6, () => 0, "InvalidDataBankChangeDelay"],
-    ["zero backup change delay", 7, () => 0, "InvalidBackupChangeDelay"],
-    ["zero recovery delay", 10, () => [30, 0], "InvalidRecoveryDelay"],
-    ["zero TWAP window", 8, () => 0, "InvalidTwapWindow"],
-    ["zero threshold", 9, () => 0, "InvalidChallengeThreshold"],
-    ["100 percent threshold", 9, () => 10000, "InvalidChallengeThreshold"],
-    ["oversized threshold", 9, () => ethers.MaxUint256, "InvalidChallengeThreshold"],
-    ["zero challenge delay", 10, () => [0, 90], "InvalidChallengeDelay"],
-    ["challenge delay shorter than window", 10, () => [29, 90], "InvalidChallengeDelay"],
+    ["zero query ID", "queryId", () => ethers.ZeroHash, "InvalidQueryId"],
+    ["zero bank address", "dataBank", () => ethers.ZeroAddress, "DataBankHasNoCode"],
+    ["wallet bank address", "dataBank", ({ deployer }) => deployer.address, "DataBankHasNoCode"],
+    ["zero backup address", "backupOracle", () => ethers.ZeroAddress, "BackupOracleHasNoCode"],
+    ["wallet backup address", "backupOracle", ({ deployer }) => deployer.address, "BackupOracleHasNoCode"],
+    ["zero admin", "admin", () => ethers.ZeroAddress, "InvalidAdmin"],
+    ["zero read delay", "relayReadDelay", () => 0, "InvalidRelayReadDelay"],
+    ["zero parameter change delay", "paramChangeDelay", () => 0, "InvalidParamChangeDelay"],
+    ["zero recovery delay", "recoveryDelaySeconds", () => 0, "InvalidRecoveryDelay"],
+    ["zero TWAP window", "twapWindowMs", () => 0, "InvalidTwapWindow"],
+    ["zero threshold", "challengeThresholdBps", () => 0, "InvalidChallengeThreshold"],
+    ["100 percent threshold", "challengeThresholdBps", () => 10000, "InvalidChallengeThreshold"],
+    ["oversized threshold", "challengeThresholdBps", () => ethers.MaxUint256, "InvalidChallengeThreshold"],
+    ["zero challenge delay", "challengeDelaySeconds", () => 0, "InvalidChallengeDelay"],
+    ["challenge delay equals read delay", "challengeDelaySeconds", () => 120, "InvalidChallengeDelay"],
+    ["challenge delay exceeds read delay", "challengeDelaySeconds", () => 121, "InvalidChallengeDelay"],
   ];
 
-  for (const [label, index, invalidValue, error] of invalidCases) {
+  for (const [label, field, invalidValue, error] of invalidCases) {
     it(`rejects ${label}`, async function () {
       const fixture = await loadFixture(deployFixture);
-      const args = [...fixture.args];
-      args[index] = invalidValue(fixture);
-      await expect(fixture.Shepherd.deploy(...args)).to.be.revertedWithCustomError(fixture.Shepherd, error);
+      const args = { ...fixture.args };
+      args[field] = invalidValue(fixture);
+      await expect(fixture.Shepherd.deploy(args)).to.be.revertedWithCustomError(fixture.Shepherd, error);
     });
   }
 
-  it("rounds challenge windows upward, including maximum uint256, without overflow", async function () {
+  it("accepts positive TWAP windows independently of challenge and read delays", async function () {
     const { Shepherd, args: fixtureArgs } = await loadFixture(deployFixture);
-    const args = [...fixtureArgs];
-    for (const window of [1n, 1000n, 1001n, ethers.MaxUint256]) {
-      args[8] = window;
-      const minimumSeconds = (window + 999n) / 1000n; // JS bigint is unbounded.
-      args[10] = [minimumSeconds - 1n, 90];
-      await expect(Shepherd.deploy(...args)).to.be.revertedWithCustomError(Shepherd, "InvalidChallengeDelay");
-      args[10] = [minimumSeconds, 90];
-      const shepherd = await Shepherd.deploy(...args);
-      expect(await shepherd.CHALLENGE_DELAY_SECONDS()).to.equal(minimumSeconds);
+    const args = { ...fixtureArgs, challengeDelaySeconds: 1, relayReadDelay: 62 };
+    for (const window of [1n, 30000n, 30001n, 1800000n, ethers.MaxUint256]) {
+      args.twapWindowMs = window;
+      const shepherd = await Shepherd.deploy(args);
+      expect(await shepherd.TWAP_WINDOW_MS()).to.equal(window);
+      expect(await shepherd.CHALLENGE_DELAY_SECONDS()).to.equal(1);
     }
     for (const threshold of [1, 9999]) {
-      args[9] = threshold;
-      expect(await (await Shepherd.deploy(...args)).CHALLENGE_THRESHOLD_BPS()).to.equal(threshold);
+      args.challengeThresholdBps = threshold;
+      expect(await (await Shepherd.deploy(args)).challengeThresholdBps()).to.equal(threshold);
+    }
+  });
+
+  it("requires more than 60 seconds of resolution time without arithmetic overflow", async function () {
+    const { Shepherd, args } = await loadFixture(deployFixture);
+    for (const challengeDelaySeconds of [30n, ethers.MaxUint256 - 61n]) {
+      for (const gap of [0n, 1n, 59n, 60n, 61n]) {
+        const configuration = { ...args, challengeDelaySeconds, relayReadDelay: challengeDelaySeconds + gap };
+        if (gap <= 60n) {
+          await expect(Shepherd.deploy(configuration)).to.be.revertedWithCustomError(Shepherd, "InvalidChallengeDelay");
+        } else {
+          const shepherd = await Shepherd.deploy(configuration);
+          expect(await shepherd.RELAY_READ_DELAY() - await shepherd.CHALLENGE_DELAY_SECONDS()).to.equal(61);
+        }
+      }
+    }
+    // Reject ordering before subtraction; adding 60 to this challenge delay would overflow.
+    for (const relayReadDelay of [1n, ethers.MaxUint256]) {
+      await expect(Shepherd.deploy({ ...args, relayReadDelay, challengeDelaySeconds: ethers.MaxUint256 }))
+        .to.be.revertedWithCustomError(Shepherd, "InvalidChallengeDelay");
     }
   });
 
   it("accepts positive recovery delays independently of the TWAP window", async function () {
     const { Shepherd, args: fixtureArgs } = await loadFixture(deployFixture);
-    const args = [...fixtureArgs];
+    const args = { ...fixtureArgs };
     for (const delay of [1n, ethers.MaxUint256]) {
-      args[10] = [30, delay];
-      expect(await (await Shepherd.deploy(...args)).RECOVERY_DELAY_SECONDS()).to.equal(delay);
+      Object.assign(args, { challengeDelaySeconds: 30, recoveryDelaySeconds: delay });
+      expect(await (await Shepherd.deploy(args)).RECOVERY_DELAY_SECONDS()).to.equal(delay);
     }
   });
 
-  it("accepts the minimum positive delay in seconds", async function () {
+  it("accepts the minimum delays with a nonempty challenge resolution window", async function () {
     const { Shepherd, args: fixtureArgs } = await loadFixture(deployFixture);
-    const args = [...fixtureArgs];
-    args[4] = 1;
-    args[5] = 1;
-    args[6] = 1;
-    args[7] = 1;
-    args[8] = 1;
-    const shepherd = await Shepherd.deploy(...args);
-    expect(await shepherd.RELAY_READ_DELAY()).to.equal(1);
-    expect(await shepherd.MIN_PAUSE_DURATION()).to.equal(1);
-    expect(await shepherd.DATA_BANK_CHANGE_DELAY()).to.equal(1);
-    expect(await shepherd.BACKUP_CHANGE_DELAY()).to.equal(1);
+    const args = { ...fixtureArgs };
+    args.relayReadDelay = 62;
+    args.paramChangeDelay = 1;
+    args.twapWindowMs = 1;
+    Object.assign(args, { challengeDelaySeconds: 1, recoveryDelaySeconds: 1 });
+    const shepherd = await Shepherd.deploy(args);
+    expect(await shepherd.RELAY_READ_DELAY()).to.equal(62);
+    expect(await shepherd.PARAM_CHANGE_DELAY()).to.equal(1);
     expect(await shepherd.TWAP_WINDOW_MS()).to.equal(1);
   });
 });
@@ -124,7 +141,7 @@ describe("TellorShepherd - Mature primary reads", function () {
   const { time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
   const h = require("../src/helpers/evmHelpers");
   const coder = ethers.AbiCoder.defaultAbiCoder();
-  const delay = 60;
+  const delay = 120;
   const encode = (value) => coder.encode(["uint256"], [value]);
 
   async function deployReadFixture() {
@@ -139,7 +156,13 @@ describe("TellorShepherd - Mature primary reads", function () {
     const Backup = await ethers.getContractFactory("BackupOracleMock");
     const backup = await Backup.deploy(queryId);
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
-    const shepherd = await Shepherd.deploy(queryId, bank.target, backup.target, admin.address, delay, 120, 300, 600, 30000, 2000, [30, 90]);
+    const shepherd = await Shepherd.deploy({
+      queryId, dataBank: bank.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: delay,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    });
     await shepherd.waitForDeployment();
     return { deployer, admin, queryId, validatorSet, bank, backup, Shepherd, shepherd };
   }
@@ -175,7 +198,7 @@ describe("TellorShepherd - Mature primary reads", function () {
     await f.shepherd.connect(f.admin).pause();
     await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
     const second = await relay(f, encode(200));
-    await time.increaseTo(Number(await f.shepherd.pausedAt()) + 120);
+    await time.increaseTo(second.relayTime + delay + 1);
     await f.shepherd.connect(f.admin).unpause();
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([200n, second.aggregateTimestamp]);
     expect(await f.shepherd.mode()).to.equal(0);
@@ -287,14 +310,26 @@ describe("TellorShepherd - Mature primary reads", function () {
   it("reverts when the configured dependency cannot answer the lookup", async function () {
     const f = await loadFixture(deployReadFixture);
     // BackupOracleMock has deployed code but no getRelayBefore function; it reverts on this selector.
-    const shepherd = await f.Shepherd.deploy(f.queryId, f.backup.target, f.backup.target, f.admin.address, delay, 120, 300, 600, 30000, 2000, [30, 90]);
+    const shepherd = await f.Shepherd.deploy({
+      queryId: f.queryId, dataBank: f.backup.target, backupOracle: f.backup.target,
+      admin: f.admin.address, relayReadDelay: delay,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    });
     await expect(shepherd.getCurrentValue()).to.be.reverted;
   });
 
   it("uses checked subtraction for underflow and reports no data at a zero cutoff", async function () {
     const f = await loadFixture(deployReadFixture);
     const futureDelay = (await time.latest()) + 100;
-    const shepherd = await f.Shepherd.deploy(f.queryId, f.bank.target, f.backup.target, f.admin.address, futureDelay, 120, 300, 600, 30000, 2000, [30, 90]);
+    const shepherd = await f.Shepherd.deploy({
+      queryId: f.queryId, dataBank: f.bank.target, backupOracle: f.backup.target,
+      admin: f.admin.address, relayReadDelay: futureDelay,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    });
     await expect(shepherd.getCurrentValue()).to.be.revertedWithPanic(0x11);
     await time.increaseTo(futureDelay);
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "NoMatureData");
@@ -312,7 +347,13 @@ describe("TellorShepherd - Pauser membership", function () {
     const backup = await Backup.deploy(ethers.id("pauser-test-feed"));
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     // Membership operations do not read either source.
-    const shepherd = await Shepherd.deploy(ethers.id("pauser-test-feed"), source.target, backup.target, admin.address, 60, 120, 300, 600, 30000, 2000, [30, 90]);
+    const shepherd = await Shepherd.deploy({
+      queryId: ethers.id("pauser-test-feed"), dataBank: source.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: 120,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    });
     await shepherd.waitForDeployment();
     return { deployer, admin, pauser, other, shepherd };
   }
@@ -395,7 +436,6 @@ describe("TellorShepherd - Pauser membership", function () {
 
 describe("TellorShepherd - Pause and unpause", function () {
   const { time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
-  const duration = 120;
 
   async function deployPauseFixture() {
     const [deployer, admin, pauser, outsider] = await ethers.getSigners();
@@ -405,8 +445,13 @@ describe("TellorShepherd - Pause and unpause", function () {
     const backup = await Backup.deploy(ethers.id("pause-test-feed"));
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     // This dependency cannot answer primary reads, allowing pause precedence tests.
-    const shepherd = await Shepherd.deploy(ethers.id("pause-test-feed"), source.target, backup.target,
-      admin.address, 60, duration, 300, 600, 30000, 2000, [30, 90]);
+    const shepherd = await Shepherd.deploy({
+      queryId: ethers.id("pause-test-feed"), dataBank: source.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: 120,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    });
     await shepherd.connect(admin).addPauser(pauser.address);
     return { deployer, admin, pauser, outsider, source, backup, Shepherd, shepherd };
   }
@@ -442,15 +487,13 @@ describe("TellorShepherd - Pause and unpause", function () {
       await expect(shepherd.connect(caller).pause()).to.be.revertedWithCustomError(shepherd, "AlreadyPaused");
       expect(await shepherd.pausedAt()).to.equal(start);
     }
-    await time.setNextBlockTimestamp(start + duration);
     await shepherd.connect(admin).unpause();
     expect(await shepherd.paused()).to.equal(false);
   });
 
-  it("requires admin unpause even after the full duration", async function () {
+  it("requires admin unpause even when a pauser initiated the pause", async function () {
     const { deployer, admin, pauser, outsider, shepherd } = await loadFixture(deployPauseFixture);
     await shepherd.connect(pauser).pause();
-    await time.increase(duration);
     for (const caller of [deployer, outsider, pauser]) {
       await expect(shepherd.connect(caller).unpause()).to.be.revertedWithCustomError(shepherd, "NotAdmin");
     }
@@ -459,27 +502,24 @@ describe("TellorShepherd - Pause and unpause", function () {
     expect(await shepherd.paused()).to.equal(true);
   });
 
-  it("rejects unpaused and early unpause, accepts equality, and starts a fresh clock next time", async function () {
+  it("allows immediate admin unpause and records each new pause independently", async function () {
     const { admin, pauser, shepherd } = await loadFixture(deployPauseFixture);
     await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "NotPaused");
-    await shepherd.connect(pauser).pause();
-    const start = Number(await shepherd.pausedAt());
-    await time.setNextBlockTimestamp(start + duration - 1);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
-    expect(await shepherd.paused()).to.equal(true);
-    expect(await shepherd.pausedAt()).to.equal(start);
-    await time.setNextBlockTimestamp(start + duration);
-    await expect(shepherd.connect(admin).unpause()).to.emit(shepherd, "Unpaused").withArgs(admin.address);
-    expect(await shepherd.paused()).to.equal(false);
-    expect(await shepherd.pausedAt()).to.equal(0);
-    expect(await shepherd.mode()).to.equal(0);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "NotPaused");
-    await shepherd.connect(pauser).pause();
-    const nextStart = Number(await shepherd.pausedAt());
-    expect(nextStart).to.be.greaterThan(start + duration);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(nextStart + duration);
-    await shepherd.connect(admin).unpause();
+    let previousStart = 0n;
+    for (const caller of [pauser, admin]) {
+      await shepherd.connect(caller).pause();
+      const start = await shepherd.pausedAt();
+      expect(start).to.be.greaterThan(previousStart);
+      // Simulate at the pause block's timestamp: even zero elapsed seconds is sufficient.
+      await shepherd.connect(admin).unpause.staticCall();
+      expect(await shepherd.paused()).to.equal(true);
+      await expect(shepherd.connect(admin).unpause()).to.emit(shepherd, "Unpaused").withArgs(admin.address);
+      expect(await shepherd.paused()).to.equal(false);
+      expect(await shepherd.pausedAt()).to.equal(0);
+      expect(await shepherd.mode()).to.equal(0);
+      await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "NotPaused");
+      previousStart = start;
+    }
   });
 
   it("reports pause before dependency failure or cutoff underflow", async function () {
@@ -487,8 +527,13 @@ describe("TellorShepherd - Pause and unpause", function () {
     await expect(shepherd.getCurrentValue()).to.be.reverted;
     await shepherd.connect(admin).pause();
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "ShepherdPaused");
-    const underflow = await Shepherd.deploy(ethers.id("pause-test-feed"), source.target, backup.target,
-      admin.address, ethers.MaxUint256, duration, 300, 600, 30000, 2000, [30, 90]);
+    const underflow = await Shepherd.deploy({
+      queryId: ethers.id("pause-test-feed"), dataBank: source.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: ethers.MaxUint256,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    });
     await expect(underflow.getCurrentValue()).to.be.revertedWithPanic(0x11);
     await underflow.connect(admin).pause();
     await expect(underflow.getCurrentValue()).to.be.revertedWithCustomError(underflow, "ShepherdPaused");
@@ -511,8 +556,13 @@ describe("TellorShepherd - DataBank migration", function () {
     const Backup = await ethers.getContractFactory("BackupOracleMock");
     const backup = await Backup.deploy(ethers.id("migration-feed"));
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
-    const shepherd = await Shepherd.deploy(ethers.id("migration-feed"), bank.target, backup.target,
-      admin.address, 60, 120, changeDelay, 600, 30000, 2000, [30, 90]);
+    const shepherd = await Shepherd.deploy({
+      queryId: ethers.id("migration-feed"), dataBank: bank.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: 120,
+      paramChangeDelay: changeDelay, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    });
     await shepherd.connect(admin).addPauser(pauser.address);
     return { deployer, admin, pauser, outsider, bank, replacement, alternate, incompatible, shepherd };
   }
@@ -573,7 +623,7 @@ describe("TellorShepherd - DataBank migration", function () {
       .to.be.revertedWithCustomError(shepherd, "DataBankChangeDelayNotElapsed");
   });
 
-  it("rejects one second early, allows equality with empty history, and preserves the pause minimum", async function () {
+  it("preserves the migration delay and allows immediate unpause after execution", async function () {
     const { admin, bank, replacement, shepherd } = await loadFixture(deployMigrationFixture);
     await shepherd.connect(admin).proposeDataBankChange(replacement.target);
     const start = Number(await shepherd.dataBankProposedAt());
@@ -589,8 +639,6 @@ describe("TellorShepherd - DataBank migration", function () {
     expect(await shepherd.dataBank()).to.equal(replacement.target);
     expect(await shepherd.paused()).to.equal(true);
     expect(await shepherd.pausedAt()).to.equal(pausedAt);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(Number(pausedAt) + 120);
     await shepherd.connect(admin).unpause();
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "NoMatureData");
   });
@@ -601,7 +649,6 @@ describe("TellorShepherd - DataBank migration", function () {
     await time.increase(changeDelay);
     await expect(shepherd.connect(admin).executeDataBankChange()).to.be.revertedWithCustomError(shepherd, "NotPaused");
     await shepherd.connect(admin).pause();
-    await time.increase(120);
     await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "DataBankChangePending");
     await shepherd.connect(admin).cancelDataBankChange();
     await shepherd.connect(admin).unpause();
@@ -653,8 +700,14 @@ describe("TellorShepherd - Backup migration", function () {
     await replacement.configureRead(100, 123456, 0);
     await alternate.configureRead(101, 123457, 0);
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
-    const args = [queryId, bank.target, backup.target, admin.address, 60, 120, 300, 600, 30000, 2000, [30, 90]];
-    const shepherd = await Shepherd.deploy(...args);
+    const args = {
+      queryId, dataBank: bank.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: 120,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    };
+    const shepherd = await Shepherd.deploy(args);
     await shepherd.connect(admin).addPauser(pauser.address);
     return { deployer, admin, pauser, outsider, queryId, bank, newBank, backup, replacement,
       alternate, wrongFeed, Shepherd, args, shepherd };
@@ -662,8 +715,8 @@ describe("TellorShepherd - Backup migration", function () {
 
   it("checks only code at construction but rejects an unsupported feed at proposal", async function () {
     const f = await loadFixture(fixture);
-    f.args[2] = f.wrongFeed.target;
-    const deployed = await f.Shepherd.deploy(...f.args);
+    f.args.backupOracle = f.wrongFeed.target;
+    const deployed = await f.Shepherd.deploy(f.args);
     expect(await deployed.backupOracle()).to.equal(f.wrongFeed.target);
     await expect(f.shepherd.connect(f.admin).proposeBackupChange(f.wrongFeed.target))
       .to.be.revertedWithCustomError(f.wrongFeed, "UnsupportedQueryId");
@@ -730,14 +783,14 @@ describe("TellorShepherd - Backup migration", function () {
     await shepherd.connect(admin).proposeBackupChange(replacement.target);
     const start = Number(await shepherd.backupProposedAt());
     await expect(shepherd.connect(admin).executeBackupChange()).to.be.revertedWithCustomError(shepherd, "NotPaused");
-    await time.setNextBlockTimestamp(start + 598);
+    await time.setNextBlockTimestamp(start + 298);
     await shepherd.connect(admin).pause();
     const pausedAt = await shepherd.pausedAt();
-    await time.setNextBlockTimestamp(start + 599);
+    await time.setNextBlockTimestamp(start + 299);
     await expect(shepherd.connect(admin).executeBackupChange())
       .to.be.revertedWithCustomError(shepherd, "BackupChangeDelayNotElapsed");
     expect(await shepherd.backupOracle()).to.equal(backup.target);
-    await time.setNextBlockTimestamp(start + 600);
+    await time.setNextBlockTimestamp(start + 300);
     await expect(shepherd.connect(admin).executeBackupChange())
       .to.emit(shepherd, "BackupChanged").withArgs(backup.target, replacement.target);
     expect(await shepherd.backupOracle()).to.equal(replacement.target);
@@ -748,8 +801,6 @@ describe("TellorShepherd - Backup migration", function () {
     expect(await shepherd.mode()).to.equal(0);
     expect(await shepherd.queryId()).to.equal(queryId);
     expect(await shepherd.dataBank()).to.equal(bank.target);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(Number(pausedAt) + 120);
     await shepherd.connect(admin).unpause();
     await expect(shepherd.connect(admin).executeBackupChange()).to.be.revertedWithCustomError(shepherd, "NoPendingBackupChange");
   });
@@ -766,10 +817,10 @@ describe("TellorShepherd - Backup migration", function () {
       await shepherd.connect(admin).pause();
       const pausedAt = await shepherd.pausedAt();
       await time.setNextBlockTimestamp(Number(bankStart) + 300);
-      // Bank's shorter delay cannot mature the backup proposal.
+      // The bank's earlier proposal cannot mature the backup proposal.
       await expect(shepherd.connect(admin).executeBackupChange())
         .to.be.revertedWithCustomError(shepherd, "BackupChangeDelayNotElapsed");
-      await time.increaseTo(Number(backupStart) + 600);
+      await time.increaseTo(Number(backupStart) + 300);
       await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "DataBankChangePending");
       if (first === "bank") {
         await shepherd.connect(admin).executeDataBankChange();
@@ -793,9 +844,9 @@ describe("TellorShepherd - Backup migration", function () {
     it(`rejects a failing or malformed backup at proposal and execution (${code})`, async function () {
       const f = await loadFixture(fixture);
       await setCode(f.alternate.target, code);
-      const args = [...f.args];
-      args[2] = f.alternate.target;
-      const deployed = await f.Shepherd.deploy(...args);
+      const args = { ...f.args };
+      args.backupOracle = f.alternate.target;
+      const deployed = await f.Shepherd.deploy(args);
       expect(await deployed.backupOracle()).to.equal(f.alternate.target);
       await expect(f.shepherd.connect(f.admin).proposeBackupChange(f.alternate.target)).to.be.reverted;
       expect(await f.shepherd.pendingBackupOracle()).to.equal(ethers.ZeroAddress);
@@ -845,8 +896,8 @@ describe("TellorShepherd - Backup migration", function () {
     const code = "0x";
     // Test-only code replacement simulates a target changing behavior after proposal.
     await setCode(f.alternate.target, code);
-    f.args[2] = f.alternate.target;
-    await expect(f.Shepherd.deploy(...f.args)).to.be.reverted;
+    f.args.backupOracle = f.alternate.target;
+    await expect(f.Shepherd.deploy(f.args)).to.be.reverted;
     await expect(f.shepherd.connect(f.admin).proposeBackupChange(f.alternate.target)).to.be.reverted;
     await f.shepherd.connect(f.admin).proposeBackupChange(f.replacement.target);
     const start = await f.shepherd.backupProposedAt();
@@ -881,8 +932,14 @@ describe("TellorShepherd - TWAP reference validation", function () {
     const Backup = await ethers.getContractFactory("BackupOracleMock");
     const backup = await Backup.deploy(queryId);
     const Harness = await ethers.getContractFactory("TellorShepherdHarness");
-    const args = [queryId, bank.target, backup.target, admin.address, 60, 120, 300, 600, 30000, 2000, [30, 90]];
-    const shepherd = await Harness.deploy(...args);
+    const args = {
+      queryId, dataBank: bank.target, backupOracle: backup.target,
+      admin: admin.address, relayReadDelay: 120,
+      paramChangeDelay: 300, twapWindowMs: 30000,
+      challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+      maxPriceAge: 604800, decimals: 18
+    };
+    const shepherd = await Harness.deploy(args);
     return { admin, queryId, validatorSet, bank, backup, Harness, args, shepherd, startTime: (await time.latest() - 10800) * 1000 + 17 };
   }
 
@@ -900,11 +957,11 @@ describe("TellorShepherd - TWAP reference validation", function () {
     const f = await loadFixture(fixture);
     expect(await f.shepherd.readTwapReference()).to.deep.equal(empty);
     const firstRelay = await append(f, 0, 100);
-    await time.increaseTo(firstRelay + 61n);
+    await time.increaseTo(firstRelay + 121n);
     expect(await f.shepherd.readTwapReference()).to.deep.equal(empty);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([100n, BigInt(f.startTime)]);
     const lastRelay = await append(f, 30000, 900);
-    await time.increaseTo(lastRelay + 60n);
+    await time.increaseTo(lastRelay + 120n);
     expect(await f.shepherd.readTwapReference()).to.deep.equal(empty);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
     await time.increase(1);
@@ -917,7 +974,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
     const f = await loadFixture(fixture);
     await append(f, 0, 100);
     const lastRelay = await append(f, 7200000, 900);
-    await time.increaseTo(lastRelay + 61n);
+    await time.increaseTo(lastRelay + 121n);
     const expected = [true, [100n, 0n, 1n, BigInt(f.startTime), BigInt(f.startTime + 7200000), 1n]];
     expect(await f.shepherd.readTwapReference()).to.deep.equal(expected);
     await f.shepherd.pause();
@@ -932,15 +989,16 @@ describe("TellorShepherd - TWAP reference validation", function () {
     await append(f, 0, 100);
     await append(f, 10001, 120);
     const endpoint = await append(f, 30003, 900);
-    await time.increaseTo(endpoint + 61n);
+    await time.increaseTo(endpoint + 122n);
     await append(f, 40000, (1n << 192n) - 1n);
     expect(await f.shepherd.readTwapReference())
       .to.deep.equal([true, [113n, 0n, 2n, BigInt(f.startTime), BigInt(f.startTime + 30003), 2n]]);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(900);
-    const args = [...f.args];
-    args[8] = ethers.MaxUint256;
-    args[10] = [ethers.MaxUint256, 90];
-    const longerWindow = await f.Harness.deploy(...args);
+    const args = { ...f.args };
+    args.twapWindowMs = 60000;
+    args.relayReadDelay = 121;
+    Object.assign(args, { challengeDelaySeconds: 60, recoveryDelaySeconds: 90 });
+    const longerWindow = await f.Harness.deploy(args);
     expect(await longerWindow.readTwapReference()).to.deep.equal(empty);
     expect((await longerWindow.getCurrentValue())[0]).to.equal(900);
   });
@@ -957,11 +1015,162 @@ describe("TellorShepherd - TWAP reference validation", function () {
     await mock.configureEnd(true, end);
     await mock.configureTwap(true, twap, 0);
     await mock.configureCandidate(end);
-    const args = [...f.args];
-    args[1] = mock.target;
-    const shepherd = await f.Harness.deploy(...args);
+    const args = { ...f.args };
+    args.dataBank = mock.target;
+    const shepherd = await f.Harness.deploy(args);
     return { ...f, mock, start, end, twap, shepherd };
   }
+
+  describe("Threshold updates", function () {
+    for (const paused of [false, true]) {
+      for (const mode of [0, 1]) {
+        it(`applies only after notice, preserving paused=${paused} and mode=${mode}`, async function () {
+          const f = await loadFixture(faultyFixture);
+          await f.shepherd.setModeForTest(mode);
+          if (paused) await f.shepherd.pause();
+          const pausedAt = await f.shepherd.pausedAt();
+          if (mode === 1) {
+            await f.backup.configureRecovery(true, 0);
+            await f.shepherd.requestRecovery();
+          }
+          const recoveryAt = await f.shepherd.recoveryRequestedAt();
+          for (const threshold of [1, 9999]) {
+            const previous = await f.shepherd.challengeThresholdBps();
+            await expect(f.shepherd.proposeThresholdChange(threshold))
+              .to.emit(f.shepherd, "ThresholdChangeProposed").withArgs(threshold, await time.latest() + 1);
+            const start = await f.shepherd.thresholdProposedAt();
+            expect(await f.shepherd.challengeThresholdBps()).to.equal(previous);
+            await time.setNextBlockTimestamp(start + 299n);
+            await expect(f.shepherd.executeThresholdChange())
+              .to.be.revertedWithCustomError(f.shepherd, "ThresholdChangeDelayNotElapsed");
+            expect(await f.shepherd.pendingThresholdBps()).to.equal(threshold);
+            expect(await f.shepherd.thresholdProposedAt()).to.equal(start);
+            await time.setNextBlockTimestamp(start + 300n);
+            await expect(f.shepherd.executeThresholdChange())
+              .to.emit(f.shepherd, "ThresholdChanged").withArgs(previous, threshold);
+            expect(await f.shepherd.challengeThresholdBps()).to.equal(threshold);
+            expect(await f.shepherd.pendingThresholdBps()).to.equal(0);
+            expect(await f.shepherd.thresholdProposedAt()).to.equal(0);
+            expect(await f.shepherd.paused()).to.equal(paused);
+            expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
+            expect(await f.shepherd.mode()).to.equal(mode);
+            expect(await f.shepherd.recoveryPending()).to.equal(mode === 1);
+            expect(await f.shepherd.recoveryRequestedAt()).to.equal(recoveryAt);
+          }
+        });
+      }
+    }
+
+    it("restricts all threshold actions to admin, including against pausers", async function () {
+      const f = await loadFixture(faultyFixture);
+      const [, pauser, outsider] = await ethers.getSigners();
+      await f.shepherd.addPauser(pauser.address);
+      await f.shepherd.proposeThresholdChange(2500);
+      const start = await f.shepherd.thresholdProposedAt();
+      await time.increase(300);
+      for (const caller of [pauser, outsider]) {
+        for (const [action, args] of [["proposeThresholdChange", [3000]], ["cancelThresholdChange", []], ["executeThresholdChange", []]]) {
+          await expect(f.shepherd.connect(caller)[action](...args)).to.be.revertedWithCustomError(f.shepherd, "NotAdmin");
+        }
+      }
+      expect(await f.shepherd.pendingThresholdBps()).to.equal(2500);
+      expect(await f.shepherd.thresholdProposedAt()).to.equal(start);
+      expect(await f.shepherd.challengeThresholdBps()).to.equal(2000);
+    });
+
+    it("rejects invalid, unchanged, absent, and replacement proposals; cancellation starts fresh notice", async function () {
+      const f = await loadFixture(faultyFixture);
+      for (const action of ["cancelThresholdChange", "executeThresholdChange"]) {
+        await expect(f.shepherd[action]()).to.be.revertedWithCustomError(f.shepherd, "NoPendingThresholdChange");
+      }
+      for (const threshold of [0, 10000, ethers.MaxUint256]) {
+        await expect(f.shepherd.proposeThresholdChange(threshold)).to.be.revertedWithCustomError(f.shepherd, "InvalidChallengeThreshold");
+      }
+      await expect(f.shepherd.proposeThresholdChange(2000)).to.be.revertedWithCustomError(f.shepherd, "ThresholdUnchanged");
+      for (const paused of [false, true]) {
+        if (paused) await f.shepherd.pause();
+        await f.shepherd.proposeThresholdChange(2500);
+        const start = await f.shepherd.thresholdProposedAt();
+        for (const threshold of [2500, 3000]) {
+          await expect(f.shepherd.proposeThresholdChange(threshold)).to.be.revertedWithCustomError(f.shepherd, "ThresholdChangePending");
+        }
+        expect(await f.shepherd.thresholdProposedAt()).to.equal(start);
+        await expect(f.shepherd.cancelThresholdChange()).to.emit(f.shepherd, "ThresholdChangeCancelled").withArgs(2500);
+        expect(await f.shepherd.pendingThresholdBps()).to.equal(0);
+        expect(await f.shepherd.thresholdProposedAt()).to.equal(0);
+        await f.shepherd.proposeThresholdChange(3000);
+        expect(await f.shepherd.thresholdProposedAt()).to.be.greaterThan(start);
+        await expect(f.shepherd.executeThresholdChange()).to.be.revertedWithCustomError(f.shepherd, "ThresholdChangeDelayNotElapsed");
+        await f.shepherd.cancelThresholdChange();
+        expect(await f.shepherd.challengeThresholdBps()).to.equal(2000);
+      }
+    });
+
+    for (const threshold of [1000, 3000]) {
+      it(`keeps the active challenge band at 2000 bps after updating to ${threshold}`, async function () {
+        const f = await loadFixture(faultyFixture);
+        await f.shepherd.proposeThresholdChange(threshold);
+        const proposedAt = await f.shepherd.thresholdProposedAt();
+        await time.setNextBlockTimestamp(proposedAt + 270n);
+        await f.shepherd.requestChallenge();
+        const requestedAt = await f.shepherd.challengeRequestedAt();
+        expect(await f.shepherd.challengeThresholdSnapshotBps()).to.equal(2000);
+        await f.mock.configureCandidate([encode(threshold === 1000 ? 115 : 125), f.end[1], f.end[2] + 1n, f.end[3], f.end[4] + 1n]);
+        await time.setNextBlockTimestamp(proposedAt + 300n);
+        await f.shepherd.executeThresholdChange();
+        expect(await f.shepherd.challengeThresholdSnapshotBps()).to.equal(2000);
+        expect(await f.shepherd.challengeRequestedAt()).to.equal(requestedAt);
+        expect(await f.shepherd.challengeReferenceValue()).to.equal(100);
+        expect(await f.shepherd.readDeviation()).to.deep.equal([true, threshold === 1000]);
+        if (threshold === 3000) {
+          await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "StillDeviating");
+          await f.mock.configureCandidate([encode(120), f.end[1], f.end[2] + 2n, f.end[3], f.end[4] + 2n]);
+        }
+        await expect(f.shepherd.resolveChallenge()).to.emit(f.shepherd, "ChallengeExecuted");
+        expect(await f.shepherd.challengeThresholdSnapshotBps()).to.equal(0);
+        await f.shepherd.setModeForTest(0);
+        await f.mock.configureCandidate([encode(500), ...f.end.slice(1)]);
+        await f.shepherd.requestChallenge();
+        expect(await f.shepherd.challengeThresholdSnapshotBps()).to.equal(threshold);
+      });
+    }
+
+    it("keeps all proposal clocks independent and permits unpause with only a threshold pending", async function () {
+      const f = await loadFixture(faultyFixture);
+      const bank = await (await ethers.getContractFactory("TellorDataBank")).deploy(f.admin.address);
+      const backup = await (await ethers.getContractFactory("BackupOracleMock")).deploy(f.queryId);
+      await backup.configureRead(100, BigInt(await time.latest()) * 1000n, 0);
+      await f.shepherd.proposeDataBankChange(bank.target);
+      const bankAt = await f.shepherd.dataBankProposedAt();
+      await time.increase(10);
+      await f.shepherd.proposeBackupChange(backup.target);
+      const backupAt = await f.shepherd.backupProposedAt();
+      await time.increase(10);
+      await f.shepherd.proposeThresholdChange(3000);
+      const thresholdAt = await f.shepherd.thresholdProposedAt();
+      await f.shepherd.pause();
+      await time.setNextBlockTimestamp(bankAt + 300n);
+      await f.shepherd.executeDataBankChange();
+      expect(await f.shepherd.backupProposedAt()).to.equal(backupAt);
+      expect(await f.shepherd.thresholdProposedAt()).to.equal(thresholdAt);
+      await expect(f.shepherd.executeThresholdChange()).to.be.revertedWithCustomError(f.shepherd, "ThresholdChangeDelayNotElapsed");
+      await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "BackupChangePending");
+      await f.shepherd.cancelBackupChange();
+      await f.shepherd.unpause();
+      expect(await f.shepherd.pendingThresholdBps()).to.equal(3000);
+      await f.shepherd.proposeDataBankChange(f.bank.target);
+      await f.shepherd.proposeBackupChange(backup.target);
+      const nextBankAt = await f.shepherd.dataBankProposedAt();
+      const nextBackupAt = await f.shepherd.backupProposedAt();
+      await time.setNextBlockTimestamp(thresholdAt + 300n);
+      await f.shepherd.executeThresholdChange();
+      expect(await f.shepherd.paused()).to.equal(false);
+      expect(await f.shepherd.pendingDataBank()).to.equal(f.bank.target);
+      expect(await f.shepherd.pendingBackupOracle()).to.equal(backup.target);
+      expect(await f.shepherd.dataBankProposedAt()).to.equal(nextBankAt);
+      expect(await f.shepherd.backupProposedAt()).to.equal(nextBackupAt);
+    });
+  });
 
   it("discards payloads marked unavailable rather than treating them as an in-band result", async function () {
     const f = await loadFixture(faultyFixture);
@@ -1022,13 +1231,13 @@ describe("TellorShepherd - TWAP reference validation", function () {
     expect(await f.shepherd.readDeviation()).to.deep.equal([false, false]);
     await append(f, 0, 100);
     const endpoint = await append(f, 30000, 100);
-    await time.increaseTo(endpoint + 61n);
+    await time.increaseTo(endpoint + 121n);
     expect(await f.shepherd.readDeviation()).to.deep.equal([true, false]);
     const latestRelay = await append(f, 40000, 121);
     expect(BigInt(await time.latest())).to.equal(latestRelay);
     expect(await f.shepherd.readDeviation()).to.deep.equal([true, true]);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
-    await time.increaseTo(latestRelay + 61n);
+    await time.increaseTo(latestRelay + 121n);
     expect(await f.shepherd.readDeviation()).to.deep.equal([true, true]);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(121);
     await f.shepherd.pause();
@@ -1039,7 +1248,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
   it("keeps unavailable history distinct from in-band data without blocking a mature read", async function () {
     const f = await loadFixture(fixture);
     const first = await append(f, 0, 100);
-    await time.increaseTo(first + 61n);
+    await time.increaseTo(first + 121n);
     expect(await f.shepherd.readDeviation()).to.deep.equal([false, false]);
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
     await f.shepherd.pause();
@@ -1049,10 +1258,10 @@ describe("TellorShepherd - TWAP reference validation", function () {
   it("matches exact rational comparisons at equality, fractional boundaries, and uint256 extremes", async function () {
     const f = await loadFixture(faultyFixture);
     for (const threshold of [1n, 2000n, 9999n]) {
-      const args = [...f.args];
-      args[1] = f.mock.target;
-      args[9] = threshold;
-      const shepherd = await f.Harness.deploy(...args);
+      const args = { ...f.args };
+      args.dataBank = f.mock.target;
+      args.challengeThresholdBps = threshold;
+      const shepherd = await f.Harness.deploy(args);
       for (const reference of [1n, 100n, 10001n, (1n << 192n) - 1n, ethers.MaxUint256]) {
         await f.mock.configureTwap(true, [reference, ...f.twap.slice(1)], 0);
         const boundary = reference * threshold / 10000n;
@@ -1097,13 +1306,13 @@ describe("TellorShepherd - TWAP reference validation", function () {
     }
   });
 
-  describe("Challenge request and cancellation", function () {
+  describe("Challenge request and resolution", function () {
     async function challengeFixture() {
       const f = await fixture();
       const [, requester, canceller] = await ethers.getSigners();
       await append(f, 0, 100);
       const endpoint = await append(f, 30000, 100);
-      await time.increaseTo(endpoint + 61n);
+      await time.increaseTo(endpoint + 121n);
       await append(f, 40000, 121);
       return { ...f, requester, canceller };
     }
@@ -1111,12 +1320,16 @@ describe("TellorShepherd - TWAP reference validation", function () {
     async function expectPending(shepherd, pending, timestamp) {
       expect(await shepherd.challengePending()).to.equal(pending);
       expect(await shepherd.challengeRequestedAt()).to.equal(timestamp);
+      if (!pending) {
+        expect(await shepherd.challengeReferenceValue()).to.equal(0);
+        expect(await shepherd.challengeThresholdSnapshotBps()).to.equal(0);
+        expect(await shepherd.challengeAggregateTimestamp()).to.equal(0);
+      }
     }
 
     for (const paused of [false, true]) {
-      it(`allows different outsiders to request and immediately cancel with paused=${paused}`, async function () {
+      it(`snapshots evidence and permits threshold-equality resolution with paused=${paused}`, async function () {
         const f = await loadFixture(challengeFixture);
-        await expectPending(f.shepherd, false, 0);
         if (paused) await f.shepherd.pause();
         const pauseClock = await f.shepherd.pausedAt();
         const requestTime = (await time.latest()) + 1;
@@ -1124,16 +1337,17 @@ describe("TellorShepherd - TWAP reference validation", function () {
         await expect(f.shepherd.connect(f.requester).requestChallenge())
           .to.emit(f.shepherd, "ChallengeRequested").withArgs(f.requester.address, requestTime);
         await expectPending(f.shepherd, true, requestTime);
-        // Exact upper threshold equality is sufficient evidence of resolution.
-        await append(f, 50000, 120);
-        await expect(f.shepherd.connect(f.canceller).cancelChallenge())
-          .to.emit(f.shepherd, "ChallengeCancelled").withArgs(f.canceller.address);
-        expect(BigInt(await time.latest()) - BigInt(requestTime)).to.be.lessThan(await f.shepherd.CHALLENGE_DELAY_SECONDS());
+        expect(await f.shepherd.challengeReferenceValue()).to.equal(100);
+        expect(await f.shepherd.challengeAggregateTimestamp()).to.equal(f.startTime + 40000);
+        await append(f, 50000, paused ? 80 : 120);
+        await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "ChallengeDelayNotElapsed");
+        await time.setNextBlockTimestamp(BigInt(requestTime) + 30n);
+        await expect(f.shepherd.connect(f.canceller).resolveChallenge())
+          .to.emit(f.shepherd, "ChallengeExecuted").withArgs(f.canceller.address);
         await expectPending(f.shepherd, false, 0);
-        expect(await f.shepherd.mode()).to.equal(0);
+        expect(await f.shepherd.mode()).to.equal(1);
         expect(await f.shepherd.paused()).to.equal(paused);
         expect(await f.shepherd.pausedAt()).to.equal(pauseClock);
-        await expect(f.shepherd.cancelChallenge()).to.be.revertedWithCustomError(f.shepherd, "NoPendingChallenge");
       });
 
       it(`rejects in-band and unavailable requests with paused=${paused}`, async function () {
@@ -1142,60 +1356,55 @@ describe("TellorShepherd - TWAP reference validation", function () {
         await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "DiagnosticUnavailable");
         await append(f, 0, 100);
         const endpoint = await append(f, 30000, 80);
-        await time.increaseTo(endpoint + 61n);
+        await time.increaseTo(endpoint + 121n);
         await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotDeviating");
         await expectPending(f.shepherd, false, 0);
       });
     }
 
-    it("executes permissionlessly at exact delay equality and immediately routes to backup", async function () {
+    it("resolves permissionlessly at exact delay equality and immediately routes to backup", async function () {
       const f = await loadFixture(challengeFixture);
-      await f.backup.configureRead(777, 123456789, 0);
-      await expect(f.shepherd.executeChallenge()).to.be.revertedWithCustomError(f.shepherd, "NoPendingChallenge");
+      const backupTimestamp = BigInt(await time.latest()) * 1000n + 17n;
+      await f.backup.configureRead(777, backupTimestamp, 0);
+      await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "NoPendingChallenge");
       await f.shepherd.connect(f.requester).requestChallenge();
       const start = await f.shepherd.challengeRequestedAt();
-      const deadline = start + await f.shepherd.CHALLENGE_DELAY_SECONDS();
-      await time.setNextBlockTimestamp(deadline - 1n);
-      await expect(f.shepherd.connect(f.canceller).executeChallenge())
+      await append(f, 50000, 100);
+      await time.setNextBlockTimestamp(start + 29n);
+      await expect(f.shepherd.connect(f.canceller).resolveChallenge())
         .to.be.revertedWithCustomError(f.shepherd, "ChallengeDelayNotElapsed");
       await expectPending(f.shepherd, true, start);
-      expect(await f.shepherd.mode()).to.equal(0);
-      await time.setNextBlockTimestamp(deadline);
-      await expect(f.shepherd.connect(f.canceller).executeChallenge())
+      await time.setNextBlockTimestamp(start + 30n);
+      await expect(f.shepherd.connect(f.canceller).resolveChallenge())
         .to.emit(f.shepherd, "ChallengeExecuted").withArgs(f.canceller.address);
       await expectPending(f.shepherd, false, 0);
-      expect(await f.shepherd.mode()).to.equal(1);
-      expect(await f.shepherd.paused()).to.equal(false);
-      expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, 123456789n]);
-      for (const action of ["executeChallenge", "requestChallenge", "cancelChallenge"]) {
+      expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, backupTimestamp]);
+      for (const action of ["resolveChallenge", "requestChallenge"]) {
         await expect(f.shepherd[action]()).to.be.revertedWithCustomError(f.shepherd, "NotPrimaryMode");
       }
-      // Neither primary reads nor TWAP diagnostics may gate a selected backup read.
       await setCode(f.bank.target, "0x60006000fd");
       for (const timestamp of [0n, BigInt(await time.latest()) * 1000n + 1000000n]) {
         await f.backup.configureRead(888, timestamp, 0);
-        expect(await f.shepherd.getCurrentValue()).to.deep.equal([888n, timestamp]);
+        await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "InvalidTimestamp");
       }
     });
 
-    it("preserves pause through execution and serves backup only after valid unpause", async function () {
+    it("preserves pause through resolution and serves backup only after valid unpause", async function () {
       const f = await loadFixture(challengeFixture);
       await f.shepherd.pause();
       const pauseClock = await f.shepherd.pausedAt();
-      await f.shepherd.connect(f.requester).requestChallenge();
+      await f.shepherd.requestChallenge();
+      await append(f, 50000, 100);
       await time.increase(30);
-      await f.shepherd.connect(f.canceller).executeChallenge();
+      await f.shepherd.resolveChallenge();
       expect(await f.shepherd.mode()).to.equal(1);
-      expect(await f.shepherd.paused()).to.equal(true);
       expect(await f.shepherd.pausedAt()).to.equal(pauseClock);
       await expectPending(f.shepherd, false, 0);
-      // The backup currently reverts; the global pause guard must win first.
       await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
-      await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
-      await f.backup.configureRead(777, 17, 0);
-      await time.setNextBlockTimestamp(pauseClock + await f.shepherd.MIN_PAUSE_DURATION());
+      const backupTimestamp = BigInt(await time.latest()) * 1000n + 17n;
+      await f.backup.configureRead(777, backupTimestamp, 0);
       await f.shepherd.unpause();
-      expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, 17n]);
+      expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, backupTimestamp]);
     });
 
     for (const behavior of ["unavailable", "zero", "malformed"]) {
@@ -1203,8 +1412,9 @@ describe("TellorShepherd - TWAP reference validation", function () {
         const f = await loadFixture(challengeFixture);
         await f.backup.configureRead(0, 17, behavior === "unavailable" ? 1 : behavior === "malformed" ? 2 : 0);
         await f.shepherd.requestChallenge();
+        await append(f, 50000, 100);
         await time.increase(30);
-        await f.shepherd.executeChallenge();
+        await f.shepherd.resolveChallenge();
         expect(await f.shepherd.mode()).to.equal(1);
         await expectPending(f.shepherd, false, 0);
         if (behavior === "unavailable") {
@@ -1212,34 +1422,78 @@ describe("TellorShepherd - TWAP reference validation", function () {
         } else if (behavior === "zero") {
           await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ZeroValue");
         } else await expect(f.shepherd.getCurrentValue()).to.be.reverted;
-        // A later usable backup observation needs no second switch or waiting period.
-        await f.backup.configureRead(555, 123, 0);
-        expect(await f.shepherd.getCurrentValue()).to.deep.equal([555n, 123n]);
+        const backupTimestamp = BigInt(await time.latest()) * 1000n + 17n;
+        await f.backup.configureRead(555, backupTimestamp, 0);
+        expect(await f.shepherd.getCurrentValue()).to.deep.equal([555n, backupTimestamp]);
       });
     }
 
-    it("rejects resolved deviation while paused without clearing the elapsed challenge", async function () {
+    it("keeps outside-band reports pending and accepts a later return at the expiry boundary", async function () {
       const f = await loadFixture(challengeFixture);
       await f.shepherd.requestChallenge();
       const start = await f.shepherd.challengeRequestedAt();
-      await f.shepherd.pause();
-      await append(f, 50000, 120);
-      await time.increase(30);
-      await expect(f.shepherd.executeChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotDeviating");
+      await append(f, 50000, 121);
+      await time.setNextBlockTimestamp(start + 30n);
+      await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "StillDeviating");
       await expectPending(f.shepherd, true, start);
-      expect(await f.shepherd.mode()).to.equal(0);
-      await append(f, 60000, 121);
-      await f.shepherd.executeChallenge();
+      await append(f, 60000, 79);
+      await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "StillDeviating");
+      await append(f, 70000, 100);
+      await time.setNextBlockTimestamp(start + 120n);
+      await expect(f.shepherd.resolveChallenge()).to.emit(f.shepherd, "ChallengeExecuted");
+      await expectPending(f.shepherd, false, 0);
       expect(await f.shepherd.mode()).to.equal(1);
-      expect(await f.shepherd.paused()).to.equal(true);
+    });
+
+    for (const paused of [false, true]) {
+      for (const evidence of ["no newer report", "outside band", "inside band", "broken sources"]) {
+        it(`expires unconditionally one second past the boundary: ${evidence}, paused=${paused}`, async function () {
+          const f = await loadFixture(challengeFixture);
+          if (paused) await f.shepherd.pause();
+          const pauseClock = await f.shepherd.pausedAt();
+          await f.shepherd.requestChallenge();
+          const start = await f.shepherd.challengeRequestedAt();
+          if (evidence === "outside band" || evidence === "inside band") {
+            await append(f, 50000, evidence === "outside band" ? 150 : 100);
+          } else if (evidence === "broken sources") {
+            await setCode(f.bank.target, "0x60006000fd");
+            await setCode(f.backup.target, "0x60006000fd");
+          }
+          await time.setNextBlockTimestamp(start + 121n);
+          await expect(f.shepherd.connect(f.canceller).resolveChallenge())
+            .to.emit(f.shepherd, "ChallengeExpired").withArgs(f.canceller.address);
+          await expectPending(f.shepherd, false, 0);
+          expect(await f.shepherd.mode()).to.equal(0);
+          expect(await f.shepherd.paused()).to.equal(paused);
+          expect(await f.shepherd.pausedAt()).to.equal(pauseClock);
+          await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "NoPendingChallenge");
+        });
+      }
+    }
+
+    it("requires a newer report throughout the window and allows a fresh challenge after expiry", async function () {
+      const f = await loadFixture(challengeFixture);
+      await f.shepherd.requestChallenge();
+      const start = await f.shepherd.challengeRequestedAt();
+      for (const age of [30n, 120n]) {
+        await time.setNextBlockTimestamp(start + age);
+        await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "NoNewerReport");
+        await expectPending(f.shepherd, true, start);
+      }
+      await f.shepherd.resolveChallenge();
+      await expectPending(f.shepherd, false, 0);
+      await f.shepherd.requestChallenge();
+      expect(await f.shepherd.challengeRequestedAt()).to.be.greaterThan(start);
+      await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "ChallengeDelayNotElapsed");
     });
 
     describe("Recovery request and explicit cancellation", function () {
       async function recoveryFixture() {
         const f = await challengeFixture();
         await f.shepherd.requestChallenge();
+        await append(f, 50000, 100);
         await time.increase(30);
-        await f.shepherd.executeChallenge();
+        await f.shepherd.resolveChallenge();
         return f;
       }
 
@@ -1269,7 +1523,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
         expect(await f.shepherd.recoveryPending()).to.equal(false);
         expect(await f.shepherd.recoveryRequestedAt()).to.equal(0);
         expect(await f.shepherd.paused()).to.equal(false);
-        expect((await f.shepherd.getCurrentValue())[0]).to.equal(121);
+        expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
         for (const action of ["executeRecovery", "requestRecovery", "cancelRecovery"]) {
           await expect(f.shepherd[action]()).to.be.revertedWithCustomError(f.shepherd, "NotBackupMode");
         }
@@ -1300,16 +1554,15 @@ describe("TellorShepherd - TWAP reference validation", function () {
         expect(await f.shepherd.recoveryPending()).to.equal(false);
         expect(await f.shepherd.recoveryRequestedAt()).to.equal(0);
         await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
-        await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
-        await time.setNextBlockTimestamp(pauseClock + await f.shepherd.MIN_PAUSE_DURATION());
         await f.shepherd.unpause();
-        expect((await f.shepherd.getCurrentValue())[0]).to.equal(121);
+        expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
       });
 
       it("trusts recovery assessment without a primary-read prerequisite or backup fallback", async function () {
         const f = await loadFixture(recoveryFixture);
         await f.backup.configureRecovery(true, 0);
-        await f.backup.configureRead(777, 123, 0);
+        const backupTimestamp = BigInt(await time.latest()) * 1000n + 17n;
+        await f.backup.configureRead(777, backupTimestamp, 0);
         await f.shepherd.requestRecovery();
         await setCode(f.bank.target, "0x60006000fd");
         await time.increase(90);
@@ -1367,16 +1620,19 @@ describe("TellorShepherd - TWAP reference validation", function () {
             await expect(f.shepherd[execute]()).to.emit(f.shepherd, `${transition}Invalidated`);
             expect(await f.shepherd.challengePending()).to.equal(false);
             expect(await f.shepherd.challengeRequestedAt()).to.equal(0);
+            expect(await f.shepherd.challengeReferenceValue()).to.equal(0);
+            expect(await f.shepherd.challengeThresholdSnapshotBps()).to.equal(0);
+            expect(await f.shepherd.challengeAggregateTimestamp()).to.equal(0);
             expect(await f.shepherd.recoveryPending()).to.equal(false);
             expect(await f.shepherd.recoveryRequestedAt()).to.equal(0);
             expect(await f.shepherd.mode()).to.equal(mode);
             expect(await f.shepherd.paused()).to.equal(true);
             expect(await f.shepherd.pausedAt()).to.equal(pauseClock);
-            await expect(f.shepherd[`execute${transition}`]()).to.be.revertedWithCustomError(f.shepherd, `NoPending${transition}`);
+            await expect(f.shepherd[transition === "Challenge" ? "resolveChallenge" : "executeRecovery"]()).to.be.revertedWithCustomError(f.shepherd, `NoPending${transition}`);
             await setCode(old.target, oldCode);
             await f.shepherd[`request${transition}`]();
             expect(await f.shepherd[clock]()).to.be.greaterThan(original);
-            await expect(f.shepherd[`execute${transition}`]()).to.be.revertedWithCustomError(f.shepherd, `${transition}DelayNotElapsed`);
+            await expect(f.shepherd[transition === "Challenge" ? "resolveChallenge" : "executeRecovery"]()).to.be.revertedWithCustomError(f.shepherd, `${transition}DelayNotElapsed`);
           });
         }
       }
@@ -1430,7 +1686,8 @@ describe("TellorShepherd - TWAP reference validation", function () {
 
       it("retains the original timer across transient false assessments and long waits", async function () {
         const f = await loadFixture(recoveryFixture);
-        await f.backup.configureRead(777, 123, 0);
+        const backupTimestamp = BigInt(await time.latest()) * 1000n + 17n;
+        await f.backup.configureRead(777, backupTimestamp, 0);
         await f.backup.configureRecovery(true, 0);
         await f.shepherd.connect(f.requester).requestRecovery();
         const start = await f.shepherd.recoveryRequestedAt();
@@ -1443,7 +1700,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
         await f.backup.configureRecovery(true, 0);
         await expect(f.shepherd.requestRecovery()).to.be.revertedWithCustomError(f.shepherd, "RecoveryAlreadyPending");
         await expectRecovery(f.shepherd, true, start);
-        expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, 123n]);
+        expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, backupTimestamp]);
         await f.backup.configureRecovery(false, 0);
         await f.shepherd.connect(f.canceller).cancelRecovery();
         await expectRecovery(f.shepherd, false, 0);
@@ -1451,7 +1708,7 @@ describe("TellorShepherd - TWAP reference validation", function () {
         await f.backup.configureRecovery(true, 0);
         await f.shepherd.connect(f.requester).requestRecovery();
         expect(await f.shepherd.recoveryRequestedAt()).to.be.greaterThan(start);
-        expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, 123n]);
+        expect(await f.shepherd.getCurrentValue()).to.deep.equal([777n, backupTimestamp]);
       });
 
       for (const behavior of [1, 2]) {
@@ -1478,91 +1735,82 @@ describe("TellorShepherd - TWAP reference validation", function () {
       }
     });
 
-    it("rejects duplicate requests without resetting the clock, even after its delay", async function () {
+    it("rejects duplicate requests even after expiry until explicitly resolved", async function () {
       const f = await loadFixture(challengeFixture);
-      await f.shepherd.connect(f.requester).requestChallenge();
+      await f.shepherd.requestChallenge();
       const start = await f.shepherd.challengeRequestedAt();
-      await f.shepherd.pause();
-      await time.increase(100);
-      await expect(f.shepherd.connect(f.canceller).requestChallenge())
-        .to.be.revertedWithCustomError(f.shepherd, "ChallengeAlreadyPending");
-      await expect(f.shepherd.connect(f.canceller).cancelChallenge())
-        .to.be.revertedWithCustomError(f.shepherd, "StillDeviating");
+      await time.increase(121);
+      await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "ChallengeAlreadyPending");
       await expectPending(f.shepherd, true, start);
+      expect(await f.shepherd.challengeReferenceValue()).to.equal(100);
+      await f.shepherd.resolveChallenge();
+      await expectPending(f.shepherd, false, 0);
     });
 
-    it("does not halt mature reads while a challenge is pending", async function () {
+    it("does not halt reads or automatically expire when time passes", async function () {
       const f = await loadFixture(challengeFixture);
       await f.shepherd.requestChallenge();
       expect((await f.shepherd.getCurrentValue())[0]).to.equal(100);
-      await time.increase(61);
+      await time.increase(121);
       expect((await f.shepherd.getCurrentValue())[0]).to.equal(121);
       expect(await f.shepherd.challengePending()).to.equal(true);
     });
 
-    it("retains an uncancelled clock through oscillation but starts fresh after explicit cancellation", async function () {
-      const f = await loadFixture(challengeFixture);
-      await f.shepherd.requestChallenge();
-      const original = await f.shepherd.challengeRequestedAt();
-      await append(f, 50000, 100);
-      expect(await f.shepherd.readDeviation()).to.deep.equal([true, false]);
-      await expectPending(f.shepherd, true, original);
-      await append(f, 60000, 79);
-      await expect(f.shepherd.cancelChallenge()).to.be.revertedWithCustomError(f.shepherd, "StillDeviating");
-      await expectPending(f.shepherd, true, original);
-      await append(f, 70000, 80);
-      await f.shepherd.connect(f.canceller).cancelChallenge();
-      await expectPending(f.shepherd, false, 0);
-      await append(f, 80000, 121);
-      await f.shepherd.connect(f.requester).requestChallenge();
-      expect(await f.shepherd.challengeRequestedAt()).to.be.greaterThan(original);
-      expect(await f.shepherd.challengePending()).to.equal(true);
-    });
+    for (const reference of [50n, 200n, null]) {
+      it(`uses the saved reference despite later TWAP ${reference === null ? "failure" : reference}`, async function () {
+        const f = await loadFixture(faultyFixture);
+        await f.shepherd.requestChallenge();
+        expect(await f.shepherd.challengeReferenceValue()).to.equal(100);
+        await f.mock.configureTwap(true, [reference ?? 100n, ...f.twap.slice(1)], reference === null ? 1 : 0);
+        await f.mock.configureCandidate([encode(100), f.end[1], f.end[2] + 1n, f.end[3], f.end[4] + 1n]);
+        await time.increase(30);
+        await expect(f.shepherd.resolveChallenge()).to.emit(f.shepherd, "ChallengeExecuted");
+        await expectPending(f.shepherd, false, 0);
+      });
+    }
 
-    it("rejects both actions in backup mode and cancellation without a pending request", async function () {
-      const f = await loadFixture(challengeFixture);
-      await expect(f.shepherd.cancelChallenge()).to.be.revertedWithCustomError(f.shepherd, "NoPendingChallenge");
-      await f.shepherd.requestChallenge();
-      const start = await f.shepherd.challengeRequestedAt();
-      await f.shepherd.setModeForTest(1);
-      await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotPrimaryMode");
-      await expect(f.shepherd.cancelChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotPrimaryMode");
-      await expectPending(f.shepherd, true, start);
-    });
+    for (const delta of [-1n, 0n]) {
+      it(`rejects in-band evidence with aggregate timestamp delta ${delta} despite a newer relay time`, async function () {
+        const f = await loadFixture(faultyFixture);
+        await f.shepherd.requestChallenge();
+        const start = await f.shepherd.challengeRequestedAt();
+        await f.mock.configureCandidate([encode(100), f.end[1], f.end[2] + delta, f.end[3], f.end[4] + 1n]);
+        await time.increase(30);
+        await expect(f.shepherd.resolveChallenge()).to.be.revertedWithCustomError(f.shepherd, "NoNewerReport");
+        await expectPending(f.shepherd, true, start);
+      });
+    }
 
     for (const fault of ["unavailable", "revert", "malformed ABI", "invalid reference", "invalid candidate"]) {
-      it(`preserves state on ${fault} during requests, paused cancellations, and executions`, async function () {
+      it(`rejects ${fault} request evidence without saving a partial snapshot`, async function () {
         const f = await loadFixture(faultyFixture);
-        const healthyTwap = [...f.twap];
-        async function breakDiagnostic() {
-          if (fault === "invalid candidate") {
-            await f.mock.configureCandidate([encode(0), ...f.end.slice(1)]);
-          } else {
-            const value = fault === "invalid reference" ? [0n, ...f.twap.slice(1)] : f.twap;
-            await f.mock.configureTwap(fault !== "unavailable", value,
-              fault === "revert" ? 1 : fault === "malformed ABI" ? 2 : 0);
-          }
-        }
-        async function expectFailure(call) {
-          const errors = { unavailable: "DiagnosticUnavailable", "invalid reference": "InvalidTwapReference",
-            "invalid candidate": "ZeroValue" };
-          if (errors[fault]) await expect(call).to.be.revertedWithCustomError(f.shepherd, errors[fault]);
-          else if (fault === "revert") await expect(call).to.be.revertedWithCustomError(f.mock, "TwapUnavailable");
-          else await expect(call).to.be.reverted;
-        }
-        await breakDiagnostic();
-        await expectFailure(f.shepherd.requestChallenge());
+        if (fault === "invalid candidate") await f.mock.configureCandidate([encode(0), ...f.end.slice(1)]);
+        else await f.mock.configureTwap(fault !== "unavailable",
+          fault === "invalid reference" ? [0n, ...f.twap.slice(1)] : f.twap,
+          fault === "revert" ? 1 : fault === "malformed ABI" ? 2 : 0);
+        await expect(f.shepherd.requestChallenge()).to.be.reverted;
         await expectPending(f.shepherd, false, 0);
-        await f.mock.configureTwap(true, healthyTwap, 0);
-        await f.mock.configureCandidate(f.end);
+      });
+    }
+
+    for (const fault of ["short value", "zero value", "revert", "malformed ABI"]) {
+      it(`preserves a paused challenge on ${fault} before expiry, then clears it without evidence`, async function () {
+        const f = await loadFixture(faultyFixture);
         await f.shepherd.requestChallenge();
         const start = await f.shepherd.challengeRequestedAt();
         await f.shepherd.pause();
-        await breakDiagnostic();
-        await expectFailure(f.shepherd.cancelChallenge());
-        await time.increase(30);
-        await expectFailure(f.shepherd.executeChallenge());
+        if (fault === "short value" || fault === "zero value") {
+          await f.mock.configureCandidate([fault === "short value" ? "0x11" : encode(0),
+            f.end[1], f.end[2] + 1n, f.end[3], f.end[4] + 1n]);
+        } else await setCode(f.mock.target, fault === "revert" ? "0x60006000fd" : "0x60006000f3");
+        await time.setNextBlockTimestamp(start + 30n);
+        await expect(f.shepherd.resolveChallenge()).to.be.reverted;
         await expectPending(f.shepherd, true, start);
+        expect(await f.shepherd.challengeReferenceValue()).to.equal(100);
+        expect(await f.shepherd.challengeAggregateTimestamp()).to.equal(f.end[2]);
+        await time.setNextBlockTimestamp(start + 121n);
+        await expect(f.shepherd.resolveChallenge()).to.emit(f.shepherd, "ChallengeExpired");
+        await expectPending(f.shepherd, false, 0);
         expect(await f.shepherd.paused()).to.equal(true);
         expect(await f.shepherd.mode()).to.equal(0);
       });

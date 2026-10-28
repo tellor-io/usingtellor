@@ -9,6 +9,7 @@
   "scripts": {
     "test": "hardhat test",
     "test:morpho": "hardhat test integration/MorphoTellorOracle.js",
+    "test:morpho-chainlink": "hardhat test integration/MorphoChainlinkOracleV2.js",
     "test:euler": "hardhat test integration/EulerTellorOracle.js"
   },
   "author": "",

@@ -13,20 +13,14 @@ describe("TellorShepherdFactory", function () {
     const Factory = await ethers.getContractFactory("TellorShepherdFactory");
     const factory = await Factory.deploy();
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
-    // Distinct numbers expose field swaps; 30001 ms requires 31 challenge seconds.
+    // Distinct settings expose field swaps; the TWAP window exceeds both delays.
     const configuration = {
       queryId, dataBank: bank.target, backupOracle: backup.target, admin: admin.address,
-      relayReadDelay: 61n, minPauseDuration: 122n, dataBankChangeDelay: 303n,
-      backupChangeDelay: 604n, twapWindowMs: 30001n, challengeThresholdBps: 2005n,
-      challengeDelaySeconds: 31n, recoveryDelaySeconds: 97n,
+      relayReadDelay: 92n, paramChangeDelay: 303n,
+      twapWindowMs: 1800001n, challengeThresholdBps: 2005n,
+      challengeDelaySeconds: 31n, recoveryDelaySeconds: 97n, maxPriceAge: 7205n, decimals: 8n,
     };
     return { deployer, caller, admin, otherAdmin, bank, backup, Factory, factory, Shepherd, configuration };
-  }
-
-  function constructorArgs(c) {
-    return [c.queryId, c.dataBank, c.backupOracle, c.admin, c.relayReadDelay,
-      c.minPauseDuration, c.dataBankChangeDelay, c.backupChangeDelay, c.twapWindowMs,
-      c.challengeThresholdBps, [c.challengeDelaySeconds, c.recoveryDelaySeconds]];
   }
 
   async function create(factory, caller, configuration) {
@@ -44,10 +38,11 @@ describe("TellorShepherdFactory", function () {
     const shepherd = await create(f.factory, f.caller, c);
     const getters = {
       queryId: "queryId", dataBank: "dataBank", backupOracle: "backupOracle", admin: "admin",
-      relayReadDelay: "RELAY_READ_DELAY", minPauseDuration: "MIN_PAUSE_DURATION",
-      dataBankChangeDelay: "DATA_BANK_CHANGE_DELAY", backupChangeDelay: "BACKUP_CHANGE_DELAY",
-      twapWindowMs: "TWAP_WINDOW_MS", challengeThresholdBps: "CHALLENGE_THRESHOLD_BPS",
+      relayReadDelay: "RELAY_READ_DELAY",
+      paramChangeDelay: "PARAM_CHANGE_DELAY",
+      twapWindowMs: "TWAP_WINDOW_MS", challengeThresholdBps: "challengeThresholdBps",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
+      maxPriceAge: "MAX_PRICE_AGE", decimals: "decimals",
     };
     for (const [field, getter] of Object.entries(getters)) {
       expect(await shepherd[getter](), field).to.equal(c[field]);
@@ -97,7 +92,7 @@ describe("TellorShepherdFactory", function () {
 
   it("registers only its own deployments, not equivalent direct or other-factory instances", async function () {
     const f = await loadFixture(deployFixture);
-    const direct = await f.Shepherd.deploy(...constructorArgs(f.configuration));
+    const direct = await f.Shepherd.deploy(f.configuration);
     const otherFactory = await f.Factory.deploy();
     const other = await create(otherFactory, f.caller, f.configuration);
     for (const address of [ethers.ZeroAddress, f.caller.address, f.bank.target, direct.target, other.target]) {
@@ -111,13 +106,15 @@ describe("TellorShepherdFactory", function () {
     ["backupOracle", ethers.ZeroAddress, "BackupOracleHasNoCode"],
     ["admin", ethers.ZeroAddress, "InvalidAdmin"],
     ["relayReadDelay", 0n, "InvalidRelayReadDelay"],
-    ["minPauseDuration", 0n, "InvalidMinPauseDuration"],
-    ["dataBankChangeDelay", 0n, "InvalidDataBankChangeDelay"],
-    ["backupChangeDelay", 0n, "InvalidBackupChangeDelay"],
+    ["relayReadDelay", 91n, "InvalidChallengeDelay"],
+    ["maxPriceAge", 0n, "InvalidMaxPriceAge"],
+    ["maxPriceAge", ethers.MaxUint256 / 1000n + 1n, "InvalidMaxPriceAge"],
+    ["paramChangeDelay", 0n, "InvalidParamChangeDelay"],
     ["twapWindowMs", 0n, "InvalidTwapWindow"],
     ["challengeThresholdBps", 0n, "InvalidChallengeThreshold"],
     ["challengeThresholdBps", 10000n, "InvalidChallengeThreshold"],
-    ["challengeDelaySeconds", 30n, "InvalidChallengeDelay"],
+    ["challengeDelaySeconds", 0n, "InvalidChallengeDelay"],
+    ["challengeDelaySeconds", 92n, "InvalidChallengeDelay"],
     ["recoveryDelaySeconds", 0n, "InvalidRecoveryDelay"],
   ];
 

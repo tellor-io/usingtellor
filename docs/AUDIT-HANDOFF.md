@@ -34,16 +34,65 @@ npm run test:euler
 
 The integration commands build each adaptor before loading its bytecode. Run `forge test` from each adaptor repository for its native tests.
 
-Local validation: 226 Hardhat tests, 31 Morpho integration tests, and 17 Euler integration tests pass. Native `forge test` runs crash in the installed nightly Foundry build. Morpho reports a `forge-std` revision mismatch; Euler has dependency files present but its submodule is uninitialized, and automatic registration fails under the local sandbox. Fresh-checkout reproduction remains unverified.
+Local validation after pre-resubmission organization and NatSpec cleanup: 278 Hardhat tests, 31 custom Morpho integration tests, 17 Euler integration tests, and 6 direct Morpho V2 integration tests pass. The direct V2 suite builds unmodified `morpho-blue-oracles` at `9d2a0b66589d0669c52e47310af8eb804facf97e` with its submodules and Solidity 0.8.21. Run `MORPHO_CHAINLINK_ROOT=/path/to/morpho-blue-oracles npm run test:morpho-chainlink` separately. Native `forge test --offline` now passes 27 Morpho tests and 26 Euler tests, including fuzz coverage and the Euler deployment-script test. The custom Morpho adaptor reports a `forge-std` revision mismatch; Euler has dependency files present but its submodule is uninitialized, and automatic registration fails under the local sandbox. Fresh-checkout reproduction of those adaptors remains unverified.
 
 ## Invariants and trust assumptions
 
-- Shepherd selects or refuses source data; its roles cannot supply a numeric price override. Primary reads select the newest relay strictly older than the relay-delay cutoff. Both paths preserve the source's millisecond timestamp.
-- Pause blocks both read paths. Source switches preserve pause. Only admin can unpause, after the minimum duration and with neither source replacement pending.
-- Deviation and missing TWAP coverage do not halt ordinary primary reads. Challenge request/execution require deviation; execution also requires the delay. Recovery requires backup permission at request and delayed execution. Neither flow proves continuous conditions between calls.
-- Source replacement is admin-only, delayed, and executed while paused. Successful replacement clears pending challenge/recovery timers. Backup construction checks code only; migration additionally requires a decodable `getCurrentValue(queryId)` response at proposal and execution, without validating price, timestamp, or recovery permission.
+- Shepherd selects or refuses source data; its roles cannot supply a numeric price override. Primary reads select the newest relay strictly older than the relay-delay cutoff. Both sources preserve their millisecond timestamps through `getCurrentValue()` and share its zero/future/maximum-age checks. Exact age equality is accepted, with no rounding before validation.
+- Pause blocks both read paths. Source switches preserve pause. Only admin can unpause, immediately and with neither source replacement pending. `pausedAt` records the current pause for monitoring; it imposes no waiting period.
+- Deviation and missing TWAP coverage do not halt ordinary primary reads. Challenge request requires deviation and saves the reference, threshold, and challenged aggregate timestamp. Resolution selects backup only on a newer report inside that frozen band during the permitted window; expiry clears the request without source calls. Recovery requires backup permission at request and delayed execution. Neither flow proves continuous conditions between calls.
+- Source replacement is admin-only, delayed by `PARAM_CHANGE_DELAY`, and executed while paused. Successful replacement clears pending challenge/recovery timers. Backup construction checks code only; migration additionally requires a decodable `getCurrentValue(queryId)` response at proposal and execution, without validating price, timestamp, or recovery permission.
 - TWAP weights stored relays, not complete Layer history. Relayer omission and long gaps can bias it. A compromised Layer supermajority can corrupt both primary values and their reference; timely monitoring and pause remain essential.
 - `StreamBackupOracle` trusts authorized streamers to author prices and its admin to appoint them, dispute reports, and permit recovery. Timestamps record submission, not underlying observation freshness. Recovery permission persists through primary migration. Reads inspect at most 32 mature reports after the maturity lookup and may refuse despite older usable data.
-- Adaptors enforce freshness, timestamp validity, scaling, and (for Morpho) cross-feed skew. They cannot detect a backup lying about observation freshness. Both sources must share price meaning and decimals.
+- Shepherd enforces deployment-configured freshness for both consumer APIs; the custom adaptors delegate timestamp validity and age checks to Shepherd and perform scaling. They require this freshness-enforcing Shepherd version; their constructors, factory settings/events, and deployment scripts no longer accept an independent maximum age. The custom Morpho adaptor also checks cross-feed skew. Neither Shepherd nor adaptors detect a backup lying about observation freshness. Both sources must share price meaning and the configured immutable decimals.
 - Shepherd's admin can replace either source after notice; there is no pauser veto. Factory registration proves deployment provenance, not safe settings, source trust, or the nominated admin's consent.
 
+## Challenge resolution
+
+`resolveChallenge()` replaces `executeChallenge()` and `cancelChallenge()`. The constructor requires
+`TWAP_WINDOW_MS > 0`, `CHALLENGE_DELAY_SECONDS > 0`, and
+`RELAY_READ_DELAY - CHALLENGE_DELAY_SECONDS > 60 seconds`. The TWAP window is independent of both delays:
+resolution compares against the frozen reference, so it need not wait for a full TWAP window. Ordering is validated before subtraction;
+a gap of exactly 60 seconds fails and 61 succeeds. This configuration margin does not compensate for a late challenge.
+Let `C` be the challenge request time, `D` the challenge delay, and `R` the relay read delay:
+
+| Resolution time / evidence | Result |
+|---|---|
+| Before `C + D` | Revert, preserving the request. |
+| From `C + D` through `C + R`, inclusive; newer aggregate inside the saved band | Clear all challenge state, select backup, emit `ChallengeExecuted`. Threshold equality is inside. |
+| Same window; no newer aggregate, outside-band price, or invalid evidence | Revert, preserving the original timer and reference. |
+| Strictly after `C + R` | Clear all challenge state, remain on primary, emit `ChallengeExpired`; do not call either source. |
+
+The frozen reference prevents TWAP drift from being mistaken for a return to the original band.
+The saved threshold prevents later admin changes from widening or narrowing that band.
+An outside-band report leaves time for a later return, rather than cancelling at the earliest resolution time.
+DataBank's strictly increasing aggregate timestamps identify newer reports; a new relay timestamp alone is insufficient.
+Source migrations clear the saved evidence as well as the timer. Resolution and expiry preserve pause and its clock.
+
+Expiry requires a transaction and is measured from the request, not the challenged report's relay time.
+Preventing outlier consumption still requires a timely challenge, a relayed return, and resolution before that report matures.
+Pause remains the main defense; sustained moves continue on primary. Backup readiness remains necessary for liveness,
+and recovery permission must not allow the challenged outlier to be served on return to primary.
+The resolver does not prove manipulation, continuous recovery, or independent price truth.
+
+## Shared consumer read policy
+
+Both external read methods call `_getCurrentValue()`. `latestRoundData()` then checks the positive `int256` range and floors source timestamps to seconds for `startedAt` and `updatedAt`. Round IDs are zero sentinels; historical Chainlink rounds are unsupported. This provides the two selectors used by Morpho V2 without an extra wrapper or duplicated read policy. Morpho V2 does not inspect timestamps or enforce cross-feed skew. Diagnostic and transition calls remain independent of consumer freshness, including unconditional challenge expiry.
+
+`MAX_PRICE_AGE` is immutable, positive seconds, bounded so multiplication by 1000 cannot overflow. A short limit can prevent mature observations from ever being read; deployment configuration must account for all source and relay delays. No fallback is attempted on stale selected data. `StreamBackupOracle` timestamps still describe trusted-streamer submission, not verified market observation time.
+
+The constructor now accepts the same named `TellorShepherd.Configuration` struct as the factory, including `maxPriceAge` and `decimals`. This avoids the Solidity 0.8.19 constructor stack limit without changing compiler settings. Deployment callers must update their arguments. Refresh packaged artifacts before release; they remain excluded from incremental rebuild changes.
+
+## Parameter governance
+
+One positive immutable `PARAM_CHANGE_DELAY` governs source and threshold changes; proposals retain independent timestamps and cancellation. This simplifies deployment at the cost of separate source/threshold notice policies. Challenge and recovery delays remain separate because only challenge timing is constrained by relay consumption.
+
+Threshold proposals, cancellation, and execution are admin-only in either mode, paused or unpaused. Execution permits exact delay equality. Thresholds remain 1–9999 bps; zero marks no pending proposal. An existing proposal must be cancelled before replacement, and unchanged thresholds are rejected. Threshold updates preserve pending transitions, source proposals, and pause. They do not block unpause. Challenges snapshot the active threshold at request and clear it on resolution, expiry, or source migration. New challenges use the updated threshold.
+
+Deployment configuration replaces `dataBankChangeDelay` and `backupChangeDelay` with `paramChangeDelay`; the factory event uses that same tuple. The current threshold getter is `challengeThresholdBps()` (renamed from the former uppercase getter); its value changes only through delayed execution. There is no independent veto over any admin proposal.
+
+## Resubmission checkpoint
+
+The agreed functional updates are committed through `9214ede` in `usingtellor`: frozen-reference challenge resolution, shared consumer freshness and Chainlink-compatible reads, immediate admin unpause, independent TWAP/challenge timing with a strict resolution margin, and delayed threshold governance with shared parameter notice. The custom adaptors delegate freshness to Shepherd.
+
+The final cleanup alphabetizes functions within subsections and clarifies NatSpec for threshold state, deployment units, backup reports, and read returns. Function signatures, executable bodies, and state declarations were compared against the committed versions and are unchanged. Cleanup is uncommitted across the three repositories. No agreed functional updates remain. Packaged artifact refresh and the outstanding fresh-checkout reproduction check remain release-preparation work; review the source and build it using the commands above.

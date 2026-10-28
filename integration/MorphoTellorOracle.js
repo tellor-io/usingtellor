@@ -26,7 +26,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     ["string", "bytes"], ["SpotPrice", coder.encode(["string", "string"], [asset, "usd"])]
   ));
 
-  async function fixture() {
+  async function fixture(feedDecimals = [18, 18]) {
     const [admin, streamer, outsider] = await ethers.getSigners();
     const ids = [spotId("eth"), spotId("usdc")];
     const validatorSet = await h.createTellorValset({ tellorChainId: "tellor-1" });
@@ -39,9 +39,14 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     const backup = await Stream.deploy(admin.address, streamer.address, 60);
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherds = [];
-    for (const id of ids) {
-      shepherds.push(await Shepherd.deploy(id, bank.target, backup.target, admin.address,
-        60, 120, 300, 600, 30000, 2000, [30, 90]));
+    for (const [leg, id] of ids.entries()) {
+      shepherds.push(await Shepherd.deploy({
+        queryId: id, dataBank: bank.target, backupOracle: backup.target,
+        admin: admin.address, relayReadDelay: 120,
+        paramChangeDelay: 300, twapWindowMs: 30000,
+        challengeThresholdBps: 2000, challengeDelaySeconds: 30, recoveryDelaySeconds: 90,
+        maxPriceAge: 3600, decimals: feedDecimals[leg]
+      }));
     }
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
     const f = { admin, streamer, outsider, ids, validatorSet, Bank, bank, backup, shepherds, Adaptor };
@@ -49,9 +54,9 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     return f;
   }
 
-  async function deployAdaptor(f, { age = 3600, skew = 600, decimals = [18, 6, 18, 18], ids = f.ids } = {}) {
+  async function deployAdaptor(f, { skew = 600, decimals = [18, 6, 18, 18], ids = f.ids } = {}) {
     return f.Adaptor.deploy(f.shepherds[0].target, f.shepherds[1].target,
-      age, skew, "Local Shepherd WETH/USDC", ...ids, ...decimals);
+      skew, "Local Shepherd WETH/USDC", ...ids, ...decimals);
   }
 
   async function relay(f, leg, value, timestamp, bank = f.bank) {
@@ -68,7 +73,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       await relay(f, leg, price, f.startMs);
       await relay(f, leg, price, f.startMs + 30000);
     }
-    await time.increase(61);
+    await time.increase(121);
     return f;
   }
 
@@ -80,8 +85,9 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     const index = (await f.backup.reportCount(f.ids[leg])) - 1n;
     const report = await f.backup.reports(f.ids[leg], index);
     await f.shepherds[leg].connect(f.outsider).requestChallenge();
+    await relay(f, leg, primaryPrice, f.startMs + 45000);
     await time.increase(30);
-    await f.shepherds[leg].connect(f.outsider).executeChallenge();
+    await f.shepherds[leg].connect(f.outsider).resolveChallenge();
     await time.increaseTo(report.submittedAt + 60n);
     return [value, report.submittedAt * 1000n];
   }
@@ -112,14 +118,14 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
 
   for (const leg of [0, 1]) {
     for (const delta of [-1, 0, 1]) {
-      it(`enforces staleness at limit ${delta >= 0 ? "+" : ""}${delta}ms on leg ${leg}`, async function () {
+      it(`propagates Shepherd staleness at limit ${delta >= 0 ? "+" : ""}${delta}ms on leg ${leg}`, async function () {
         const f = await loadFixture(fixture);
         const baseMs = (await time.latest() - 120) * 1000;
         for (const index of [0, 1]) {
           await relay(f, index, index === 0 ? collateralPrice : loanPrice, baseMs - (index === leg ? delta : 0));
         }
         await time.increaseTo(baseMs / 1000 + 3600);
-        if (delta > 0) await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "OracleStale");
+        if (delta > 0) await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
         else expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
       });
     }
@@ -127,11 +133,11 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       const f = await loadFixture(fixture);
       const stamp = (await time.latest() - 120) * 1000;
       await relay(f, 1 - leg, leg === 0 ? loanPrice : collateralPrice, stamp);
-      await time.increase(61);
+      await time.increase(121);
       await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "NoMatureData");
       await relay(f, leg, leg === 0 ? collateralPrice : loanPrice, stamp);
       const relayAt = BigInt(await time.latest());
-      await time.increaseTo(relayAt + 60n);
+      await time.increaseTo(relayAt + 120n);
       await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "NoMatureData");
       await time.increase(1);
       expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
@@ -158,8 +164,8 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       expect(await f.shepherds[leg].getCurrentValue()).to.deep.equal(pair);
       expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
       await time.increase(1);
-      expect(await f.shepherds[leg].getCurrentValue()).to.deep.equal(pair);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "OracleStale");
+      await expect(f.shepherds[leg].getCurrentValue()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
     });
   }
 
@@ -172,7 +178,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
           await relay(f, leg, leg === 0 ? collateralPrice : loanPrice,
             baseMs - (leg === olderLeg ? 600000 + excess : 0));
         }
-        await time.increase(61);
+        await time.increase(121);
         // Both feeds are within 3600 seconds; only the skew differs between cases.
         if (excess) await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "CrossFeedSkew");
         else expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
@@ -202,11 +208,11 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       await f.shepherds[leg].unpause();
       // The concrete stream cannot author these timestamps. Fault injection stays at the source.
       await mock.configureRead(leg === 0 ? collateralPrice : loanPrice, 0, 0);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "NoDataAvailable");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "InvalidTimestamp");
       const nextBlock = BigInt(await time.latest()) + 1n;
       await time.setNextBlockTimestamp(nextBlock);
       await mock.configureRead(leg === 0 ? collateralPrice : loanPrice, nextBlock * 1000n + 1n, 0);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "InvalidTimestamp");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "InvalidTimestamp");
       const stamp = BigInt(f.startMs + 30000);
       await mock.configureRead(0, stamp, 0);
       await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "ZeroValue");
@@ -224,11 +230,11 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     { label: "maximum supported scale", prices: [1n, 10n ** 18n], decimals: [0, 41, 0, 0], scale: 10n ** 77n },
   ]) {
     it(`computes ${example.label} from real primary reports`, async function () {
-      const f = await loadFixture(fixture);
+      const f = await fixture(example.decimals.slice(2));
       const oracle = await deployAdaptor(f, { decimals: example.decimals });
       const stamp = (await time.latest() - 120) * 1000 + 17;
       for (const leg of [0, 1]) await relay(f, leg, example.prices[leg], stamp);
-      await time.increase(61);
+      await time.increase(121);
       expect(await oracle.price()).to.equal(example.prices[0] * example.scale / example.prices[1]);
     });
   }
@@ -238,18 +244,18 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     const stamp = (await time.latest() - 120) * 1000;
     await relay(f, 0, 1n, stamp);
     await relay(f, 1, 10n ** 25n, stamp);
-    await time.increase(61);
+    await time.increase(121);
     await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "ZeroPrice");
   });
 
   it("refuses an unrepresentable final result even though both primary prices are valid", async function () {
-    const f = await loadFixture(fixture);
+    const f = await fixture([0, 0]);
     const oracle = await deployAdaptor(f, { decimals: [0, 41, 0, 0] });
     const stamp = (await time.latest() - 120) * 1000;
     const collateral = (1n << 192n) - 1n;
     await relay(f, 0, collateral, stamp);
     await relay(f, 1, 1n, stamp);
-    await time.increase(61);
+    await time.increase(121);
     expect(collateral * 10n ** 77n).to.be.greaterThan(ethers.MaxUint256);
     await expect(oracle.price()).to.be.revertedWithCustomError(oracle, "MulDivOverflow");
   });

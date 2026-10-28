@@ -21,6 +21,28 @@ See the [audit handoff](docs/AUDIT-HANDOFF.md) for review scope, build/test comm
 
 Use this package with your own npm project. See the [SampleLayerUser repo](https://github.com/tellor-io/SampleLayerUser) for usage examples.
 
+### Shepherd read APIs
+
+Deploy Shepherd with a single `TellorShepherd.Configuration` struct, also used by the factory. `maxPriceAge` (seconds) and `decimals` are immutable deployment settings. Both primary and backup must use the configured price precision. Choose the maximum age to accommodate observation age, relay/backup maturity delays, and expected reporting gaps.
+
+`getCurrentValue()` and `latestRoundData()` are external wrappers around `_getCurrentValue()` and share pause, source selection, and freshness checks: zero, future, or over-age source timestamps revert, with exact maximum age allowed. `getCurrentValue()` preserves milliseconds; `latestRoundData()` converts source timestamps to seconds and additionally requires the price to fit `int256`. Neither rescales the price. The latter, together with `decimals()`, supports [MorphoChainlinkOracleV2](https://github.com/morpho-org/morpho-blue-oracles/blob/main/src/morpho-chainlink/MorphoChainlinkOracleV2.sol). Round IDs are zero sentinels; historical Chainlink rounds are not implemented. Standard Morpho V2 does not enforce cross-feed timestamp skew. The custom Tellor adaptor below retains that additional policy. Both custom adaptors delegate individual-feed freshness to Shepherd; configure the intended age limit there when deploying.
+
+Deployment requires `RELAY_READ_DELAY - CHALLENGE_DELAY_SECONDS > 60 seconds`, with positive challenge delay and TWAP window configured independently. This leaves time to submit resolution; timely monitoring and relay availability are still required.
+
+Admin can unpause immediately when neither source migration is pending. Source migrations require delayed, paused execution. Deployment configuration no longer includes `minPauseDuration`; `pausedAt` remains available for monitoring.
+
+`paramChangeDelay` is the positive, immutable notice period shared by DataBank, backup, and threshold updates (`PARAM_CHANGE_DELAY`). It replaces the two source-delay configuration fields and getters. Each proposal keeps its own timer. Challenge and recovery delays remain separate.
+
+Admin may call `proposeThresholdChange`, `cancelThresholdChange`, and `executeThresholdChange` while paused or unpaused. Thresholds are 1–9999 bps; cancel before replacing a proposal. `challengeThresholdBps()` returns the current threshold. Active challenges retain their saved threshold and TWAP reference, and a pending threshold update does not block unpause.
+
+For direct V2 integration tests, initialize the upstream `morpho-blue-oracles` checkout and its submodules, then run:
+
+```bash
+MORPHO_CHAINLINK_ROOT=/path/to/morpho-blue-oracles npm run test:morpho-chainlink
+```
+
+The default checkout location is `../morpho-blue-oracles`. The suite builds the unmodified V2 contract with its own Solidity 0.8.21 configuration and tests real primary/backup reads, scaling, pause, and staleness.
+
 ### Local Shepherd / Morpho integration tests
 
 During the Shepherd rebuild, run `npm run test:morpho` to test the local contracts together without publishing an npm package. This requires this repo's installed npm dependencies, Forge on `PATH`, and a local `morpho-tellor-adapter` checkout with its Foundry dependencies and Solidity 0.8.20 compiler available.
