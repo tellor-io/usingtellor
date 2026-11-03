@@ -9,6 +9,12 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
   const delay = 60;
   const encode = (value) => coder.encode(["uint256"], [value]);
 
+  async function sources(bank, queryId, decimals = 18) {
+    const primary = await (await ethers.getContractFactory("TellorTwapSource")).deploy(bank, queryId, decimals, 60, 30000);
+    const backup = await (await ethers.getContractFactory("TellorSpotSource")).deploy(bank, queryId, decimals, 60);
+    return { primary, backup };
+  }
+
   async function deployReadFixture() {
     const [deployer, admin] = await ethers.getSigners();
     const queryId = ethers.id("primary-read-test-feed");
@@ -19,10 +25,11 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const Bank = await ethers.getContractFactory("TellorDataBank");
     const bank = await Bank.deploy(bridge.target);
     const Shepherd = await ethers.getContractFactory("TellorShepherdHarness");
-    const shepherd = await Shepherd.deploy(queryId, bank.target, admin.address, delay, 120, 300, 30000, 2000, [30, 90]);
+    const { primary, backup } = await sources(bank.target, queryId);
+    const shepherd = await Shepherd.deploy(queryId, 18, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90]);
     await shepherd.waitForDeployment();
     await shepherd.setModeForTest(1);
-    return { deployer, admin, queryId, validatorSet, bank, Shepherd, shepherd };
+    return { deployer, admin, queryId, validatorSet, bank, primary, backup, Shepherd, shepherd };
   }
 
   async function relay(fixture, payload, overrides = {}, queryId = fixture.queryId) {
@@ -72,31 +79,32 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const f = await loadFixture(deployReadFixture);
     const Bank = await ethers.getContractFactory("TellorDataBank");
     const replacement = await Bank.deploy(await f.bank.dataBridge());
+    const next = await sources(replacement.target, f.queryId);
     const original = await relay(f, encode(100));
     const updated = await relay({ ...f, bank: replacement }, encode(200));
     await time.increaseTo(updated.relayTime + delay + 1);
-    await f.shepherd.connect(f.admin).proposeDataBankChange(replacement.target);
+    await f.shepherd.connect(f.admin).proposeSourcesChange(next.primary.target, next.backup.target);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([100n, original.aggregateTimestamp]);
     await f.shepherd.connect(f.admin).pause();
     const pausedAt = await f.shepherd.pausedAt();
-    await time.setNextBlockTimestamp(Number(await f.shepherd.dataBankProposedAt()) + 300);
-    await expect(f.shepherd.connect(f.admin).executeDataBankChange())
-      .to.emit(f.shepherd, "DataBankChanged").withArgs(f.bank.target, replacement.target);
+    await time.setNextBlockTimestamp(Number(await f.shepherd.sourcesProposedAt()) + 300);
+    await expect(f.shepherd.connect(f.admin).executeSourcesChange())
+      .to.emit(f.shepherd, "SourcesChanged").withArgs(f.primary.target, f.backup.target, next.primary.target, next.backup.target);
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
     expect(await f.shepherd.mode()).to.equal(1);
     expect(await f.shepherd.queryId()).to.equal(f.queryId);
-    expect(await f.shepherd.pendingDataBank()).to.equal(ethers.ZeroAddress);
-    expect(await f.shepherd.dataBankProposedAt()).to.equal(0);
+    expect(await f.shepherd.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
+    expect(await f.shepherd.sourcesProposedAt()).to.equal(0);
     await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
     await f.shepherd.connect(f.admin).unpause();
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([200n, updated.aggregateTimestamp]);
-    await expect(f.shepherd.connect(f.admin).executeDataBankChange())
-      .to.be.revertedWithCustomError(f.shepherd, "NoPendingDataBankChange");
+    await expect(f.shepherd.connect(f.admin).executeSourcesChange())
+      .to.be.revertedWithCustomError(f.shepherd, "NoPendingSourcesChange");
   });
 
   it("rejects an empty history", async function () {
-    const { shepherd } = await loadFixture(deployReadFixture);
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "NoMatureData");
+    const { shepherd, backup } = await loadFixture(deployReadFixture);
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
   });
 
   it("uses relay time for strict maturity and preserves subsecond observation time", async function () {
@@ -108,9 +116,9 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     });
     // The observation is already old; only EVM relay time starts the read delay.
     await time.increaseTo(record.relayTime + delay - 1);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "NoMatureData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "NoData");
     await time.increaseTo(record.relayTime + delay);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "NoMatureData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "NoData");
     await time.increaseTo(record.relayTime + delay + 1);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([2000n, BigInt(observation)]);
   });
@@ -133,7 +141,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const f = await loadFixture(deployReadFixture);
     const record = await relay(f, encode(2000), {}, ethers.id("another-feed"));
     await time.increaseTo(record.relayTime + delay + 1);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "NoMatureData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "NoData");
   });
 
   for (const length of [0, 1, 31]) {
@@ -142,7 +150,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
       await relay(f, encode(100));
       await time.increase(10);
       await injectLookupPayload(f, "0x" + "ab".repeat(length));
-      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "InvalidValueLength");
+      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "InvalidValueLength");
     });
   }
 
@@ -152,7 +160,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
       await relay(f, encode(100));
       await time.increase(10);
       await injectLookupPayload(f, encode(0) + suffix);
-      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ZeroValue");
+      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "ZeroValue");
     });
   }
 
@@ -167,20 +175,22 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
   it("reverts when the configured dependency cannot answer the lookup", async function () {
     const f = await loadFixture(deployReadFixture);
     const incompatible = await (await ethers.getContractFactory("TellorLab")).deploy();
-    const shepherd = await f.Shepherd.deploy(f.queryId, incompatible.target, f.admin.address, delay, 120, 300, 30000, 2000, [30, 90]);
+    const next = await sources(incompatible.target, f.queryId);
+    const shepherd = await f.Shepherd.deploy(f.queryId, 18, next.primary.target, next.backup.target, f.admin.address, 120, 300, 2000, [30, 90]);
     await shepherd.setModeForTest(1);
     await expect(shepherd.getCurrentValue()).to.be.reverted;
   });
 
-  it("uses checked subtraction for underflow and reports no data at a zero cutoff", async function () {
+  it("propagates source unavailability when delay exceeds chain time", async function () {
     const f = await loadFixture(deployReadFixture);
     const futureDelay = (await time.latest()) + 100;
-    const shepherd = await f.Shepherd.deploy(f.queryId, f.bank.target, f.admin.address, futureDelay, 120, 300, 30000, 2000, [30, 90]);
+    const backup = await (await ethers.getContractFactory("TellorSpotSource")).deploy(f.bank.target, f.queryId, 18, futureDelay);
+    const shepherd = await f.Shepherd.deploy(f.queryId, 18, f.primary.target, backup.target, f.admin.address, 120, 300, 2000, [30, 90]);
     await shepherd.setModeForTest(1);
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithPanic(0x11);
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
     await time.increaseTo(futureDelay);
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "NoMatureData");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
     await time.increaseTo(futureDelay + 1);
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "NoMatureData");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
   });
 });

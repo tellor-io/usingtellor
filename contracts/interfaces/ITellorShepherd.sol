@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+import {IPriceSource} from "./IPriceSource.sol";
+
 /**
  * @title ITellorShepherd
  * @notice Consumer reads, events, and errors for a per-feed Tellor safety layer.
@@ -11,9 +13,9 @@ interface ITellorShepherd {
     event ChallengeExecuted(address indexed caller);
     event ChallengeInvalidated();
     event ChallengeRequested(address indexed caller, uint256 requestedAt);
-    event DataBankChangeCancelled(address indexed proposedBank);
-    event DataBankChanged(address indexed previousBank, address indexed newBank);
-    event DataBankChangeProposed(address indexed proposedBank, uint256 proposedAt);
+    event SourcesChangeCancelled(address indexed proposedPrimary, address indexed proposedBackup);
+    event SourcesChanged(address previousPrimary, address previousBackup, address indexed newPrimary, address indexed newBackup);
+    event SourcesChangeProposed(address indexed proposedPrimary, address indexed proposedBackup, uint256 proposedAt);
     event Paused(address indexed caller);
     event PauserAdded(address indexed pauser);
     event PauserRemoved(address indexed pauser);
@@ -28,28 +30,25 @@ interface ITellorShepherd {
     error AlreadyPauser();
     error ChallengeAlreadyPending();
     error ChallengeDelayNotElapsed();
-    error DataBankChangeDelayNotElapsed();
-    error DataBankChangePending();
-    error DataBankHasNoCode();
-    error DataBankUnchanged();
-    error DiagnosticUnavailable();
+    error SourcesChangeDelayNotElapsed();
+    error SourcesChangePending();
+    error SourceHasNoCode();
+    error SourcesUnchanged();
     error InvalidAdmin();
     error InvalidChallengeDelay();
     error InvalidChallengeThreshold();
-    error InvalidDataBankChangeDelay();
+    error InvalidSourcesChangeDelay();
     error InvalidMinPauseDuration();
     error InvalidPauser();
     error InvalidQueryId();
+    error InvalidDecimals();
+    error InvalidTimestamp();
+    error SourceQueryIdMismatch();
+    error SourceDecimalsMismatch();
     error InvalidRecoveryDelay();
-    error InvalidRelayReadDelay();
-    error InvalidTwapReference();
-    error InvalidTwapWindow();
-    error InvalidValueLength();
-    error NoMatureData();
     error NoPendingChallenge();
-    error NoPendingDataBankChange();
+    error NoPendingSourcesChange();
     error NoPendingRecovery();
-    error NoTwapData();
     error NotAdmin();
     error NotAuthorizedToPause();
     error NotBackupMode();
@@ -68,14 +67,17 @@ interface ITellorShepherd {
 
     // Getter functions
 
-    /// @notice Returns the selected source's value and timestamp, or reverts if the read is unavailable.
-    /// @dev Primary returns the TWAP interval-end timestamp; backup returns spot aggregate time.
-    /// Both are delayed DataBank reads. Never substitutes relay, switch, or read time.
-    /// Endpoint age does not bound TWAP contributor age. Paused reads revert.
-    /// @return value The selected source's price, without adaptor-specific scaling.
-    /// @return aggregateTimestamp The selected source's timestamp in milliseconds.
+    /// @notice Returns only the selected source's nonzero value and original millisecond timestamp.
+    /// @dev Paused, failed, zero/future timestamp reads revert. No automatic fallback or maximum age check.
+    /// A TWAP endpoint does not establish contributor freshness. No adaptor-specific rescaling occurs.
     function getCurrentValue() external view returns (uint256 value, uint256 aggregateTimestamp);
 
-    /// @notice Returns the immutable Tellor query ID curated by this Shepherd.
+    /// @notice Returns the immutable agreed base/quote identifier.
     function queryId() external view returns (bytes32);
+
+    /// @notice Returns the immutable source price precision.
+    function decimals() external view returns (uint8);
+
+    function primarySource() external view returns (IPriceSource);
+    function backupSource() external view returns (IPriceSource);
 }

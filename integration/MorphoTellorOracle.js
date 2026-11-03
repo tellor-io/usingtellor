@@ -26,7 +26,13 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     ["string", "bytes"], ["SpotPrice", coder.encode(["string", "string"], [asset, "usd"])]
   ));
 
-  async function fixture() {
+  async function sources(bank, queryId, decimals = 18) {
+    const primary = await (await ethers.getContractFactory("TellorTwapSource")).deploy(bank, queryId, decimals, 60, 30000);
+    const backup = await (await ethers.getContractFactory("TellorSpotSource")).deploy(bank, queryId, decimals, 60);
+    return { primary, backup };
+  }
+
+  async function fixture(feedDecimals = [18, 18]) {
     const [admin, outsider] = await ethers.getSigners();
     const ids = [spotId("eth"), spotId("usdc")];
     const validatorSet = await h.createTellorValset({ tellorChainId: "tellor-1" });
@@ -37,12 +43,15 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     const bank = await Bank.deploy(bridge.target);
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const shepherds = [];
-    for (const id of ids) {
-      shepherds.push(await Shepherd.deploy(id, bank.target, admin.address,
-        60, 120, 300, 30000, 2000, [30, 90]));
+    const sourcePairs = [];
+    for (const [leg, id] of ids.entries()) {
+      const pair = await sources(bank.target, id, feedDecimals[leg]);
+      sourcePairs.push(pair);
+      shepherds.push(await Shepherd.deploy(id, feedDecimals[leg], pair.primary.target, pair.backup.target, admin.address,
+        120, 300, 2000, [30, 90]));
     }
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
-    const f = { admin, outsider, ids, validatorSet, Bank, bank, shepherds, Adaptor };
+    const f = { admin, outsider, ids, validatorSet, Bank, bank, shepherds, sourcePairs, Adaptor };
     f.oracle = await deployAdaptor(f);
     return f;
   }
@@ -78,6 +87,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
   async function switchToBackup(f, leg, value) {
     const primaryPrice = leg === 0 ? collateralPrice : loanPrice;
     await relay(f, leg, primaryPrice * 3n / 2n, f.startMs + 40000);
+    await time.increase(61);
     await f.shepherds[leg].connect(f.outsider).requestChallenge();
     await time.increase(30);
     await f.shepherds[leg].connect(f.outsider).executeChallenge();
@@ -131,11 +141,11 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       const stamp = (await time.latest() - 120) * 1000;
       await relayWindow(f, 1 - leg, leg === 0 ? loanPrice : collateralPrice, stamp);
       await time.increase(61);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "NoTwapData");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.sourcePairs[leg].primary, "NoTwapData");
       await relayWindow(f, leg, leg === 0 ? collateralPrice : loanPrice, stamp);
       const relayAt = BigInt(await time.latest());
       await time.increaseTo(relayAt + 60n);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "NoTwapData");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.sourcePairs[leg].primary, "NoTwapData");
       await time.increase(1);
       expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
       await f.shepherds[leg].pause();
@@ -193,29 +203,27 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
   });
 
   for (const leg of [0, 1]) {
-    it(`exposes missing timestamp checks and propagates source failures on leg ${leg}`, async function () {
+    it(`rejects invalid timestamps and propagates source failures on leg ${leg}`, async function () {
       const f = await loadFixture(primaryFixture);
       await switchToBackup(f, leg, leg === 0 ? collateralPrice : loanPrice);
-      const Mock = await ethers.getContractFactory("TwapDataBankMock");
-      const mock = await Mock.deploy();
+      const mock = await (await ethers.getContractFactory("PriceSourceMock")).deploy(f.ids[leg], 18);
       const value = leg === 0 ? collateralPrice : loanPrice;
-      const record = (price, stamp) => [coder.encode(["uint256"], [price]), 1, stamp, stamp, 1];
-      await mock.configureEnd(true, record(value, f.startMs + 30000));
-      await f.shepherds[leg].proposeDataBankChange(mock.target);
+      await mock.configureRead(value, f.startMs + 30000, 0);
+      await f.shepherds[leg].proposeSourcesChange(f.sourcePairs[leg].primary.target, mock.target);
       await f.shepherds[leg].pause();
       await time.increase(300);
-      await f.shepherds[leg].executeDataBankChange();
+      await f.shepherds[leg].executeSourcesChange();
       await f.shepherds[leg].unpause();
-      // Invalid source timestamps cannot be admitted by the real bank; inject at its boundary.
+      // Fault injection at the common source boundary, without bypassing Shepherd.
       const uncheckedAgeOracle = await deployAdaptor(f, { skew: ethers.MaxUint256 / 1000n });
-      await mock.configureEnd(true, record(value, 0));
-      expect(await uncheckedAgeOracle.price()).to.equal(3000n * 10n ** 24n);
-      await mock.configureEnd(true, record(value, (BigInt(await time.latest()) + 10n) * 1000n));
-      expect(await uncheckedAgeOracle.price()).to.equal(3000n * 10n ** 24n);
-      await mock.configureEnd(true, record(0, f.startMs + 30000));
+      await mock.configureRead(value, 0, 0);
+      await expect(uncheckedAgeOracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "InvalidTimestamp");
+      await mock.configureRead(value, (BigInt(await time.latest()) + 10n) * 1000n, 0);
+      await expect(uncheckedAgeOracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "InvalidTimestamp");
+      await mock.configureRead(0, f.startMs + 30000, 0);
       await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "ZeroValue");
-      await mock.configureEnd(false, record(value, f.startMs + 30000));
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "NoMatureData");
+      await mock.configureRead(value, f.startMs + 30000, 1);
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(mock, "ReadUnavailable");
       for (const code of ["0x60006000fd", "0x60016000f3"]) {
         await setCode(mock.target, code);
         await expect(f.oracle.price()).to.be.reverted;
@@ -230,7 +238,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     { label: "maximum supported scale", prices: [1n, 10n ** 18n], decimals: [0, 41, 0, 0], scale: 10n ** 77n },
   ]) {
     it(`computes ${example.label} from real primary reports`, async function () {
-      const f = await loadFixture(fixture);
+      const f = await fixture(example.decimals.slice(2));
       const oracle = await deployAdaptor(f, { decimals: example.decimals });
       const stamp = (await time.latest() - 120) * 1000 + 17;
       for (const leg of [0, 1]) await relayWindow(f, leg, example.prices[leg], stamp);
@@ -249,7 +257,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
   });
 
   it("refuses an unrepresentable final result even though both primary prices are valid", async function () {
-    const f = await loadFixture(fixture);
+    const f = await fixture([0, 0]);
     const oracle = await deployAdaptor(f, { decimals: [0, 41, 0, 0] });
     const stamp = (await time.latest() - 120) * 1000;
     const collateral = (1n << 192n) - 1n;
@@ -260,15 +268,16 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     await expect(oracle.price()).to.be.revertedWithCustomError(oracle, "MulDivOverflow");
   });
 
-  it("keeps the adaptor address wiring through a paused bank migration and later recovery", async function () {
+  it("keeps the adaptor address wiring through a paused source-pair migration and later recovery", async function () {
     const f = await loadFixture(primaryFixture);
     await switchToBackup(f, 0, 2900n * unit);
     const replacement = await f.Bank.deploy(await f.bank.dataBridge());
     await relayWindow(f, 0, 3100n * unit, f.startMs + 50000, replacement);
-    await f.shepherds[0].proposeDataBankChange(replacement.target);
+    const next = await sources(replacement.target, f.ids[0]);
+    await f.shepherds[0].proposeSourcesChange(next.primary.target, next.backup.target);
     await f.shepherds[0].pause();
     await time.increase(300);
-    await f.shepherds[0].executeDataBankChange();
+    await f.shepherds[0].executeSourcesChange();
     await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[0], "ShepherdPaused");
     await f.shepherds[0].connect(f.outsider).requestRecovery();
     await time.increase(90);

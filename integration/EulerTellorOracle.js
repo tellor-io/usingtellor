@@ -26,7 +26,13 @@ describe("Euler adaptor - Real Shepherd integration", function () {
   const usd = ethers.getAddress(ethers.zeroPadValue(ethers.toBeHex(840), 20));
   const coder = ethers.AbiCoder.defaultAbiCoder();
 
-  async function fixture() {
+  async function sources(bank, queryId, decimals = 18) {
+    const primary = await (await ethers.getContractFactory("TellorTwapSource")).deploy(bank, queryId, decimals, 60, 30000);
+    const backup = await (await ethers.getContractFactory("TellorSpotSource")).deploy(bank, queryId, decimals, 60);
+    return { primary, backup };
+  }
+
+  async function fixture(feedDecimals = 18) {
     const [admin, outsider] = await ethers.getSigners();
     const queryId = ethers.keccak256(coder.encode(
       ["string", "bytes"], ["SpotPrice", coder.encode(["string", "string"], ["eth", "usd"])]
@@ -38,13 +44,14 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const Bank = await ethers.getContractFactory("TellorDataBank");
     const bank = await Bank.deploy(bridge.target);
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
-    const shepherd = await Shepherd.deploy(queryId, bank.target, admin.address,
-      60, 120, 300, 30000, 2000, [30, 90]);
+    const { primary, backup } = await sources(bank.target, queryId, feedDecimals);
+    const shepherd = await Shepherd.deploy(queryId, feedDecimals, primary.target, backup.target, admin.address,
+      120, 300, 2000, [30, 90]);
     const Token = new ethers.ContractFactory(tokenArtifact.abi, tokenArtifact.bytecode.object, admin);
     const base = (await Token.deploy(18)).target;
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
     const f = { admin, outsider, queryId, validatorSet, Bank, bank,
-      shepherd, Token, Adaptor, base, quote: usd };
+      shepherd, primary, backup, Token, Adaptor, base, quote: usd };
     f.oracle = await deployAdaptor(f);
     f.startMs = (await time.latest() - 120) * 1000 + 17;
     return f;
@@ -77,6 +84,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
   async function requestChallenge(f) {
     const relayAt = await relay(f, backupPrice, f.startMs + 40000);
     f.report = { relayAt, pair: [backupPrice, BigInt(f.startMs + 40000)] };
+    await time.increaseTo(relayAt + 61n);
     await f.shepherd.connect(f.outsider).requestChallenge();
     return await f.shepherd.challengeRequestedAt();
   }
@@ -86,7 +94,6 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const requestedAt = await requestChallenge(f);
     await time.setNextBlockTimestamp(requestedAt + 30n);
     await f.shepherd.connect(f.outsider).executeChallenge();
-    await time.increaseTo(f.report.relayAt + 61n);
     return f;
   }
 
@@ -135,29 +142,31 @@ describe("Euler adaptor - Real Shepherd integration", function () {
 
   it("requires mature TWAP coverage and excludes the endpoint price", async function () {
     const f = await loadFixture(fixture);
-    await expectRefusal(f, f.shepherd, "NoTwapData");
+    await expectRefusal(f, f.primary, "NoTwapData");
     const first = await relay(f, primaryPrice, f.startMs);
     await time.increaseTo(first + 61n);
-    await expectRefusal(f, f.shepherd, "NoTwapData");
+    await expectRefusal(f, f.primary, "NoTwapData");
     const end = await relay(f, primaryPrice * 2n, f.startMs + 30000);
     await time.increaseTo(end + 60n);
-    await expectRefusal(f, f.shepherd, "NoTwapData");
+    await expectRefusal(f, f.primary, "NoTwapData");
     await time.increase(1);
     await expectQuotes(f, primaryPrice);
     await relay(f, primaryPrice * 3n, f.startMs + 40000);
     await expectQuotes(f, primaryPrice);
   });
 
-  it("keeps backup spot delayed after switching, including exact maturity equality", async function () {
+  it("waits for backup relay maturity before challenge, including strict equality", async function () {
     const f = await loadFixture(primaryFixture);
-    const requestedAt = await requestChallenge(f);
+    const relayAt = await relay(f, backupPrice, f.startMs + 40000);
+    await time.setNextBlockTimestamp(relayAt + 60n);
+    await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotDeviating");
+    await time.setNextBlockTimestamp(relayAt + 61n);
+    await f.shepherd.requestChallenge();
+    const requestedAt = await f.shepherd.challengeRequestedAt();
     await time.setNextBlockTimestamp(requestedAt + 30n);
-    await f.shepherd.connect(f.outsider).executeChallenge();
-    await time.increaseTo(f.report.relayAt + 60n);
-    await expectQuotes(f, primaryPrice);
-    await time.increase(1);
+    await f.shepherd.executeChallenge();
     await expectQuotes(f, backupPrice);
-    expect(await f.shepherd.getCurrentValue()).to.deep.equal(f.report.pair);
+    expect(await f.shepherd.getCurrentValue()).to.deep.equal([backupPrice, BigInt(f.startMs + 40000)]);
   });
 
   for (const excessMs of [-1, 0, 1]) {
@@ -189,7 +198,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     { label: "a 512-bit intermediate product", decimals: [18, 18, 18], price: unit, amount: 1n << 240n },
   ]) {
     it(`computes ${example.label} from a real primary report`, async function () {
-      const f = await loadFixture(fixture);
+      const f = await fixture(example.decimals[2]);
       const base = (await f.Token.deploy(example.decimals[0])).target;
       const quote = (await f.Token.deploy(example.decimals[1])).target;
       const oracle = await deployAdaptor(f, { base, quote, decimals: example.decimals[2] });
@@ -211,10 +220,9 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await f.shepherd.connect(f.outsider).executeChallenge();
     expect(await f.shepherd.mode()).to.equal(1);
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
-    await time.increaseTo(f.report.relayAt + 61n);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
     await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(pausedAt + 120n);
+    if (BigInt(await time.latest()) < pausedAt + 120n) await time.setNextBlockTimestamp(pausedAt + 120n);
     await f.shepherd.unpause();
     await expectQuotes(f, backupPrice);
   });
@@ -234,32 +242,36 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await time.increaseTo(requestedAt + 90n);
     await f.shepherd.executeRecovery.staticCall();
     await relay(f, backupPrice * 2n, f.startMs + 80000);
+    await time.increase(61);
     await expect(f.shepherd.executeRecovery()).to.be.revertedWithCustomError(f.shepherd, "RecoveryNotAllowed");
     expect(await f.shepherd.recoveryRequestedAt()).to.equal(requestedAt);
     expect(await f.shepherd.mode()).to.equal(1);
     await relay(f, backupPrice, f.startMs + 90000);
+    await time.increase(61);
     await f.shepherd.connect(f.outsider).executeRecovery();
     expect(await f.shepherd.mode()).to.equal(0);
     expect(await f.shepherd.recoveryPending()).to.equal(false);
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
-    await time.setNextBlockTimestamp(pausedAt + 120n);
+    if (BigInt(await time.latest()) < pausedAt + 120n) await time.setNextBlockTimestamp(pausedAt + 120n);
     await f.shepherd.unpause();
-    expect(await f.shepherd.getCurrentValue()).to.deep.equal([backupPrice, BigInt(f.startMs + 70000)]);
-    await expectQuotes(f, backupPrice);
+    // 4500 held for 40000ms plus 9000 for 10000ms over 50000ms gives 5400.
+    expect(await f.shepherd.getCurrentValue()).to.deep.equal([backupPrice * 6n / 5n, BigInt(f.startMs + 90000)]);
+    await expectQuotes(f, backupPrice * 6n / 5n);
   });
 
-  it("keeps adaptor wiring through paused bank migration and recovery", async function () {
+  it("keeps adaptor wiring through paused source-pair migration and recovery", async function () {
     const f = await loadFixture(backupFixture);
     const replacementPrice = 3200n * unit;
     const bank = await f.Bank.deploy(await f.bank.dataBridge());
     await relayWindow(f, replacementPrice, f.startMs + 50000, bank);
-    await f.shepherd.proposeDataBankChange(bank.target);
+    const next = await sources(bank.target, f.queryId);
+    await f.shepherd.proposeSourcesChange(next.primary.target, next.backup.target);
     await expectQuotes(f, backupPrice);
     await f.shepherd.pause();
     const pausedAt = await f.shepherd.pausedAt();
-    await time.setNextBlockTimestamp((await f.shepherd.dataBankProposedAt()) + 300n);
-    await f.shepherd.executeDataBankChange();
+    await time.setNextBlockTimestamp((await f.shepherd.sourcesProposedAt()) + 300n);
+    await f.shepherd.executeSourcesChange();
     expect(await f.shepherd.mode()).to.equal(1);
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
@@ -274,27 +286,25 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await expectQuotes(f, replacementPrice);
   });
 
-  it("exposes missing timestamp checks and rejects invalid spot prices and bank failures", async function () {
+  it("rejects invalid source timestamps, prices and source failures", async function () {
     const f = await loadFixture(backupFixture);
-    const Mock = await ethers.getContractFactory("TwapDataBankMock");
-    const mock = await Mock.deploy();
-    const record = (value, stamp) => [coder.encode(["uint256"], [value]), 1, stamp, stamp, 1];
-    await mock.configureEnd(true, record(backupPrice, f.report.pair[1]));
-    await f.shepherd.proposeDataBankChange(mock.target);
+    const mock = await (await ethers.getContractFactory("PriceSourceMock")).deploy(f.queryId, 18);
+    await mock.configureRead(backupPrice, f.report.pair[1], 0);
+    await f.shepherd.proposeSourcesChange(f.primary.target, mock.target);
     await f.shepherd.pause();
-    await time.setNextBlockTimestamp((await f.shepherd.dataBankProposedAt()) + 300n);
-    await f.shepherd.executeDataBankChange();
+    await time.setNextBlockTimestamp((await f.shepherd.sourcesProposedAt()) + 300n);
+    await f.shepherd.executeSourcesChange();
     await f.shepherd.unpause();
     await expectQuotes(f, backupPrice);
-    // Only the bank is a fault double; all reads traverse the production Shepherd.
-    await mock.configureEnd(true, record(backupPrice, 0));
-    await expectQuotes(f, backupPrice);
-    await mock.configureEnd(true, record(backupPrice, (BigInt(await time.latest()) + 10n) * 1000n));
-    await expectQuotes(f, backupPrice);
-    await mock.configureEnd(true, record(0, f.report.pair[1]));
+    // Only the source is a fault double; all reads traverse the production Shepherd.
+    await mock.configureRead(backupPrice, 0, 0);
+    await expectRefusal(f, f.shepherd, "InvalidTimestamp");
+    await mock.configureRead(backupPrice, (BigInt(await time.latest()) + 10n) * 1000n, 0);
+    await expectRefusal(f, f.shepherd, "InvalidTimestamp");
+    await mock.configureRead(0, f.report.pair[1], 0);
     await expectRefusal(f, f.shepherd, "ZeroValue");
-    await mock.configureEnd(false, record(backupPrice, f.report.pair[1]));
-    await expectRefusal(f, f.shepherd, "NoMatureData");
+    await mock.configureRead(backupPrice, f.report.pair[1], 1);
+    await expectRefusal(f, mock, "ReadUnavailable");
     for (const code of ["0x60006000fd", "0x60016000f3"]) {
       await setCode(mock.target, code);
       await expectRefusal(f);

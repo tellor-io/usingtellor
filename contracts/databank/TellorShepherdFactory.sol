@@ -19,12 +19,12 @@ contract TellorShepherdFactory {
     // Structs
     struct Configuration {
         bytes32 queryId;
-        address dataBank;
+        uint8 decimals;
+        address primarySource;
+        address backupSource;
         address admin;
-        uint256 relayReadDelay;
         uint256 minPauseDuration;
-        uint256 dataBankChangeDelay;
-        uint256 twapWindowMs;
+        uint256 sourcesChangeDelay;
         uint256 challengeThresholdBps;
         uint256 challengeDelaySeconds;
         uint256 recoveryDelaySeconds;
@@ -38,18 +38,19 @@ contract TellorShepherdFactory {
      * or creation event. Duplicate configurations are allowed. Event source
      * addresses describe deployment; read Shepherd getters after source migration.
      * @param configuration Initial sources, authority, and immutable settings.
-     * All durations are seconds except twapWindowMs; threshold is basis points.
+     * All durations are seconds; threshold is basis points. Source timing calibration
+     * remains the deployer/admin responsibility, including after source replacement.
      * @return shepherd Address of the newly deployed and registered instance.
      */
     function createShepherd(Configuration calldata configuration) external returns (address shepherd) {
         shepherd = address(new TellorShepherd(
             configuration.queryId,
-            configuration.dataBank,
+            configuration.decimals,
+            configuration.primarySource,
+            configuration.backupSource,
             configuration.admin,
-            configuration.relayReadDelay,
             configuration.minPauseDuration,
-            configuration.dataBankChangeDelay,
-            configuration.twapWindowMs,
+            configuration.sourcesChangeDelay,
             configuration.challengeThresholdBps,
             [configuration.challengeDelaySeconds, configuration.recoveryDelaySeconds]
         ));
