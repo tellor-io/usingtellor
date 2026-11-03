@@ -12,18 +12,16 @@ contract TellorShepherdHarness is TellorShepherd {
     constructor(
         bytes32 _queryId,
         address _dataBank,
-        address _backupOracle,
         address _admin,
         uint256 _relayReadDelay,
         uint256 _minPauseDuration,
         uint256 _dataBankChangeDelay,
-        uint256 _backupChangeDelay,
         uint256 _twapWindowMs,
         uint256 _challengeThresholdBps,
         uint256[2] memory _transitionDelaysSeconds
     ) TellorShepherd(
-        _queryId, _dataBank, _backupOracle, _admin,
-        _relayReadDelay, _minPauseDuration, _dataBankChangeDelay, _backupChangeDelay, _twapWindowMs,
+        _queryId, _dataBank, _admin,
+        _relayReadDelay, _minPauseDuration, _dataBankChangeDelay, _twapWindowMs,
         _challengeThresholdBps, _transitionDelaysSeconds
     ) {}
 

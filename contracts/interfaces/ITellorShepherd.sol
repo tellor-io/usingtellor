@@ -7,9 +7,6 @@ pragma solidity 0.8.19;
  */
 interface ITellorShepherd {
     // Events
-    event BackupChangeCancelled(address indexed proposedBackup);
-    event BackupChanged(address indexed previousBackup, address indexed newBackup);
-    event BackupChangeProposed(address indexed proposedBackup, uint256 proposedAt);
     event ChallengeCancelled(address indexed caller);
     event ChallengeExecuted(address indexed caller);
     event ChallengeInvalidated();
@@ -29,11 +26,6 @@ interface ITellorShepherd {
     // Errors
     error AlreadyPaused();
     error AlreadyPauser();
-    error BackupChangeDelayNotElapsed();
-    error BackupChangePending();
-    error BackupHasNoCode();
-    error BackupOracleHasNoCode();
-    error BackupUnchanged();
     error ChallengeAlreadyPending();
     error ChallengeDelayNotElapsed();
     error DataBankChangeDelayNotElapsed();
@@ -42,7 +34,6 @@ interface ITellorShepherd {
     error DataBankUnchanged();
     error DiagnosticUnavailable();
     error InvalidAdmin();
-    error InvalidBackupChangeDelay();
     error InvalidChallengeDelay();
     error InvalidChallengeThreshold();
     error InvalidDataBankChangeDelay();
@@ -55,10 +46,10 @@ interface ITellorShepherd {
     error InvalidTwapWindow();
     error InvalidValueLength();
     error NoMatureData();
-    error NoPendingBackupChange();
     error NoPendingChallenge();
     error NoPendingDataBankChange();
     error NoPendingRecovery();
+    error NoTwapData();
     error NotAdmin();
     error NotAuthorizedToPause();
     error NotBackupMode();
@@ -78,8 +69,9 @@ interface ITellorShepherd {
     // Getter functions
 
     /// @notice Returns the selected source's value and timestamp, or reverts if the read is unavailable.
-    /// @dev Preserves the primary aggregate timestamp or the backup-supplied timestamp;
-    /// never substitutes relay, submission, switch, or read time. Paused reads revert.
+    /// @dev Primary returns the TWAP interval-end timestamp; backup returns spot aggregate time.
+    /// Both are delayed DataBank reads. Never substitutes relay, switch, or read time.
+    /// Endpoint age does not bound TWAP contributor age. Paused reads revert.
     /// @return value The selected source's price, without adaptor-specific scaling.
     /// @return aggregateTimestamp The selected source's timestamp in milliseconds.
     function getCurrentValue() external view returns (uint256 value, uint256 aggregateTimestamp);

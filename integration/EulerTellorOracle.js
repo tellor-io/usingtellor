@@ -1,7 +1,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
-const { loadFixture, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
+const { loadFixture, time, setCode } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const h = require("../src/helpers/evmHelpers");
@@ -21,13 +21,13 @@ describe("Euler adaptor - Real Shepherd integration", function () {
 
   const unit = 10n ** 18n;
   const primaryPrice = 3000n * unit;
-  const backupPrice = 2900n * unit;
+  const backupPrice = 4500n * unit;
   const maxAge = 3600n;
   const usd = ethers.getAddress(ethers.zeroPadValue(ethers.toBeHex(840), 20));
   const coder = ethers.AbiCoder.defaultAbiCoder();
 
   async function fixture() {
-    const [admin, streamer, outsider] = await ethers.getSigners();
+    const [admin, outsider] = await ethers.getSigners();
     const queryId = ethers.keccak256(coder.encode(
       ["string", "bytes"], ["SpotPrice", coder.encode(["string", "string"], ["eth", "usd"])]
     ));
@@ -37,15 +37,13 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await bridge.init(validatorSet.powerThreshold, validatorSet.timestamp, 21 * 86400, validatorSet.checkpoint);
     const Bank = await ethers.getContractFactory("TellorDataBank");
     const bank = await Bank.deploy(bridge.target);
-    const Stream = await ethers.getContractFactory("StreamBackupOracle");
-    const backup = await Stream.deploy(admin.address, streamer.address, 60);
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
-    const shepherd = await Shepherd.deploy(queryId, bank.target, backup.target, admin.address,
-      60, 120, 300, 600, 30000, 2000, [30, 90]);
+    const shepherd = await Shepherd.deploy(queryId, bank.target, admin.address,
+      60, 120, 300, 30000, 2000, [30, 90]);
     const Token = new ethers.ContractFactory(tokenArtifact.abi, tokenArtifact.bytecode.object, admin);
     const base = (await Token.deploy(18)).target;
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
-    const f = { admin, streamer, outsider, queryId, validatorSet, Bank, bank, Stream, backup,
+    const f = { admin, outsider, queryId, validatorSet, Bank, bank,
       shepherd, Token, Adaptor, base, quote: usd };
     f.oracle = await deployAdaptor(f);
     f.startMs = (await time.latest() - 120) * 1000 + 17;
@@ -53,7 +51,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
   }
 
   function deployAdaptor(f, { base = f.base, quote = f.quote, decimals = 18, queryId = f.queryId } = {}) {
-    return f.Adaptor.deploy(base, quote, f.shepherd.target, queryId, decimals, maxAge);
+    return f.Adaptor.deploy(base, quote, f.shepherd.target, queryId, decimals);
   }
 
   async function relay(f, value, stamp, bank = f.bank) {
@@ -63,11 +61,9 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     return BigInt(await time.latest());
   }
 
-  async function submit(f, value, backup = f.backup) {
-    await backup.connect(f.streamer).submitValue(f.queryId, value);
-    const index = (await backup.reportCount(f.queryId)) - 1n;
-    const report = await backup.reports(f.queryId, index);
-    return { index, at: report.submittedAt, pair: [value, report.submittedAt * 1000n] };
+  async function relayWindow(f, value, stamp, bank = f.bank) {
+    await relay(f, value, stamp - 30000, bank);
+    return relay(f, value, stamp, bank);
   }
 
   async function primaryFixture() {
@@ -79,18 +75,18 @@ describe("Euler adaptor - Real Shepherd integration", function () {
   }
 
   async function requestChallenge(f) {
-    await relay(f, primaryPrice * 3n / 2n, f.startMs + 40000);
+    const relayAt = await relay(f, backupPrice, f.startMs + 40000);
+    f.report = { relayAt, pair: [backupPrice, BigInt(f.startMs + 40000)] };
     await f.shepherd.connect(f.outsider).requestChallenge();
     return await f.shepherd.challengeRequestedAt();
   }
 
   async function backupFixture() {
     const f = await primaryFixture();
-    f.report = await submit(f, backupPrice);
     const requestedAt = await requestChallenge(f);
     await time.setNextBlockTimestamp(requestedAt + 30n);
     await f.shepherd.connect(f.outsider).executeChallenge();
-    await time.increaseTo(f.report.at + 60n);
+    await time.increaseTo(f.report.relayAt + 61n);
     return f;
   }
 
@@ -137,53 +133,54 @@ describe("Euler adaptor - Real Shepherd integration", function () {
       .to.be.revertedWithCustomError(f.oracle, "PriceOracle_InvalidConfiguration");
   });
 
-  it("requires strict primary maturity and keeps older mature data visible", async function () {
+  it("requires mature TWAP coverage and excludes the endpoint price", async function () {
     const f = await loadFixture(fixture);
-    await expectRefusal(f, f.shepherd, "NoMatureData");
-    const at = await relay(f, primaryPrice, f.startMs);
-    await time.increaseTo(at + 60n);
-    await expectRefusal(f, f.shepherd, "NoMatureData");
+    await expectRefusal(f, f.shepherd, "NoTwapData");
+    const first = await relay(f, primaryPrice, f.startMs);
+    await time.increaseTo(first + 61n);
+    await expectRefusal(f, f.shepherd, "NoTwapData");
+    const end = await relay(f, primaryPrice * 2n, f.startMs + 30000);
+    await time.increaseTo(end + 60n);
+    await expectRefusal(f, f.shepherd, "NoTwapData");
     await time.increase(1);
     await expectQuotes(f, primaryPrice);
-    await relay(f, primaryPrice * 2n, f.startMs + 30000);
+    await relay(f, primaryPrice * 3n, f.startMs + 40000);
     await expectQuotes(f, primaryPrice);
   });
 
-  it("selects backup before it is readable, accepts exact maturity, and propagates disputes", async function () {
+  it("keeps backup spot delayed after switching, including exact maturity equality", async function () {
     const f = await loadFixture(primaryFixture);
-    const report = await submit(f, backupPrice);
     const requestedAt = await requestChallenge(f);
     await time.setNextBlockTimestamp(requestedAt + 30n);
     await f.shepherd.connect(f.outsider).executeChallenge();
-    await time.increaseTo(report.at + 59n);
-    await expectRefusal(f, f.backup, "NoUsableReport");
+    await time.increaseTo(f.report.relayAt + 60n);
+    await expectQuotes(f, primaryPrice);
     await time.increase(1);
     await expectQuotes(f, backupPrice);
-    await f.backup.disputeValue(f.queryId, report.index);
-    await expectRefusal(f, f.backup, "NoUsableReport");
+    expect(await f.shepherd.getCurrentValue()).to.deep.equal(f.report.pair);
   });
 
   for (const excessMs of [-1, 0, 1]) {
-    it(`checks primary age at the limit ${excessMs >= 0 ? "+" : ""}${excessMs}ms`, async function () {
+    it(`exposes the existing absence of primary age enforcement at 3600s ${excessMs >= 0 ? "+" : ""}${excessMs}ms`, async function () {
       const f = await loadFixture(fixture);
       const anchor = await time.latest() - 120;
       const stamp = anchor * 1000 - excessMs;
-      await relay(f, primaryPrice, stamp);
+      await relayWindow(f, primaryPrice, stamp);
       await time.increaseTo(BigInt(anchor) + maxAge);
       expect(await f.shepherd.getCurrentValue()).to.deep.equal([primaryPrice, BigInt(stamp)]);
-      if (excessMs > 0) await expectRefusal(f, f.oracle, "PriceOracle_TooStale", [maxAge + 1n, maxAge]);
-      else await expectQuotes(f, primaryPrice);
+      // Current adaptor delegates freshness to Shepherd; this branch has no age guard.
+      await expectQuotes(f, primaryPrice);
     });
   }
 
-  it("ages backup quotes across repeated reads and rejects them beyond the exact age limit", async function () {
+  it("preserves backup age across repeated reads but currently has no age refusal", async function () {
     const f = await loadFixture(backupFixture);
     await expectQuotes(f, backupPrice);
-    await time.increaseTo(f.report.at + maxAge);
+    await time.increaseTo(f.report.pair[1] / 1000n + maxAge);
     await expectQuotes(f, backupPrice);
     await time.increase(1);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal(f.report.pair);
-    await expectRefusal(f, f.oracle, "PriceOracle_TooStale", [maxAge + 1n, maxAge]);
+    await expectQuotes(f, backupPrice);
   });
 
   for (const example of [
@@ -196,7 +193,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
       const base = (await f.Token.deploy(example.decimals[0])).target;
       const quote = (await f.Token.deploy(example.decimals[1])).target;
       const oracle = await deployAdaptor(f, { base, quote, decimals: example.decimals[2] });
-      await relay(f, example.price, f.startMs);
+      await relayWindow(f, example.price, f.startMs);
       await time.increase(61);
       await expectQuotes({ ...f, base, quote, oracle }, example.price, example);
     });
@@ -204,7 +201,6 @@ describe("Euler adaptor - Real Shepherd integration", function () {
 
   it("executes a challenge at its deadline while preserving pause and its clock", async function () {
     const f = await loadFixture(primaryFixture);
-    const report = await submit(f, backupPrice);
     const requestedAt = await requestChallenge(f);
     await f.shepherd.pause();
     const pausedAt = await f.shepherd.pausedAt();
@@ -215,7 +211,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await f.shepherd.connect(f.outsider).executeChallenge();
     expect(await f.shepherd.mode()).to.equal(1);
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
-    await time.increaseTo(report.at + 60n);
+    await time.increaseTo(f.report.relayAt + 61n);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
     await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
     await time.setNextBlockTimestamp(pausedAt + 120n);
@@ -223,30 +219,25 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await expectQuotes(f, backupPrice);
   });
 
-  it("rechecks recovery permission, honors the deadline, and keeps recovered quotes paused", async function () {
+  it("rechecks recovery agreement, honors the deadline, and preserves pause", async function () {
     const f = await loadFixture(backupFixture);
     await expect(f.shepherd.connect(f.outsider).requestRecovery())
       .to.be.revertedWithCustomError(f.shepherd, "RecoveryNotAllowed");
-    const recoveredPrice = 3100n * unit;
-    await relay(f, recoveredPrice, f.startMs + 50000);
+    const settled = await relay(f, backupPrice, f.startMs + 70000);
+    await time.increaseTo(settled + 61n);
     await f.shepherd.pause();
     const pausedAt = await f.shepherd.pausedAt();
-    await f.backup.setCanRecover(f.queryId, true);
     await f.shepherd.connect(f.outsider).requestRecovery();
     const requestedAt = await f.shepherd.recoveryRequestedAt();
     await time.setNextBlockTimestamp(requestedAt + 89n);
-    await expect(f.shepherd.connect(f.outsider).executeRecovery())
-      .to.be.revertedWithCustomError(f.shepherd, "RecoveryDelayNotElapsed");
-    // A static call at equality verifies the deadline without consuming the pending request.
+    await expect(f.shepherd.executeRecovery()).to.be.revertedWithCustomError(f.shepherd, "RecoveryDelayNotElapsed");
     await time.increaseTo(requestedAt + 90n);
-    await f.shepherd.connect(f.outsider).executeRecovery.staticCall();
-    await f.backup.setCanRecover(f.queryId, false);
-    await expect(f.shepherd.connect(f.outsider).executeRecovery())
-      .to.be.revertedWithCustomError(f.shepherd, "RecoveryNotAllowed");
+    await f.shepherd.executeRecovery.staticCall();
+    await relay(f, backupPrice * 2n, f.startMs + 80000);
+    await expect(f.shepherd.executeRecovery()).to.be.revertedWithCustomError(f.shepherd, "RecoveryNotAllowed");
     expect(await f.shepherd.recoveryRequestedAt()).to.equal(requestedAt);
     expect(await f.shepherd.mode()).to.equal(1);
-    await expectRefusal(f, f.shepherd, "ShepherdPaused");
-    await f.backup.setCanRecover(f.queryId, true);
+    await relay(f, backupPrice, f.startMs + 90000);
     await f.shepherd.connect(f.outsider).executeRecovery();
     expect(await f.shepherd.mode()).to.equal(0);
     expect(await f.shepherd.recoveryPending()).to.equal(false);
@@ -254,76 +245,59 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
     await time.setNextBlockTimestamp(pausedAt + 120n);
     await f.shepherd.unpause();
-    expect(await f.shepherd.getCurrentValue()).to.deep.equal([recoveredPrice, BigInt(f.startMs + 50000)]);
-    await expectQuotes(f, recoveredPrice);
+    expect(await f.shepherd.getCurrentValue()).to.deep.equal([backupPrice, BigInt(f.startMs + 70000)]);
+    await expectQuotes(f, backupPrice);
   });
 
-  for (const source of ["bank", "backup"]) {
-    it(`keeps adaptor wiring through paused ${source} migration`, async function () {
-      const f = await loadFixture(backupFixture);
-      const replacementPrice = 3200n * unit;
-      let expectedPair;
-      if (source === "bank") {
-        const bank = await f.Bank.deploy(await f.bank.dataBridge());
-        await relay(f, replacementPrice, f.startMs + 50000, bank);
-        expectedPair = [replacementPrice, BigInt(f.startMs + 50000)];
-        await f.shepherd.proposeDataBankChange(bank.target);
-      } else {
-        const backup = await f.Stream.deploy(f.admin.address, f.streamer.address, 60);
-        const report = await submit(f, replacementPrice, backup);
-        expectedPair = report.pair;
-        await time.increaseTo(report.at + 60n);
-        await f.shepherd.proposeBackupChange(backup.target);
-      }
-      // The old source remains selected throughout the notice period.
-      await expectQuotes(f, backupPrice);
-      await f.shepherd.pause();
-      const pausedAt = await f.shepherd.pausedAt();
-      const proposedAt = source === "bank" ? await f.shepherd.dataBankProposedAt() : await f.shepherd.backupProposedAt();
-      await time.setNextBlockTimestamp(proposedAt + (source === "bank" ? 300n : 600n));
-      if (source === "bank") await f.shepherd.executeDataBankChange();
-      else await f.shepherd.executeBackupChange();
-      expect(await f.shepherd.mode()).to.equal(1);
-      expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
-      await expectRefusal(f, f.shepherd, "ShepherdPaused");
-      if (source === "bank") {
-        await f.backup.setCanRecover(f.queryId, true);
-        await f.shepherd.connect(f.outsider).requestRecovery();
-        await time.setNextBlockTimestamp((await f.shepherd.recoveryRequestedAt()) + 90n);
-        await f.shepherd.connect(f.outsider).executeRecovery();
-        await expectRefusal(f, f.shepherd, "ShepherdPaused");
-      }
-      await f.shepherd.unpause();
-      expect(await f.oracle.shepherd()).to.equal(f.shepherd.target);
-      expect(await f.oracle.queryId()).to.equal(f.queryId);
-      expect(await f.shepherd.getCurrentValue()).to.deep.equal(expectedPair);
-      await expectQuotes(f, replacementPrice);
-    });
-  }
-
-  it("rejects invalid timestamps, zero prices, and failed backup responses through real Shepherd", async function () {
+  it("keeps adaptor wiring through paused bank migration and recovery", async function () {
     const f = await loadFixture(backupFixture);
-    const Mock = await ethers.getContractFactory("BackupOracleMock");
-    const mock = await Mock.deploy(f.queryId);
-    await mock.configureRead(backupPrice, f.report.pair[1], 0);
-    await f.shepherd.proposeBackupChange(mock.target);
+    const replacementPrice = 3200n * unit;
+    const bank = await f.Bank.deploy(await f.bank.dataBridge());
+    await relayWindow(f, replacementPrice, f.startMs + 50000, bank);
+    await f.shepherd.proposeDataBankChange(bank.target);
+    await expectQuotes(f, backupPrice);
     await f.shepherd.pause();
-    await time.setNextBlockTimestamp((await f.shepherd.backupProposedAt()) + 600n);
-    await f.shepherd.executeBackupChange();
+    const pausedAt = await f.shepherd.pausedAt();
+    await time.setNextBlockTimestamp((await f.shepherd.dataBankProposedAt()) + 300n);
+    await f.shepherd.executeDataBankChange();
+    expect(await f.shepherd.mode()).to.equal(1);
+    expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
+    await expectRefusal(f, f.shepherd, "ShepherdPaused");
+    await f.shepherd.connect(f.outsider).requestRecovery();
+    await time.setNextBlockTimestamp((await f.shepherd.recoveryRequestedAt()) + 90n);
+    await f.shepherd.connect(f.outsider).executeRecovery();
+    await expectRefusal(f, f.shepherd, "ShepherdPaused");
+    await f.shepherd.unpause();
+    expect(await f.oracle.shepherd()).to.equal(f.shepherd.target);
+    expect(await f.oracle.queryId()).to.equal(f.queryId);
+    expect(await f.shepherd.getCurrentValue()).to.deep.equal([replacementPrice, BigInt(f.startMs + 50000)]);
+    await expectQuotes(f, replacementPrice);
+  });
+
+  it("exposes missing timestamp checks and rejects invalid spot prices and bank failures", async function () {
+    const f = await loadFixture(backupFixture);
+    const Mock = await ethers.getContractFactory("TwapDataBankMock");
+    const mock = await Mock.deploy();
+    const record = (value, stamp) => [coder.encode(["uint256"], [value]), 1, stamp, stamp, 1];
+    await mock.configureEnd(true, record(backupPrice, f.report.pair[1]));
+    await f.shepherd.proposeDataBankChange(mock.target);
+    await f.shepherd.pause();
+    await time.setNextBlockTimestamp((await f.shepherd.dataBankProposedAt()) + 300n);
+    await f.shepherd.executeDataBankChange();
     await f.shepherd.unpause();
     await expectQuotes(f, backupPrice);
-    // Only the backup is a fault double; all calls still traverse the production Shepherd.
-    await mock.configureRead(backupPrice, 0, 0);
-    await expectRefusal(f, f.oracle, "TellorOracle_NoDataAvailable");
-    const nextBlock = BigInt(await time.latest()) + 1n;
-    await time.setNextBlockTimestamp(nextBlock);
-    await mock.configureRead(backupPrice, nextBlock * 1000n + 1n, 0);
-    await expectRefusal(f, f.oracle, "TellorOracle_InvalidTimestamp");
-    await mock.configureRead(0, f.report.pair[1], 0);
+    // Only the bank is a fault double; all reads traverse the production Shepherd.
+    await mock.configureEnd(true, record(backupPrice, 0));
+    await expectQuotes(f, backupPrice);
+    await mock.configureEnd(true, record(backupPrice, (BigInt(await time.latest()) + 10n) * 1000n));
+    await expectQuotes(f, backupPrice);
+    await mock.configureEnd(true, record(0, f.report.pair[1]));
     await expectRefusal(f, f.shepherd, "ZeroValue");
-    await mock.configureRead(backupPrice, f.report.pair[1], 1);
-    await expectRefusal(f, mock, "ReadUnavailable");
-    await mock.configureRead(backupPrice, f.report.pair[1], 2);
-    await expectRefusal(f);
+    await mock.configureEnd(false, record(backupPrice, f.report.pair[1]));
+    await expectRefusal(f, f.shepherd, "NoMatureData");
+    for (const code of ["0x60006000fd", "0x60016000f3"]) {
+      await setCode(mock.target, code);
+      await expectRefusal(f);
+    }
   });
 });

@@ -16,7 +16,7 @@ interface ITellorDataBank {
     }
 
     /**
-     * @dev A preceding reference, not the current candidate price. All times are milliseconds.
+     * @dev A historical average used as Shepherd's primary and deviation reference. All times are milliseconds.
      * Prices are held from each observation until the next; the end observation has zero weight.
      * Only stored observations contribute; signed predecessor links do not define intervals.
      * Relayers may omit reports, so this reference does not reconstruct all Layer history.
@@ -84,7 +84,7 @@ interface ITellorDataBank {
      * @param _relayCutoffSeconds Exclusive EVM relay-time cutoff in seconds.
      * @param _minWindowMs Positive minimum aggregate-time duration in milliseconds.
      * @return _available Whether the requested reference can be computed.
-     * @return _twap Reference value and coverage metadata; never a substitute current price.
+     * @return _twap Average and coverage metadata; endTimestamp is the interval end, not contributor age.
      */
     function getTwapBefore(bytes32 _queryId, uint256 _relayCutoffSeconds, uint256 _minWindowMs)
         external

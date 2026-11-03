@@ -8,24 +8,22 @@ describe("TellorShepherdFactory", function () {
     const queryId = ethers.id("factory-feed");
     const Bank = await ethers.getContractFactory("TellorDataBank");
     const bank = await Bank.deploy(deployer.address);
-    const Backup = await ethers.getContractFactory("BackupOracleMock");
-    const backup = await Backup.deploy(queryId);
     const Factory = await ethers.getContractFactory("TellorShepherdFactory");
     const factory = await Factory.deploy();
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     // Distinct numbers expose field swaps; 30001 ms requires 31 challenge seconds.
     const configuration = {
-      queryId, dataBank: bank.target, backupOracle: backup.target, admin: admin.address,
+      queryId, dataBank: bank.target, admin: admin.address,
       relayReadDelay: 61n, minPauseDuration: 122n, dataBankChangeDelay: 303n,
-      backupChangeDelay: 604n, twapWindowMs: 30001n, challengeThresholdBps: 2005n,
+      twapWindowMs: 30001n, challengeThresholdBps: 2005n,
       challengeDelaySeconds: 31n, recoveryDelaySeconds: 97n,
     };
-    return { deployer, caller, admin, otherAdmin, bank, backup, Factory, factory, Shepherd, configuration };
+    return { deployer, caller, admin, otherAdmin, bank, Factory, factory, Shepherd, configuration };
   }
 
   function constructorArgs(c) {
-    return [c.queryId, c.dataBank, c.backupOracle, c.admin, c.relayReadDelay,
-      c.minPauseDuration, c.dataBankChangeDelay, c.backupChangeDelay, c.twapWindowMs,
+    return [c.queryId, c.dataBank, c.admin, c.relayReadDelay,
+      c.minPauseDuration, c.dataBankChangeDelay, c.twapWindowMs,
       c.challengeThresholdBps, [c.challengeDelaySeconds, c.recoveryDelaySeconds]];
   }
 
@@ -43,9 +41,9 @@ describe("TellorShepherdFactory", function () {
     const c = f.configuration;
     const shepherd = await create(f.factory, f.caller, c);
     const getters = {
-      queryId: "queryId", dataBank: "dataBank", backupOracle: "backupOracle", admin: "admin",
+      queryId: "queryId", dataBank: "dataBank", admin: "admin",
       relayReadDelay: "RELAY_READ_DELAY", minPauseDuration: "MIN_PAUSE_DURATION",
-      dataBankChangeDelay: "DATA_BANK_CHANGE_DELAY", backupChangeDelay: "BACKUP_CHANGE_DELAY",
+      dataBankChangeDelay: "DATA_BANK_CHANGE_DELAY",
       twapWindowMs: "TWAP_WINDOW_MS", challengeThresholdBps: "CHALLENGE_THRESHOLD_BPS",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
     };
@@ -57,9 +55,8 @@ describe("TellorShepherdFactory", function () {
     expect(await shepherd.challengePending()).to.equal(false);
     expect(await shepherd.recoveryPending()).to.equal(false);
     expect(await shepherd.pendingDataBank()).to.equal(ethers.ZeroAddress);
-    expect(await shepherd.pendingBackupOracle()).to.equal(ethers.ZeroAddress);
     // Empty sources are allowed by the existing constructor policy.
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "NoMatureData");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "NoTwapData");
   });
 
   it("gives authority only to the nominated admin, independently of deployment callers", async function () {
@@ -108,12 +105,10 @@ describe("TellorShepherdFactory", function () {
   const invalidCases = [
     ["queryId", ethers.ZeroHash, "InvalidQueryId"],
     ["dataBank", ethers.ZeroAddress, "DataBankHasNoCode"],
-    ["backupOracle", ethers.ZeroAddress, "BackupOracleHasNoCode"],
     ["admin", ethers.ZeroAddress, "InvalidAdmin"],
     ["relayReadDelay", 0n, "InvalidRelayReadDelay"],
     ["minPauseDuration", 0n, "InvalidMinPauseDuration"],
     ["dataBankChangeDelay", 0n, "InvalidDataBankChangeDelay"],
-    ["backupChangeDelay", 0n, "InvalidBackupChangeDelay"],
     ["twapWindowMs", 0n, "InvalidTwapWindow"],
     ["challengeThresholdBps", 0n, "InvalidChallengeThreshold"],
     ["challengeThresholdBps", 10000n, "InvalidChallengeThreshold"],

@@ -20,12 +20,10 @@ contract TellorShepherdFactory {
     struct Configuration {
         bytes32 queryId;
         address dataBank;
-        address backupOracle;
         address admin;
         uint256 relayReadDelay;
         uint256 minPauseDuration;
         uint256 dataBankChangeDelay;
-        uint256 backupChangeDelay;
         uint256 twapWindowMs;
         uint256 challengeThresholdBps;
         uint256 challengeDelaySeconds;
@@ -47,12 +45,10 @@ contract TellorShepherdFactory {
         shepherd = address(new TellorShepherd(
             configuration.queryId,
             configuration.dataBank,
-            configuration.backupOracle,
             configuration.admin,
             configuration.relayReadDelay,
             configuration.minPauseDuration,
             configuration.dataBankChangeDelay,
-            configuration.backupChangeDelay,
             configuration.twapWindowMs,
             configuration.challengeThresholdBps,
             [configuration.challengeDelaySeconds, configuration.recoveryDelaySeconds]
