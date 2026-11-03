@@ -20,6 +20,7 @@ describe("TellorShepherdFactory", function () {
       minPauseDuration: 122n, sourcesChangeDelay: 303n,
       challengeThresholdBps: 2005n,
       challengeDelaySeconds: 1n, recoveryDelaySeconds: 97n,
+      maxDataAge: 3600n,
     };
     return { deployer, caller, admin, otherAdmin, bank, primary, backup, Factory, factory, Shepherd, configuration };
   }
@@ -27,7 +28,7 @@ describe("TellorShepherdFactory", function () {
   function constructorArgs(c) {
     return [c.queryId, c.decimals, c.primarySource, c.backupSource, c.admin,
       c.minPauseDuration, c.sourcesChangeDelay, c.challengeThresholdBps,
-      [c.challengeDelaySeconds, c.recoveryDelaySeconds]];
+      [c.challengeDelaySeconds, c.recoveryDelaySeconds], c.maxDataAge];
   }
 
   async function create(factory, caller, configuration) {
@@ -53,6 +54,7 @@ describe("TellorShepherdFactory", function () {
     for (const [field, getter] of Object.entries(getters)) {
       expect(await shepherd[getter](), field).to.equal(c[field]);
     }
+    expect(await shepherd.MAX_DATA_AGE()).to.equal(c.maxDataAge);
     expect(await shepherd.mode()).to.equal(0);
     expect(await shepherd.paused()).to.equal(false);
     expect(await shepherd.challengePending()).to.equal(false);
@@ -105,6 +107,15 @@ describe("TellorShepherdFactory", function () {
     }
   });
 
+  it("forwards both valid age-conversion endpoints without truncation", async function () {
+    const f = await loadFixture(deployFixture);
+    const largest = ethers.MaxUint256 / 1000n;
+    for (const maxDataAge of [1n, largest]) {
+      const s = await create(f.factory, f.caller, { ...f.configuration, maxDataAge });
+      expect(await s.MAX_DATA_AGE()).to.equal(maxDataAge);
+    }
+  });
+
   const invalidCases = [
     ["queryId", ethers.ZeroHash, "InvalidQueryId"],
     ["primarySource", ethers.ZeroAddress, "SourceHasNoCode"],
@@ -117,6 +128,7 @@ describe("TellorShepherdFactory", function () {
     ["challengeThresholdBps", 10000n, "InvalidChallengeThreshold"],
     ["challengeDelaySeconds", 0n, "InvalidChallengeDelay"],
     ["recoveryDelaySeconds", 0n, "InvalidRecoveryDelay"],
+    ...[0n, ethers.MaxUint256 / 1000n + 1n].map(value => ["maxDataAge", value, "InvalidMaxAge"]),
   ];
 
   for (const [field, value, error] of invalidCases) {

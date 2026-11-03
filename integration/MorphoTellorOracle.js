@@ -48,7 +48,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       const pair = await sources(bank.target, id, feedDecimals[leg]);
       sourcePairs.push(pair);
       shepherds.push(await Shepherd.deploy(id, feedDecimals[leg], pair.primary.target, pair.backup.target, admin.address,
-        120, 300, 2000, [30, 90]));
+        120, 300, 2000, [30, 90], 3600));
     }
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
     const f = { admin, outsider, ids, validatorSet, Bank, bank, shepherds, sourcePairs, Adaptor };
@@ -125,15 +125,15 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
 
   for (const leg of [0, 1]) {
     for (const delta of [-1, 0, 1]) {
-      it(`exposes the existing absence of age enforcement at 3600s ${delta >= 0 ? "+" : ""}${delta}ms on leg ${leg}`, async function () {
+      it(`enforces primary age at 3600s ${delta >= 0 ? "+" : ""}${delta}ms on leg ${leg}`, async function () {
         const f = await loadFixture(fixture);
         const baseMs = (await time.latest() - 120) * 1000;
         for (const index of [0, 1]) {
           await relayWindow(f, index, index === 0 ? collateralPrice : loanPrice, baseMs - (index === leg ? delta : 0));
         }
         await time.increaseTo(baseMs / 1000 + 3600);
-        // Current adaptor delegates freshness to Shepherd; this branch has no age guard.
-        expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
+        if (delta > 0) await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
+        else expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
       });
     }
     it(`propagates primary immaturity and pause from leg ${leg}`, async function () {
@@ -171,9 +171,8 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       expect(await f.shepherds[leg].getCurrentValue()).to.deep.equal(pair);
       expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
       await time.increase(1);
-      expect(await f.shepherds[leg].getCurrentValue()).to.deep.equal(pair);
-      // Repeated reads preserve age, but neither current contract rejects this stale pair.
-      expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
+      await expect(f.shepherds[leg].getCurrentValue()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
     });
   }
 

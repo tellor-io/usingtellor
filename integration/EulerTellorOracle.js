@@ -46,7 +46,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const { primary, backup } = await sources(bank.target, queryId, feedDecimals);
     const shepherd = await Shepherd.deploy(queryId, feedDecimals, primary.target, backup.target, admin.address,
-      120, 300, 2000, [30, 90]);
+      120, 300, 2000, [30, 90], 3600);
     const Token = new ethers.ContractFactory(tokenArtifact.abi, tokenArtifact.bytecode.object, admin);
     const base = (await Token.deploy(18)).target;
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
@@ -170,26 +170,30 @@ describe("Euler adaptor - Real Shepherd integration", function () {
   });
 
   for (const excessMs of [-1, 0, 1]) {
-    it(`exposes the existing absence of primary age enforcement at 3600s ${excessMs >= 0 ? "+" : ""}${excessMs}ms`, async function () {
+    it(`enforces primary age at 3600s ${excessMs >= 0 ? "+" : ""}${excessMs}ms`, async function () {
       const f = await loadFixture(fixture);
       const anchor = await time.latest() - 120;
       const stamp = anchor * 1000 - excessMs;
       await relayWindow(f, primaryPrice, stamp);
       await time.increaseTo(BigInt(anchor) + maxAge);
-      expect(await f.shepherd.getCurrentValue()).to.deep.equal([primaryPrice, BigInt(stamp)]);
-      // Current adaptor delegates freshness to Shepherd; this branch has no age guard.
-      await expectQuotes(f, primaryPrice);
+      if (excessMs > 0) {
+        await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "StalePrice");
+        await expectRefusal(f, f.shepherd, "StalePrice");
+      } else {
+        expect(await f.shepherd.getCurrentValue()).to.deep.equal([primaryPrice, BigInt(stamp)]);
+        await expectQuotes(f, primaryPrice);
+      }
     });
   }
 
-  it("preserves backup age across repeated reads but currently has no age refusal", async function () {
+  it("preserves backup age across repeated reads and refuses once stale", async function () {
     const f = await loadFixture(backupFixture);
     await expectQuotes(f, backupPrice);
     await time.increaseTo(f.report.pair[1] / 1000n + maxAge);
     await expectQuotes(f, backupPrice);
     await time.increase(1);
-    expect(await f.shepherd.getCurrentValue()).to.deep.equal(f.report.pair);
-    await expectQuotes(f, backupPrice);
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "StalePrice");
+    await expectRefusal(f, f.shepherd, "StalePrice");
   });
 
   for (const example of [

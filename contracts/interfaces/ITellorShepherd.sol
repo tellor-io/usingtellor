@@ -43,6 +43,8 @@ interface ITellorShepherd {
     error InvalidQueryId();
     error InvalidDecimals();
     error InvalidTimestamp();
+    error InvalidMaxAge();
+    error StalePrice();
     error SourceQueryIdMismatch();
     error SourceDecimalsMismatch();
     error InvalidRecoveryDelay();
@@ -68,7 +70,8 @@ interface ITellorShepherd {
     // Getter functions
 
     /// @notice Returns only the selected source's nonzero value and original millisecond timestamp.
-    /// @dev Paused, failed, zero/future timestamp reads revert. No automatic fallback or maximum age check.
+    /// @dev Paused, failed, zero/future or over-age timestamp reads revert. No automatic fallback.
+    /// Age equality is valid at full millisecond precision; one immutable maximum data age applies to both sources.
     /// A TWAP endpoint does not establish contributor freshness. No adaptor-specific rescaling occurs.
     function getCurrentValue() external view returns (uint256 value, uint256 aggregateTimestamp);
 
@@ -77,6 +80,9 @@ interface ITellorShepherd {
 
     /// @notice Returns the immutable source price precision.
     function decimals() external view returns (uint8);
+
+    /// @notice Immutable maximum observation age in seconds, shared by both sources.
+    function MAX_DATA_AGE() external view returns (uint256);
 
     function primarySource() external view returns (IPriceSource);
     function backupSource() external view returns (IPriceSource);

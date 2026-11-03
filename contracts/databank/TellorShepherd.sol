@@ -7,7 +7,7 @@ import {ITellorShepherd} from "../interfaces/ITellorShepherd.sol";
 /**
  * @title TellorShepherd
  * @notice Per-feed selector of interchangeable primary and backup price sources.
- * @dev Basic price/timestamp validity is checked here; maximum age is not yet enforced.
+ * @dev Price, timestamp validity and the immutable maximum data age are checked here.
  * Source compatibility does not establish trust or appropriate timing configuration.
  */
 contract TellorShepherd is ITellorShepherd {
@@ -19,6 +19,7 @@ contract TellorShepherd is ITellorShepherd {
     uint256 public immutable SOURCES_CHANGE_DELAY;
     uint256 public immutable MIN_PAUSE_DURATION;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
+    uint256 public immutable override MAX_DATA_AGE;
 
     // Storage
     // The pair is replaced atomically through delayed, paused migration.
@@ -51,7 +52,8 @@ contract TellorShepherd is ITellorShepherd {
      * @notice Binds the feed, source pair, administrator, and immutable control settings.
      * @dev Metadata is checked without requiring available prices. Deployers must calibrate
      * challenge/recovery delays against source timing and security requirements, including
-     * every replacement. No source-specific timing relation is enforced by this contract.
+     * every replacement. The common age limit must accommodate both sources; metadata cannot prove this.
+     * A replacement needing different core delays or maximum age requires a new Shepherd.
      * @param _queryId Nonzero agreed base/quote identifier, fixed for this instance.
      * @param _decimals Fixed raw-price precision, from 0 to 77; no prices are rescaled here.
      * @param _primarySource Initial primary reader implementing IPriceSource.
@@ -61,6 +63,7 @@ contract TellorShepherd is ITellorShepherd {
      * @param _sourcesChangeDelay Positive notice period for replacing the source pair, in seconds.
      * @param _challengeThresholdBps Strict absolute deviation relative to primary, from 1 to 9999 bps.
      * @param _transitionDelaysSeconds Positive challenge and recovery waits in seconds, respectively.
+     * @param _maxDataAge Positive maximum observation age in seconds, shared by both sources.
      */
     constructor(
         bytes32 _queryId,
@@ -71,7 +74,8 @@ contract TellorShepherd is ITellorShepherd {
         uint256 _minPauseDuration,
         uint256 _sourcesChangeDelay,
         uint256 _challengeThresholdBps,
-        uint256[2] memory _transitionDelaysSeconds
+        uint256[2] memory _transitionDelaysSeconds,
+        uint256 _maxDataAge
     ) {
         if (_queryId == bytes32(0)) revert InvalidQueryId();
         if (_decimals > 77) revert InvalidDecimals();
@@ -81,6 +85,8 @@ contract TellorShepherd is ITellorShepherd {
         if (_challengeThresholdBps == 0 || _challengeThresholdBps >= 10000) revert InvalidChallengeThreshold();
         if (_transitionDelaysSeconds[0] == 0) revert InvalidChallengeDelay();
         if (_transitionDelaysSeconds[1] == 0) revert InvalidRecoveryDelay();
+        // Validate once so the millisecond conversion is safe on every read.
+        if (_maxDataAge == 0 || _maxDataAge > type(uint256).max / 1000) revert InvalidMaxAge();
 
         queryId = _queryId;
         decimals = _decimals;
@@ -94,6 +100,7 @@ contract TellorShepherd is ITellorShepherd {
         CHALLENGE_THRESHOLD_BPS = _challengeThresholdBps;
         CHALLENGE_DELAY_SECONDS = _transitionDelaysSeconds[0];
         RECOVERY_DELAY_SECONDS = _transitionDelaysSeconds[1];
+        MAX_DATA_AGE = _maxDataAge;
         mode = Mode.PRIMARY;
     }
 
@@ -182,7 +189,7 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @notice Replaces both sources atomically after notice; admin only and paused.
      * @dev Rechecks metadata without reading prices. Invalidates transition requests,
-     * preserves mode/pause clock and immutable delays, and never consults the old sources.
+     * preserves mode/pause clock and immutable delays/maximum age, and never consults the old sources.
      */
     function executeSourcesChange() external {
         if (msg.sender != admin) revert NotAdmin();
@@ -320,7 +327,7 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @notice Returns only the selected source's price and original millisecond timestamp.
      * @dev Paused or unusable reads revert without switching or consulting the other source.
-     * Maximum age is not enforced; a TWAP endpoint does not bound contributor age.
+     * Age equality is accepted; a TWAP endpoint does not bound contributor age.
      */
     function getCurrentValue() external view override returns (uint256 value, uint256 aggregateTimestamp) {
         if (paused) revert ShepherdPaused();
@@ -351,11 +358,13 @@ contract TellorShepherd is ITellorShepherd {
         }
     }
 
-    /// @dev Reject unusable source output at full millisecond precision; no maximum-age policy yet.
+    /// @dev Both sources share the same maximum age; compare without rounding observation milliseconds.
     function _readSource(IPriceSource _source) internal view returns (uint256 value, uint256 timestampMs) {
         (value, timestampMs) = _source.getCurrentValue();
         if (value == 0) revert ZeroValue();
-        if (timestampMs == 0 || timestampMs > block.timestamp * 1000) revert InvalidTimestamp();
+        uint256 nowMs = block.timestamp * 1000;
+        if (timestampMs == 0 || timestampMs > nowMs) revert InvalidTimestamp();
+        if (nowMs - timestampMs > MAX_DATA_AGE * 1000) revert StalePrice();
     }
 
     /// @dev Compares the same primary and backup observations used by consumers, independent of pause.

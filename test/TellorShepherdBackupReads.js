@@ -26,7 +26,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const bank = await Bank.deploy(bridge.target);
     const Shepherd = await ethers.getContractFactory("TellorShepherdHarness");
     const { primary, backup } = await sources(bank.target, queryId);
-    const shepherd = await Shepherd.deploy(queryId, 18, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90]);
+    const shepherd = await Shepherd.deploy(queryId, 18, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90], 3600);
     await shepherd.waitForDeployment();
     await shepherd.setModeForTest(1);
     return { deployer, admin, queryId, validatorSet, bank, primary, backup, Shepherd, shepherd };
@@ -176,7 +176,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const f = await loadFixture(deployReadFixture);
     const incompatible = await (await ethers.getContractFactory("TellorLab")).deploy();
     const next = await sources(incompatible.target, f.queryId);
-    const shepherd = await f.Shepherd.deploy(f.queryId, 18, next.primary.target, next.backup.target, f.admin.address, 120, 300, 2000, [30, 90]);
+    const shepherd = await f.Shepherd.deploy(f.queryId, 18, next.primary.target, next.backup.target, f.admin.address, 120, 300, 2000, [30, 90], 3600);
     await shepherd.setModeForTest(1);
     await expect(shepherd.getCurrentValue()).to.be.reverted;
   });
@@ -185,7 +185,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const f = await loadFixture(deployReadFixture);
     const futureDelay = (await time.latest()) + 100;
     const backup = await (await ethers.getContractFactory("TellorSpotSource")).deploy(f.bank.target, f.queryId, 18, futureDelay);
-    const shepherd = await f.Shepherd.deploy(f.queryId, 18, f.primary.target, backup.target, f.admin.address, 120, 300, 2000, [30, 90]);
+    const shepherd = await f.Shepherd.deploy(f.queryId, 18, f.primary.target, backup.target, f.admin.address, 120, 300, 2000, [30, 90], 3600);
     await shepherd.setModeForTest(1);
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
     await time.increaseTo(futureDelay);

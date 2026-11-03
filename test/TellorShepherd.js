@@ -12,7 +12,7 @@ async function fixture() {
   await primary.configureRead(100, timestamp, 0);
   await backup.configureRead(150, timestamp + 1000n, 0);
   const Shepherd = await ethers.getContractFactory("TellorShepherdHarness");
-  const args = [queryId, 8, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90]];
+  const args = [queryId, 8, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90], 3600];
   const shepherd = await Shepherd.deploy(...args);
   return { deployer, admin, pauser, outsider, Source, primary, backup, timestamp, Shepherd, args, shepherd };
 }
@@ -87,8 +87,8 @@ describe("TellorShepherd - Generic configuration and reads", function () {
       const other = mode ? f.primary : f.backup;
       const pair = await selected.getCurrentValue();
       await other.configureRead(0, 0, 1);
-      await time.increase(7 * 86400);
-      expect(await f.shepherd.getCurrentValue()).to.deep.equal(pair); // No maximum age yet.
+      await time.increase(60);
+      expect(await f.shepherd.getCurrentValue()).to.deep.equal(pair);
       await other.configureRead(999, f.timestamp, 0);
       await selected.configureRead(0, 0, 1);
       await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(selected, "ReadUnavailable");

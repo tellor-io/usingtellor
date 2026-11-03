@@ -28,6 +28,7 @@ contract TellorShepherdFactory {
         uint256 challengeThresholdBps;
         uint256 challengeDelaySeconds;
         uint256 recoveryDelaySeconds;
+        uint256 maxDataAge;
     }
 
     // State-changing functions
@@ -52,7 +53,8 @@ contract TellorShepherdFactory {
             configuration.minPauseDuration,
             configuration.sourcesChangeDelay,
             configuration.challengeThresholdBps,
-            [configuration.challengeDelaySeconds, configuration.recoveryDelaySeconds]
+            [configuration.challengeDelaySeconds, configuration.recoveryDelaySeconds],
+            configuration.maxDataAge
         ));
 
         isShepherd[shepherd] = true;
