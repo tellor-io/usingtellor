@@ -330,11 +330,25 @@ contract TellorShepherd is ITellorShepherd {
      * Age equality is accepted; a TWAP endpoint does not bound contributor age.
      */
     function getCurrentValue() external view override returns (uint256 value, uint256 aggregateTimestamp) {
-        if (paused) revert ShepherdPaused();
-        return _readSource(mode == Mode.PRIMARY ? primarySource : backupSource);
+        return _readSelectedSource();
+    }
+
+    /// @inheritdoc ITellorShepherd
+    function latestRoundData() external view override returns (
+        uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound
+    ) {
+        (uint256 value, uint256 timestampMs) = _readSelectedSource();
+        if (value > uint256(type(int256).max)) revert SignedPriceOverflow();
+        return (0, int256(value), 0, timestampMs / 1000, 0);
     }
 
     // Internal functions
+
+    /// @dev Shared consumer policy; validates original milliseconds before any output conversion.
+    function _readSelectedSource() internal view returns (uint256 value, uint256 timestampMs) {
+        if (paused) revert ShepherdPaused();
+        return _readSource(mode == Mode.PRIMARY ? primarySource : backupSource);
+    }
 
     /// @dev Compatibility is not authenticity. Price availability is deliberately not probed.
     function _checkSourceCompatibility(address _source, bytes32 _queryId, uint8 _decimals) internal view {

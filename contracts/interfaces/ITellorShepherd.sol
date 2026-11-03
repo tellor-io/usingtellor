@@ -45,6 +45,7 @@ interface ITellorShepherd {
     error InvalidTimestamp();
     error InvalidMaxAge();
     error StalePrice();
+    error SignedPriceOverflow();
     error SourceQueryIdMismatch();
     error SourceDecimalsMismatch();
     error InvalidRecoveryDelay();
@@ -74,6 +75,19 @@ interface ITellorShepherd {
     /// Age equality is valid at full millisecond precision; one immutable maximum data age applies to both sources.
     /// A TWAP endpoint does not establish contributor freshness. No adaptor-specific rescaling occurs.
     function getCurrentValue() external view returns (uint256 value, uint256 aggregateTimestamp);
+
+    /// @notice Latest-read Chainlink ABI subset; not a historical-round interface.
+    /// @dev Uses the same selected-source/pause/validity checks as getCurrentValue, in original milliseconds.
+    /// Reverts with SignedPriceOverflow above int256.max; native uint256 reads remain supported.
+    /// @return roundId Always zero: unavailable sentinel, not a retrievable historical round.
+    /// @return answer Positive raw source price at decimals() precision; no rescaling.
+    /// @return startedAt Always zero: round start metadata is unavailable.
+    /// @return updatedAt Original source timestamp floored to Unix seconds after full-ms validation.
+    /// Flooring can make an observation appear less than one second older to downstream consumers.
+    /// @return answeredInRound Always zero: unavailable sentinel; no round progression is synthesized.
+    function latestRoundData() external view returns (
+        uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound
+    );
 
     /// @notice Returns the immutable agreed base/quote identifier.
     function queryId() external view returns (bytes32);
