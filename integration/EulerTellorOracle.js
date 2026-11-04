@@ -52,7 +52,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
     const f = { admin, outsider, queryId, validatorSet, Bank, bank,
       shepherd, primary, backup, Token, Adaptor, base, quote: usd };
-    f.oracle = await deployAdaptor(f);
+    f.oracle = await deployAdaptor(f, { decimals: feedDecimals });
     f.startMs = (await time.latest() - 120) * 1000 + 17;
     return f;
   }

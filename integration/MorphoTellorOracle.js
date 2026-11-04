@@ -52,7 +52,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     }
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
     const f = { admin, outsider, ids, validatorSet, Bank, bank, shepherds, sourcePairs, Adaptor };
-    f.oracle = await deployAdaptor(f);
+    f.oracle = await deployAdaptor(f, { decimals: [18, 6, ...feedDecimals] });
     return f;
   }
 
