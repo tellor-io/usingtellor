@@ -46,9 +46,9 @@ describe("TellorShepherdFactory", function () {
     const shepherd = await create(f.factory, f.caller, c);
     const getters = {
       queryId: "queryId", decimals: "decimals", primarySource: "primarySource", backupSource: "backupSource", admin: "admin",
-      minPauseDuration: "MIN_PAUSE_DURATION",
+      minPauseDuration: "minPauseDuration",
       configChangeDelay: "CONFIG_CHANGE_DELAY",
-      challengeThresholdBps: "CHALLENGE_THRESHOLD_BPS",
+      challengeThresholdBps: "challengeThresholdBps",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
     };
     for (const [field, getter] of Object.entries(getters)) {
@@ -92,7 +92,7 @@ describe("TellorShepherdFactory", function () {
     await first.connect(f.admin).pause();
     expect(await duplicate.paused()).to.equal(false);
     expect(await second.paused()).to.equal(false);
-    expect(await second.MIN_PAUSE_DURATION()).to.equal(123);
+    expect(await second.minPauseDuration()).to.equal(123);
     await expect(second.connect(f.admin).pause()).to.be.revertedWithCustomError(second, "NotAuthorizedToPause");
     await second.connect(f.otherAdmin).pause();
   });
@@ -120,7 +120,7 @@ describe("TellorShepherdFactory", function () {
     it(`accepts initial minimum pause duration ${minPauseDuration}`, async function () {
       const f = await loadFixture(deployFixture);
       const s = await create(f.factory, f.caller, { ...f.configuration, minPauseDuration });
-      expect(await s.MIN_PAUSE_DURATION()).to.equal(minPauseDuration);
+      expect(await s.minPauseDuration()).to.equal(minPauseDuration);
       await s.connect(f.admin).pause();
       if (minPauseDuration === 0n) await s.connect(f.admin).unpause();
       else await expect(s.connect(f.admin).unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");

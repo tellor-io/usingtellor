@@ -12,41 +12,39 @@ import {ITellorShepherd} from "../interfaces/ITellorShepherd.sol";
  */
 contract TellorShepherd is ITellorShepherd {
     // Immutables
-    bytes32 public immutable override queryId;
-    uint8 public immutable override decimals;
     uint256 public immutable CHALLENGE_DELAY_SECONDS;
     uint256 public immutable CONFIG_CHANGE_DELAY;
-    uint256 public immutable RECOVERY_DELAY_SECONDS;
+    uint8 public immutable override decimals;
     uint256 public immutable override MAX_DATA_AGE;
+    bytes32 public immutable override queryId;
+    uint256 public immutable RECOVERY_DELAY_SECONDS;
 
     // Storage
-    uint256 public CHALLENGE_THRESHOLD_BPS;
-    // Zero means no proposal; valid thresholds are 1..9999 bps.
-    uint256 public pendingChallengeThresholdBps;
-    uint256 public challengeThresholdProposedAt;
-    uint256 public MIN_PAUSE_DURATION;
-    uint256 public pendingMinPauseDuration;
-    uint256 public minPauseDurationProposedAt;
-    bool public minPauseDurationChangePending;
-    // The pair is replaced atomically through delayed, paused migration.
-    IPriceSource public override primarySource;
-    IPriceSource public override backupSource;
     address public admin;
-    address public pendingAdmin;
     uint256 public adminProposedAt;
-    address public pendingPrimarySource;
-    address public pendingBackupSource;
-    uint256 public challengeRequestedAt;
-    uint256 public sourcesProposedAt;
-    uint256 public pausedAt;
-    uint256 public recoveryRequestedAt;
+    IPriceSource public override backupSource;
     bool public challengePending;
-    bool public paused;
-    bool public recoveryPending;
+    uint256 public challengeRequestedAt;
+    uint256 public challengeThresholdBps;
+    uint256 public challengeThresholdProposedAt;
+    uint256 public minPauseDuration;
+    bool public minPauseDurationChangePending;
+    uint256 public minPauseDurationProposedAt;
     Mode public mode;
+    bool public paused;
+    uint256 public pausedAt;
+    address public pendingAdmin;
+    address public pendingBackupSource;
+    uint256 public pendingChallengeThresholdBps;
+    uint256 public pendingMinPauseDuration;
+    address public pendingPrimarySource;
+    IPriceSource public override primarySource;
+    bool public recoveryPending;
+    uint256 public recoveryRequestedAt;
+    uint256 public sourcesProposedAt;
 
-    // Additional operational keys; the admin's pause authority is independent.
     mapping(address => bool) public isPauser;
+
 
     // Enums
     enum Mode {
@@ -102,9 +100,9 @@ contract TellorShepherd is ITellorShepherd {
         primarySource = IPriceSource(_primarySource);
         backupSource = IPriceSource(_backupSource);
         admin = _admin;
-        MIN_PAUSE_DURATION = _minPauseDuration;
+        minPauseDuration = _minPauseDuration;
         CONFIG_CHANGE_DELAY = _configChangeDelay;
-        CHALLENGE_THRESHOLD_BPS = _challengeThresholdBps;
+        challengeThresholdBps = _challengeThresholdBps;
         CHALLENGE_DELAY_SECONDS = _transitionDelaysSeconds[0];
         RECOVERY_DELAY_SECONDS = _transitionDelaysSeconds[1];
         MAX_DATA_AGE = _maxDataAge;
@@ -128,21 +126,8 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Announces a nonzero replacement admin; current admin only, in either pause state.
-     * @dev No recipient acceptance or liveness check: a throwaway address is permitted.
-     * Cancel an existing proposal before reproposing and starting a new notice period.
+     * @notice Cancels the pending admin change; current admin only, in either pause state.
      */
-    function proposeAdminChange(address _newAdmin) external {
-        if (msg.sender != admin) revert NotAdmin();
-        if (pendingAdmin != address(0)) revert AdminChangePending();
-        if (_newAdmin == address(0)) revert InvalidAdmin();
-        if (_newAdmin == admin) revert AdminUnchanged();
-        pendingAdmin = _newAdmin;
-        adminProposedAt = block.timestamp;
-        emit AdminChangeProposed(_newAdmin, block.timestamp);
-    }
-
-    /// @notice Cancels the pending admin change; current admin only, in either pause state.
     function cancelAdminChange() external {
         if (msg.sender != admin) revert NotAdmin();
         address proposedAdmin = pendingAdmin;
@@ -150,6 +135,78 @@ contract TellorShepherd is ITellorShepherd {
         pendingAdmin = address(0);
         adminProposedAt = 0;
         emit AdminChangeCancelled(proposedAdmin);
+    }
+
+    /**
+     * @notice Anyone may cancel a pending primary challenge when deviation has resolved.
+     * @dev No waiting period or pause restriction. Missing or broken source data cannot
+     * establish resolution, so failures preserve the original challenge and its clock.
+     */
+    function cancelChallenge() external {
+        if (mode != Mode.PRIMARY) revert NotPrimaryMode();
+        if (!challengePending) revert NoPendingChallenge();
+        bool deviating = _readDeviation();
+        if (deviating) revert StillDeviating();
+
+        challengePending = false;
+        challengeRequestedAt = 0;
+        emit ChallengeCancelled(msg.sender);
+    }
+
+    /**
+     * @notice Cancels the threshold proposal without affecting transition requests; current admin only.
+     */
+    function cancelChallengeThresholdChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        uint256 proposedThreshold = pendingChallengeThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+        pendingChallengeThresholdBps = 0;
+        challengeThresholdProposedAt = 0;
+        emit ChallengeThresholdChangeCancelled(proposedThreshold);
+    }
+
+    /**
+     * @notice Cancels a pending duration change without affecting the current pause; admin only.
+     */
+    function cancelMinPauseDurationChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
+        uint256 proposedDuration = pendingMinPauseDuration;
+        pendingMinPauseDuration = 0;
+        minPauseDurationProposedAt = 0;
+        minPauseDurationChangePending = false;
+        emit MinPauseDurationChangeCancelled(proposedDuration);
+    }
+
+    /**
+     * @notice Anyone may cancel a pending recovery when deviation returns.
+     * @dev No delay or pause restriction. Failed assessments revert without clearing state.
+     * Transient deviation does not reset the clock unless cancellation is submitted.
+     */
+    function cancelRecovery() external {
+        if (mode != Mode.BACKUP) revert NotBackupMode();
+        if (!recoveryPending) revert NoPendingRecovery();
+        bool deviating = _readDeviation();
+        if (!deviating) revert RecoveryStillAllowed();
+
+        recoveryPending = false;
+        recoveryRequestedAt = 0;
+        emit RecoveryCancelled(msg.sender);
+    }
+
+    /**
+     * @notice Cancels the pending pair proposal; admin only, including while paused.
+     * @dev Does not consult proposed dependencies, which may have stopped working.
+     */
+    function cancelSourcesChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedPrimary = pendingPrimarySource;
+        address proposedBackup = pendingBackupSource;
+        if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
+        pendingPrimarySource = address(0);
+        pendingBackupSource = address(0);
+        sourcesProposedAt = 0;
+        emit SourcesChangeCancelled(proposedPrimary, proposedBackup);
     }
 
     /**
@@ -170,139 +227,6 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Proposes a new minimum pause duration in seconds; current admin only.
-     * @dev Zero is valid. Until execution, the current duration still governs every pause.
-     */
-    function proposeMinPauseDurationChange(uint256 _newDuration) external {
-        if (msg.sender != admin) revert NotAdmin();
-        if (minPauseDurationChangePending) revert MinPauseDurationChangePending();
-        if (_newDuration == MIN_PAUSE_DURATION) revert MinPauseDurationUnchanged();
-        pendingMinPauseDuration = _newDuration;
-        minPauseDurationProposedAt = block.timestamp;
-        minPauseDurationChangePending = true;
-        emit MinPauseDurationChangeProposed(_newDuration, block.timestamp);
-    }
-
-    /// @notice Cancels a pending duration change without affecting the current pause; admin only.
-    function cancelMinPauseDurationChange() external {
-        if (msg.sender != admin) revert NotAdmin();
-        if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
-        uint256 proposedDuration = pendingMinPauseDuration;
-        pendingMinPauseDuration = 0;
-        minPauseDurationProposedAt = 0;
-        minPauseDurationChangePending = false;
-        emit MinPauseDurationChangeCancelled(proposedDuration);
-    }
-
-    /**
-     * @notice Applies the pending duration after the shared notice period; current admin only.
-     * @dev Applies immediately to an active pause without changing pausedAt or unpausing.
-     * Zero removes the elapsed-time wait, but not admin authority or the pending-source block.
-     * Preserves all other proposals, transition requests, source state and pauser memberships.
-     */
-    function executeMinPauseDurationChange() external {
-        if (msg.sender != admin) revert NotAdmin();
-        if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
-        if (block.timestamp - minPauseDurationProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
-        uint256 previousDuration = MIN_PAUSE_DURATION;
-        uint256 proposedDuration = pendingMinPauseDuration;
-        MIN_PAUSE_DURATION = proposedDuration;
-        pendingMinPauseDuration = 0;
-        minPauseDurationProposedAt = 0;
-        minPauseDurationChangePending = false;
-        emit MinPauseDurationChanged(previousDuration, proposedDuration);
-    }
-
-    /**
-     * @notice Proposes a new deviation threshold in basis points; current admin only.
-     * @dev The active threshold governs transitions until execution. Zero means no proposal.
-     */
-    function proposeChallengeThresholdChange(uint256 _newThresholdBps) external {
-        if (msg.sender != admin) revert NotAdmin();
-        if (pendingChallengeThresholdBps != 0) revert ChallengeThresholdChangePending();
-        if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
-        if (_newThresholdBps == CHALLENGE_THRESHOLD_BPS) revert ChallengeThresholdUnchanged();
-        pendingChallengeThresholdBps = _newThresholdBps;
-        challengeThresholdProposedAt = block.timestamp;
-        emit ChallengeThresholdChangeProposed(_newThresholdBps, block.timestamp);
-    }
-
-    /// @notice Cancels the threshold proposal without affecting transition requests; current admin only.
-    function cancelChallengeThresholdChange() external {
-        if (msg.sender != admin) revert NotAdmin();
-        uint256 proposedThreshold = pendingChallengeThresholdBps;
-        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
-        pendingChallengeThresholdBps = 0;
-        challengeThresholdProposedAt = 0;
-        emit ChallengeThresholdChangeCancelled(proposedThreshold);
-    }
-
-    /**
-     * @notice Applies the pending threshold after the shared notice; current admin only.
-     * @dev Invalidates transition timers accumulated under the previous comparison policy.
-     * Does not read sources or change mode, pause, its clock, or other configuration proposals.
-     */
-    function executeChallengeThresholdChange() external {
-        if (msg.sender != admin) revert NotAdmin();
-        uint256 proposedThreshold = pendingChallengeThresholdBps;
-        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
-        if (block.timestamp - challengeThresholdProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
-        uint256 previousThreshold = CHALLENGE_THRESHOLD_BPS;
-        CHALLENGE_THRESHOLD_BPS = proposedThreshold;
-        pendingChallengeThresholdBps = 0;
-        challengeThresholdProposedAt = 0;
-        _invalidatePendingTransitions();
-        emit ChallengeThresholdChanged(previousThreshold, proposedThreshold);
-    }
-
-    /**
-     * @notice Anyone may cancel a pending primary challenge when deviation has resolved.
-     * @dev No waiting period or pause restriction. Missing or broken diagnostics cannot
-     * establish resolution, so failures preserve the original challenge and its clock.
-     */
-    function cancelChallenge() external {
-        if (mode != Mode.PRIMARY) revert NotPrimaryMode();
-        if (!challengePending) revert NoPendingChallenge();
-        bool deviating = _readDeviation();
-        if (deviating) revert StillDeviating();
-
-        challengePending = false;
-        challengeRequestedAt = 0;
-        emit ChallengeCancelled(msg.sender);
-    }
-
-    /**
-     * @notice Cancels the pending pair proposal; admin only, including while paused.
-     * @dev Does not consult proposed dependencies, which may have stopped working.
-     */
-    function cancelSourcesChange() external {
-        if (msg.sender != admin) revert NotAdmin();
-        address proposedPrimary = pendingPrimarySource;
-        address proposedBackup = pendingBackupSource;
-        if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
-        pendingPrimarySource = address(0);
-        pendingBackupSource = address(0);
-        sourcesProposedAt = 0;
-        emit SourcesChangeCancelled(proposedPrimary, proposedBackup);
-    }
-
-    /**
-     * @notice Anyone may cancel a pending recovery when deviation returns.
-     * @dev No delay or pause restriction. Failed assessments revert without clearing state.
-     * Transient deviation does not reset the clock unless cancellation is submitted.
-     */
-    function cancelRecovery() external {
-        if (mode != Mode.BACKUP) revert NotBackupMode();
-        if (!recoveryPending) revert NoPendingRecovery();
-        bool deviating = _readDeviation();
-        if (!deviating) revert RecoveryStillAllowed();
-
-        recoveryPending = false;
-        recoveryRequestedAt = 0;
-        emit RecoveryCancelled(msg.sender);
-    }
-
-    /**
      * @notice Anyone may select backup after the challenge delay if deviation is re-established.
      * @dev Equality permits execution. Pause and its clock survive the switch.
      * Both sources must be usable at execution; a failing backup prevents selection.
@@ -319,6 +243,61 @@ contract TellorShepherd is ITellorShepherd {
         challengeRequestedAt = 0;
         mode = Mode.BACKUP;
         emit ChallengeExecuted(msg.sender);
+    }
+
+    /**
+     * @notice Applies the pending threshold after the shared notice; current admin only.
+     * @dev Invalidates transition timers accumulated under the previous comparison policy.
+     * Does not read sources or change mode, pause, its clock, or other configuration proposals.
+     */
+    function executeChallengeThresholdChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        uint256 proposedThreshold = pendingChallengeThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+        if (block.timestamp - challengeThresholdProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        uint256 previousThreshold = challengeThresholdBps;
+        challengeThresholdBps = proposedThreshold;
+        pendingChallengeThresholdBps = 0;
+        challengeThresholdProposedAt = 0;
+        _invalidatePendingTransitions();
+        emit ChallengeThresholdChanged(previousThreshold, proposedThreshold);
+    }
+
+    /**
+     * @notice Applies the pending duration after the shared notice period; current admin only.
+     * @dev Applies immediately to an active pause without changing pausedAt or unpausing.
+     * Zero removes the elapsed-time wait, but not admin authority or the pending-source block.
+     * Preserves all other proposals, transition requests, source state and pauser memberships.
+     */
+    function executeMinPauseDurationChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
+        if (block.timestamp - minPauseDurationProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        uint256 previousDuration = minPauseDuration;
+        uint256 proposedDuration = pendingMinPauseDuration;
+        minPauseDuration = proposedDuration;
+        pendingMinPauseDuration = 0;
+        minPauseDurationProposedAt = 0;
+        minPauseDurationChangePending = false;
+        emit MinPauseDurationChanged(previousDuration, proposedDuration);
+    }
+
+    /**
+     * @notice Anyone may return to primary after the recovery delay if deviation is still resolved.
+     * @dev Equality permits execution; failed assessments preserve the pending timer.
+     * Pause survives the switch. Request/execution checks do not prove continuous agreement.
+     */
+    function executeRecovery() external {
+        if (mode != Mode.BACKUP) revert NotBackupMode();
+        if (!recoveryPending) revert NoPendingRecovery();
+        if (block.timestamp - recoveryRequestedAt < RECOVERY_DELAY_SECONDS) revert RecoveryDelayNotElapsed();
+        bool deviating = _readDeviation();
+        if (deviating) revert RecoveryNotAllowed();
+
+        recoveryPending = false;
+        recoveryRequestedAt = 0;
+        mode = Mode.PRIMARY;
+        emit RecoveryExecuted(msg.sender);
     }
 
     /**
@@ -347,24 +326,6 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Anyone may return to primary after the recovery delay if deviation is still resolved.
-     * @dev Equality permits execution; failed assessments preserve the pending timer.
-     * Pause survives the switch. Request/execution checks do not prove continuous agreement.
-     */
-    function executeRecovery() external {
-        if (mode != Mode.BACKUP) revert NotBackupMode();
-        if (!recoveryPending) revert NoPendingRecovery();
-        if (block.timestamp - recoveryRequestedAt < RECOVERY_DELAY_SECONDS) revert RecoveryDelayNotElapsed();
-        bool deviating = _readDeviation();
-        if (deviating) revert RecoveryNotAllowed();
-
-        recoveryPending = false;
-        recoveryRequestedAt = 0;
-        mode = Mode.PRIMARY;
-        emit RecoveryExecuted(msg.sender);
-    }
-
-    /**
      * @notice Immediately blocks consumer reads; callable by the admin or an active pauser.
      * @dev Repeated calls revert so a pauser cannot extend the current pause's clock.
      * Source mode and elapsed-time checks are independent of pause state.
@@ -376,6 +337,49 @@ contract TellorShepherd is ITellorShepherd {
         paused = true;
         pausedAt = block.timestamp;
         emit Paused(msg.sender);
+    }
+
+    /**
+     * @notice Announces a nonzero replacement admin; current admin only, in either pause state.
+     * @dev No recipient acceptance or liveness check: a throwaway address is permitted.
+     * Cancel an existing proposal before reproposing and starting a new notice period.
+     */
+    function proposeAdminChange(address _newAdmin) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingAdmin != address(0)) revert AdminChangePending();
+        if (_newAdmin == address(0)) revert InvalidAdmin();
+        if (_newAdmin == admin) revert AdminUnchanged();
+        pendingAdmin = _newAdmin;
+        adminProposedAt = block.timestamp;
+        emit AdminChangeProposed(_newAdmin, block.timestamp);
+    }
+
+    /**
+     * @notice Proposes a new deviation threshold in basis points; current admin only.
+     * @dev The active threshold governs transitions until execution. Zero means no proposal.
+     */
+    function proposeChallengeThresholdChange(uint256 _newThresholdBps) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingChallengeThresholdBps != 0) revert ChallengeThresholdChangePending();
+        if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
+        if (_newThresholdBps == challengeThresholdBps) revert ChallengeThresholdUnchanged();
+        pendingChallengeThresholdBps = _newThresholdBps;
+        challengeThresholdProposedAt = block.timestamp;
+        emit ChallengeThresholdChangeProposed(_newThresholdBps, block.timestamp);
+    }
+
+    /**
+     * @notice Proposes a new minimum pause duration in seconds; current admin only.
+     * @dev Zero is valid. Until execution, the current duration still governs every pause.
+     */
+    function proposeMinPauseDurationChange(uint256 _newDuration) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (minPauseDurationChangePending) revert MinPauseDurationChangePending();
+        if (_newDuration == minPauseDuration) revert MinPauseDurationUnchanged();
+        pendingMinPauseDuration = _newDuration;
+        minPauseDurationProposedAt = block.timestamp;
+        minPauseDurationChangePending = true;
+        emit MinPauseDurationChangeProposed(_newDuration, block.timestamp);
     }
 
     /**
@@ -412,7 +416,7 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @notice Anyone may request a challenge in primary mode when deviation is established.
-     * @dev Pause does not block diagnostics. Duplicate requests cannot restart the timer.
+     * @dev Pause does not block source comparisons. Duplicate requests cannot restart the timer.
      * A pending challenge does not halt reads or prove continuous deviation.
      */
     function requestChallenge() external {
@@ -428,7 +432,7 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @notice Anyone may request recovery in backup mode when deviation has resolved.
-     * @dev Duplicate requests cannot reset the clock. Diagnostics remain available while paused.
+     * @dev Duplicate requests cannot reset the clock. Source comparisons remain available while paused.
      */
     function requestRecovery() external {
         if (mode != Mode.BACKUP) revert NotBackupMode();
@@ -451,7 +455,7 @@ contract TellorShepherd is ITellorShepherd {
         if (msg.sender != admin) revert NotAdmin();
         if (!paused) revert NotPaused();
         if (pendingPrimarySource != address(0)) revert SourcesChangePending();
-        if (block.timestamp - pausedAt < MIN_PAUSE_DURATION) revert PauseDurationNotElapsed();
+        if (block.timestamp - pausedAt < minPauseDuration) revert PauseDurationNotElapsed();
 
         paused = false;
         pausedAt = 0;
@@ -469,7 +473,9 @@ contract TellorShepherd is ITellorShepherd {
         return _readSelectedSource();
     }
 
-    /// @inheritdoc ITellorShepherd
+    /**
+     * @inheritdoc ITellorShepherd
+     */
     function latestRoundData() external view override returns (
         uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound
     ) {
@@ -480,21 +486,19 @@ contract TellorShepherd is ITellorShepherd {
 
     // Internal functions
 
-    /// @dev Shared consumer policy; validates original milliseconds before any output conversion.
-    function _readSelectedSource() internal view returns (uint256 value, uint256 timestampMs) {
-        if (paused) revert ShepherdPaused();
-        return _readSource(mode == Mode.PRIMARY ? primarySource : backupSource);
-    }
-
-    /// @dev Compatibility is not authenticity. Price availability is deliberately not probed.
+    /**
+     * @dev Compatibility is not authenticity. Price availability is deliberately not probed.
+     */
     function _checkSourceCompatibility(address _source, bytes32 _queryId, uint8 _decimals) internal view {
         if (_source.code.length == 0) revert SourceHasNoCode();
         if (IPriceSource(_source).queryId() != _queryId) revert SourceQueryIdMismatch();
         if (IPriceSource(_source).decimals() != _decimals) revert SourceDecimalsMismatch();
     }
 
-    /// @dev Changed sources or comparison policy require fresh assessment and transition timers.
-    /// Called only after configuration checks succeed; never reads source data.
+    /**
+     * @dev Changed sources or comparison policy require fresh assessment and transition timers.
+     * Called only after configuration checks succeed; never reads source data.
+     */
     function _invalidatePendingTransitions() internal {
         if (challengePending) {
             challengePending = false;
@@ -508,25 +512,37 @@ contract TellorShepherd is ITellorShepherd {
         }
     }
 
-    /// @dev Both sources share the same maximum age; compare without rounding observation milliseconds.
-    function _readSource(IPriceSource _source) internal view returns (uint256 value, uint256 timestampMs) {
-        (value, timestampMs) = _source.getCurrentValue();
-        if (value == 0) revert ZeroValue();
-        uint256 nowMs = block.timestamp * 1000;
-        if (timestampMs == 0 || timestampMs > nowMs) revert InvalidTimestamp();
-        if (nowMs - timestampMs > MAX_DATA_AGE * 1000) revert StalePrice();
-    }
-
-    /// @dev Compares the same primary and backup observations used by consumers, independent of pause.
-    /// Failures propagate; they never count as agreement or authorize a transition.
+    /**
+     * @dev Compares the same primary and backup observations used by consumers, independent of pause.
+     * Failures propagate; they never count as agreement or authorize a transition.
+     */
     function _readDeviation() internal view returns (bool) {
         (uint256 primaryValue,) = _readSource(primarySource);
         (uint256 value,) = _readSource(backupSource);
         uint256 difference = value > primaryValue ? value - primaryValue : primaryValue - value;
         // Exactly floor(reference * threshold / 10000), without an overflowing product.
         // Integer difference > this floor is equivalent to the strict rational comparison.
-        uint256 allowedDifference = (primaryValue / 10000) * CHALLENGE_THRESHOLD_BPS
-            + ((primaryValue % 10000) * CHALLENGE_THRESHOLD_BPS) / 10000;
+        uint256 allowedDifference = (primaryValue / 10000) * challengeThresholdBps
+            + ((primaryValue % 10000) * challengeThresholdBps) / 10000;
         return difference > allowedDifference;
+    }
+
+    /**
+     * @dev Shared consumer policy; validates original milliseconds before any output conversion.
+     */
+    function _readSelectedSource() internal view returns (uint256 value, uint256 timestampMs) {
+        if (paused) revert ShepherdPaused();
+        return _readSource(mode == Mode.PRIMARY ? primarySource : backupSource);
+    }
+
+    /**
+     * @dev Both sources share the same maximum age; compare without rounding observation milliseconds.
+     */
+    function _readSource(IPriceSource _source) internal view returns (uint256 value, uint256 timestampMs) {
+        (value, timestampMs) = _source.getCurrentValue();
+        if (value == 0) revert ZeroValue();
+        uint256 nowMs = block.timestamp * 1000;
+        if (timestampMs == 0 || timestampMs > nowMs) revert InvalidTimestamp();
+        if (nowMs - timestampMs > MAX_DATA_AGE * 1000) revert StalePrice();
     }
 }

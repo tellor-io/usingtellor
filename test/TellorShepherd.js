@@ -25,7 +25,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
     const s = await f.Shepherd.deploy(...f.args);
     for (const [getter, expected] of Object.entries({ queryId, decimals: 8,
       primarySource: f.primary.target, backupSource: f.backup.target, admin: f.admin.address,
-      MIN_PAUSE_DURATION: 120, CONFIG_CHANGE_DELAY: 300, CHALLENGE_THRESHOLD_BPS: 2000,
+      minPauseDuration: 120, CONFIG_CHANGE_DELAY: 300, challengeThresholdBps: 2000,
       CHALLENGE_DELAY_SECONDS: 30, RECOVERY_DELAY_SECONDS: 90, mode: 0,
       paused: false, pausedAt: 0, pendingPrimarySource: ethers.ZeroAddress,
       pendingBackupSource: ethers.ZeroAddress, sourcesProposedAt: 0 })) {

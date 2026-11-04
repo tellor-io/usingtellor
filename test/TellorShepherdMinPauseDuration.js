@@ -16,13 +16,13 @@ async function fixture() {
   return { deployer, admin, next, pauser, queryId, Source, primary, backup, timestamp, Shepherd, args, s };
 }
 async function durationState(s) {
-  return Promise.all([s.MIN_PAUSE_DURATION(), s.minPauseDurationChangePending(),
+  return Promise.all([s.minPauseDuration(), s.minPauseDurationChangePending(),
     s.pendingMinPauseDuration(), s.minPauseDurationProposedAt()]);
 }
 async function otherState(f) {
   return Promise.all([...["mode", "paused", "pausedAt", "primarySource", "backupSource", "queryId", "decimals",
     "admin", "pendingAdmin", "adminProposedAt", "pendingPrimarySource", "pendingBackupSource", "sourcesProposedAt",
-    "challengePending", "challengeRequestedAt", "recoveryPending", "recoveryRequestedAt", "CHALLENGE_THRESHOLD_BPS",
+    "challengePending", "challengeRequestedAt", "recoveryPending", "recoveryRequestedAt", "challengeThresholdBps",
     "CHALLENGE_DELAY_SECONDS", "RECOVERY_DELAY_SECONDS", "CONFIG_CHANGE_DELAY", "MAX_DATA_AGE"].map(n => f.s[n]()),
     f.s.isPauser(f.admin.address), f.s.isPauser(f.next.address), f.s.isPauser(f.pauser.address),
     f.primary.value(), f.primary.timestampMs(), f.backup.value(), f.backup.timestampMs()]);
@@ -33,7 +33,7 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
     it(`accepts deployment duration ${duration} without deadline-addition overflow`, async function () {
       const f = await loadFixture(fixture), args = [...f.args]; args[5] = duration;
       const s = (await f.Shepherd.deploy(...args)).connect(f.admin);
-      expect(await s.MIN_PAUSE_DURATION()).to.equal(duration);
+      expect(await s.minPauseDuration()).to.equal(duration);
       expect(await s.minPauseDurationChangePending()).to.equal(false);
       await s.pause();
       if (duration === ethers.MaxUint256) await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
@@ -138,7 +138,7 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
       await s.proposeMinPauseDurationChange(reduced); const at = await s.minPauseDurationProposedAt();
       await time.setNextBlockTimestamp(at + 99n);
       await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
-      expect(await s.MIN_PAUSE_DURATION()).to.equal(200);
+      expect(await s.minPauseDuration()).to.equal(200);
       await time.setNextBlockTimestamp(at + 100n); await s.executeMinPauseDurationChange();
       expect(await s.pausedAt()).to.equal(start); expect(await s.paused()).to.equal(true);
       await expect(s.connect(f.pauser).unpause()).to.be.revertedWithCustomError(s, "NotAdmin");
@@ -163,7 +163,7 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
     await time.setNextBlockTimestamp(start + 199n);
     await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
     await time.setNextBlockTimestamp(start + 200n); await s.unpause();
-    expect(await s.MIN_PAUSE_DURATION()).to.equal(200); expect(await s.minPauseDurationChangePending()).to.equal(true);
+    expect(await s.minPauseDuration()).to.equal(200); expect(await s.minPauseDurationChangePending()).to.equal(true);
   });
   it("uint256-max updates avoid deadline overflow and remain reducible with unusable sources", async function () {
     const f = await loadFixture(fixture), s = f.s;

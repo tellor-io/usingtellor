@@ -36,11 +36,11 @@ contract TellorShepherdFactory {
     /**
      * @notice Deploys a fresh instance using the supplied configuration and admin.
      * @dev Shepherd's constructor owns validation. Reverts leave no registration
-     * or creation event. Duplicate configurations are allowed. Event source
-     * addresses describe deployment; read Shepherd getters after source migration.
+     * or creation event. Duplicate configurations are allowed. The event records initial
+     * configuration; read Shepherd getters for current sources, authority and mutable policies.
      * @param configuration Initial sources, authority, pause duration, threshold, and immutable settings.
-     * All durations are seconds; minPauseDuration may be zero. Threshold is basis points. Source timing calibration
-     * remains the deployer/admin responsibility, including after source replacement.
+     * All durations are seconds; minPauseDuration may be zero. Threshold is basis points.
+     * Source timing calibration remains the deployer/admin responsibility, including after replacement.
      * @return shepherd Address of the newly deployed and registered instance.
      */
     function createShepherd(Configuration calldata configuration) external returns (address shepherd) {

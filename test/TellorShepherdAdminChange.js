@@ -19,7 +19,7 @@ async function fixture() {
 async function operationalState(s) {
   return Promise.all(["primarySource", "backupSource", "queryId", "decimals", "mode", "paused", "pausedAt",
     "pendingPrimarySource", "pendingBackupSource", "sourcesProposedAt", "challengePending", "challengeRequestedAt",
-    "recoveryPending", "recoveryRequestedAt", "MIN_PAUSE_DURATION", "CHALLENGE_THRESHOLD_BPS",
+    "recoveryPending", "recoveryRequestedAt", "minPauseDuration", "challengeThresholdBps",
     "CHALLENGE_DELAY_SECONDS", "RECOVERY_DELAY_SECONDS", "MAX_DATA_AGE", "CONFIG_CHANGE_DELAY"].map(name => s[name]()));
 }
 async function transferState(s) {

@@ -15,12 +15,12 @@ async function fixture() {
   await s.addPauser(pauser.address);
   return { deployer, admin, next, pauser, queryId, Source, primary, backup, timestamp, Shepherd, args, s };
 }
-const thresholdState = s => Promise.all([s.CHALLENGE_THRESHOLD_BPS(), s.pendingChallengeThresholdBps(), s.challengeThresholdProposedAt()]);
+const thresholdState = s => Promise.all([s.challengeThresholdBps(), s.pendingChallengeThresholdBps(), s.challengeThresholdProposedAt()]);
 const transitions = s => Promise.all([s.challengePending(), s.challengeRequestedAt(), s.recoveryPending(), s.recoveryRequestedAt()]);
 async function otherState(f) {
   return Promise.all([...["mode", "paused", "pausedAt", "primarySource", "backupSource", "queryId", "decimals",
     "admin", "pendingAdmin", "adminProposedAt", "pendingPrimarySource", "pendingBackupSource", "sourcesProposedAt",
-    "MIN_PAUSE_DURATION", "pendingMinPauseDuration", "minPauseDurationProposedAt", "minPauseDurationChangePending",
+    "minPauseDuration", "pendingMinPauseDuration", "minPauseDurationProposedAt", "minPauseDurationChangePending",
     "CHALLENGE_DELAY_SECONDS", "RECOVERY_DELAY_SECONDS", "CONFIG_CHANGE_DELAY", "MAX_DATA_AGE"].map(n => f.s[n]()),
     f.s.isPauser(f.admin.address), f.s.isPauser(f.next.address), f.s.isPauser(f.pauser.address),
     f.primary.value(), f.primary.timestampMs(), f.backup.value(), f.backup.timestampMs()]);
@@ -242,6 +242,6 @@ describe("TellorShepherd - Mutable deviation threshold", function () {
     await s.proposeSourcesChange(replacement.target, f.backup.target); await s.pause();
     await expect(s.unpause()).to.be.revertedWithCustomError(s, "SourcesChangePending");
     await s.cancelSourcesChange(); await s.unpause();
-    expect(await s.MIN_PAUSE_DURATION()).to.equal(0); expect(await thresholdState(s)).to.deep.equal(threshold);
+    expect(await s.minPauseDuration()).to.equal(0); expect(await thresholdState(s)).to.deep.equal(threshold);
   });
 });
