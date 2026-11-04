@@ -17,7 +17,7 @@ describe("TellorShepherdFactory", function () {
     // Timing suitability is deliberately the deployer/admin responsibility.
     const configuration = {
       queryId, decimals: 8, primarySource: primary.target, backupSource: backup.target, admin: admin.address,
-      minPauseDuration: 122n, sourcesChangeDelay: 303n,
+      minPauseDuration: 122n, configChangeDelay: 303n,
       challengeThresholdBps: 2005n,
       challengeDelaySeconds: 1n, recoveryDelaySeconds: 97n,
       maxDataAge: 3600n,
@@ -27,7 +27,7 @@ describe("TellorShepherdFactory", function () {
 
   function constructorArgs(c) {
     return [c.queryId, c.decimals, c.primarySource, c.backupSource, c.admin,
-      c.minPauseDuration, c.sourcesChangeDelay, c.challengeThresholdBps,
+      c.minPauseDuration, c.configChangeDelay, c.challengeThresholdBps,
       [c.challengeDelaySeconds, c.recoveryDelaySeconds], c.maxDataAge];
   }
 
@@ -47,7 +47,7 @@ describe("TellorShepherdFactory", function () {
     const getters = {
       queryId: "queryId", decimals: "decimals", primarySource: "primarySource", backupSource: "backupSource", admin: "admin",
       minPauseDuration: "MIN_PAUSE_DURATION",
-      sourcesChangeDelay: "SOURCES_CHANGE_DELAY",
+      configChangeDelay: "CONFIG_CHANGE_DELAY",
       challengeThresholdBps: "CHALLENGE_THRESHOLD_BPS",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
     };
@@ -116,14 +116,24 @@ describe("TellorShepherdFactory", function () {
     }
   });
 
+  for (const minPauseDuration of [0n, ethers.MaxUint256]) {
+    it(`accepts initial minimum pause duration ${minPauseDuration}`, async function () {
+      const f = await loadFixture(deployFixture);
+      const s = await create(f.factory, f.caller, { ...f.configuration, minPauseDuration });
+      expect(await s.MIN_PAUSE_DURATION()).to.equal(minPauseDuration);
+      await s.connect(f.admin).pause();
+      if (minPauseDuration === 0n) await s.connect(f.admin).unpause();
+      else await expect(s.connect(f.admin).unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
+    });
+  }
+
   const invalidCases = [
     ["queryId", ethers.ZeroHash, "InvalidQueryId"],
     ["primarySource", ethers.ZeroAddress, "SourceHasNoCode"],
     ["backupSource", ethers.ZeroAddress, "SourceHasNoCode"],
     ["decimals", 78, "InvalidDecimals"],
     ["admin", ethers.ZeroAddress, "InvalidAdmin"],
-    ["minPauseDuration", 0n, "InvalidMinPauseDuration"],
-    ["sourcesChangeDelay", 0n, "InvalidSourcesChangeDelay"],
+    ["configChangeDelay", 0n, "InvalidConfigChangeDelay"],
     ["challengeThresholdBps", 0n, "InvalidChallengeThreshold"],
     ["challengeThresholdBps", 10000n, "InvalidChallengeThreshold"],
     ["challengeDelaySeconds", 0n, "InvalidChallengeDelay"],

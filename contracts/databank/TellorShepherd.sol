@@ -15,17 +15,25 @@ contract TellorShepherd is ITellorShepherd {
     bytes32 public immutable override queryId;
     uint8 public immutable override decimals;
     uint256 public immutable CHALLENGE_DELAY_SECONDS;
-    uint256 public immutable CHALLENGE_THRESHOLD_BPS;
-    uint256 public immutable SOURCES_CHANGE_DELAY;
-    uint256 public immutable MIN_PAUSE_DURATION;
+    uint256 public immutable CONFIG_CHANGE_DELAY;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
     uint256 public immutable override MAX_DATA_AGE;
 
     // Storage
+    uint256 public CHALLENGE_THRESHOLD_BPS;
+    // Zero means no proposal; valid thresholds are 1..9999 bps.
+    uint256 public pendingChallengeThresholdBps;
+    uint256 public challengeThresholdProposedAt;
+    uint256 public MIN_PAUSE_DURATION;
+    uint256 public pendingMinPauseDuration;
+    uint256 public minPauseDurationProposedAt;
+    bool public minPauseDurationChangePending;
     // The pair is replaced atomically through delayed, paused migration.
     IPriceSource public override primarySource;
     IPriceSource public override backupSource;
     address public admin;
+    address public pendingAdmin;
+    uint256 public adminProposedAt;
     address public pendingPrimarySource;
     address public pendingBackupSource;
     uint256 public challengeRequestedAt;
@@ -49,7 +57,7 @@ contract TellorShepherd is ITellorShepherd {
     // Constructor
 
     /**
-     * @notice Binds the feed, source pair, administrator, and immutable control settings.
+     * @notice Binds the feed, source pair, administrator, initial policies, and immutable control settings.
      * @dev Metadata is checked without requiring available prices. Deployers must calibrate
      * challenge/recovery delays against source timing and security requirements, including
      * every replacement. The common age limit must accommodate both sources; metadata cannot prove this.
@@ -59,9 +67,9 @@ contract TellorShepherd is ITellorShepherd {
      * @param _primarySource Initial primary reader implementing IPriceSource.
      * @param _backupSource Initial backup reader implementing the same interface.
      * @param _admin Nonzero administrator, independent of the deployment caller.
-     * @param _minPauseDuration Positive minimum uninterrupted pause duration in seconds.
-     * @param _sourcesChangeDelay Positive notice period for replacing the source pair, in seconds.
-     * @param _challengeThresholdBps Strict absolute deviation relative to primary, from 1 to 9999 bps.
+     * @param _minPauseDuration Initial minimum uninterrupted pause duration in seconds; zero is allowed.
+     * @param _configChangeDelay Positive shared notice period for source-pair, admin, pause-duration and threshold changes, in seconds.
+     * @param _challengeThresholdBps Initial strict absolute deviation relative to primary, from 1 to 9999 bps.
      * @param _transitionDelaysSeconds Positive challenge and recovery waits in seconds, respectively.
      * @param _maxDataAge Positive maximum observation age in seconds, shared by both sources.
      */
@@ -72,7 +80,7 @@ contract TellorShepherd is ITellorShepherd {
         address _backupSource,
         address _admin,
         uint256 _minPauseDuration,
-        uint256 _sourcesChangeDelay,
+        uint256 _configChangeDelay,
         uint256 _challengeThresholdBps,
         uint256[2] memory _transitionDelaysSeconds,
         uint256 _maxDataAge
@@ -80,8 +88,7 @@ contract TellorShepherd is ITellorShepherd {
         if (_queryId == bytes32(0)) revert InvalidQueryId();
         if (_decimals > 77) revert InvalidDecimals();
         if (_admin == address(0)) revert InvalidAdmin();
-        if (_minPauseDuration == 0) revert InvalidMinPauseDuration();
-        if (_sourcesChangeDelay == 0) revert InvalidSourcesChangeDelay();
+        if (_configChangeDelay == 0) revert InvalidConfigChangeDelay();
         if (_challengeThresholdBps == 0 || _challengeThresholdBps >= 10000) revert InvalidChallengeThreshold();
         if (_transitionDelaysSeconds[0] == 0) revert InvalidChallengeDelay();
         if (_transitionDelaysSeconds[1] == 0) revert InvalidRecoveryDelay();
@@ -96,7 +103,7 @@ contract TellorShepherd is ITellorShepherd {
         backupSource = IPriceSource(_backupSource);
         admin = _admin;
         MIN_PAUSE_DURATION = _minPauseDuration;
-        SOURCES_CHANGE_DELAY = _sourcesChangeDelay;
+        CONFIG_CHANGE_DELAY = _configChangeDelay;
         CHALLENGE_THRESHOLD_BPS = _challengeThresholdBps;
         CHALLENGE_DELAY_SECONDS = _transitionDelaysSeconds[0];
         RECOVERY_DELAY_SECONDS = _transitionDelaysSeconds[1];
@@ -118,6 +125,134 @@ contract TellorShepherd is ITellorShepherd {
 
         isPauser[_pauser] = true;
         emit PauserAdded(_pauser);
+    }
+
+    /**
+     * @notice Announces a nonzero replacement admin; current admin only, in either pause state.
+     * @dev No recipient acceptance or liveness check: a throwaway address is permitted.
+     * Cancel an existing proposal before reproposing and starting a new notice period.
+     */
+    function proposeAdminChange(address _newAdmin) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingAdmin != address(0)) revert AdminChangePending();
+        if (_newAdmin == address(0)) revert InvalidAdmin();
+        if (_newAdmin == admin) revert AdminUnchanged();
+        pendingAdmin = _newAdmin;
+        adminProposedAt = block.timestamp;
+        emit AdminChangeProposed(_newAdmin, block.timestamp);
+    }
+
+    /// @notice Cancels the pending admin change; current admin only, in either pause state.
+    function cancelAdminChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedAdmin = pendingAdmin;
+        if (proposedAdmin == address(0)) revert NoPendingAdminChange();
+        pendingAdmin = address(0);
+        adminProposedAt = 0;
+        emit AdminChangeCancelled(proposedAdmin);
+    }
+
+    /**
+     * @notice Transfers authority after the full notice; executed by the outgoing admin.
+     * @dev Equality is sufficient. Does not change pause, sources, other proposal clocks,
+     * transition requests or separately granted pauser memberships. No recipient call occurs.
+     */
+    function executeAdminChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedAdmin = pendingAdmin;
+        if (proposedAdmin == address(0)) revert NoPendingAdminChange();
+        if (block.timestamp - adminProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        address previousAdmin = admin;
+        admin = proposedAdmin;
+        pendingAdmin = address(0);
+        adminProposedAt = 0;
+        emit AdminChanged(previousAdmin, proposedAdmin);
+    }
+
+    /**
+     * @notice Proposes a new minimum pause duration in seconds; current admin only.
+     * @dev Zero is valid. Until execution, the current duration still governs every pause.
+     */
+    function proposeMinPauseDurationChange(uint256 _newDuration) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (minPauseDurationChangePending) revert MinPauseDurationChangePending();
+        if (_newDuration == MIN_PAUSE_DURATION) revert MinPauseDurationUnchanged();
+        pendingMinPauseDuration = _newDuration;
+        minPauseDurationProposedAt = block.timestamp;
+        minPauseDurationChangePending = true;
+        emit MinPauseDurationChangeProposed(_newDuration, block.timestamp);
+    }
+
+    /// @notice Cancels a pending duration change without affecting the current pause; admin only.
+    function cancelMinPauseDurationChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
+        uint256 proposedDuration = pendingMinPauseDuration;
+        pendingMinPauseDuration = 0;
+        minPauseDurationProposedAt = 0;
+        minPauseDurationChangePending = false;
+        emit MinPauseDurationChangeCancelled(proposedDuration);
+    }
+
+    /**
+     * @notice Applies the pending duration after the shared notice period; current admin only.
+     * @dev Applies immediately to an active pause without changing pausedAt or unpausing.
+     * Zero removes the elapsed-time wait, but not admin authority or the pending-source block.
+     * Preserves all other proposals, transition requests, source state and pauser memberships.
+     */
+    function executeMinPauseDurationChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
+        if (block.timestamp - minPauseDurationProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        uint256 previousDuration = MIN_PAUSE_DURATION;
+        uint256 proposedDuration = pendingMinPauseDuration;
+        MIN_PAUSE_DURATION = proposedDuration;
+        pendingMinPauseDuration = 0;
+        minPauseDurationProposedAt = 0;
+        minPauseDurationChangePending = false;
+        emit MinPauseDurationChanged(previousDuration, proposedDuration);
+    }
+
+    /**
+     * @notice Proposes a new deviation threshold in basis points; current admin only.
+     * @dev The active threshold governs transitions until execution. Zero means no proposal.
+     */
+    function proposeChallengeThresholdChange(uint256 _newThresholdBps) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingChallengeThresholdBps != 0) revert ChallengeThresholdChangePending();
+        if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
+        if (_newThresholdBps == CHALLENGE_THRESHOLD_BPS) revert ChallengeThresholdUnchanged();
+        pendingChallengeThresholdBps = _newThresholdBps;
+        challengeThresholdProposedAt = block.timestamp;
+        emit ChallengeThresholdChangeProposed(_newThresholdBps, block.timestamp);
+    }
+
+    /// @notice Cancels the threshold proposal without affecting transition requests; current admin only.
+    function cancelChallengeThresholdChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        uint256 proposedThreshold = pendingChallengeThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+        pendingChallengeThresholdBps = 0;
+        challengeThresholdProposedAt = 0;
+        emit ChallengeThresholdChangeCancelled(proposedThreshold);
+    }
+
+    /**
+     * @notice Applies the pending threshold after the shared notice; current admin only.
+     * @dev Invalidates transition timers accumulated under the previous comparison policy.
+     * Does not read sources or change mode, pause, its clock, or other configuration proposals.
+     */
+    function executeChallengeThresholdChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        uint256 proposedThreshold = pendingChallengeThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+        if (block.timestamp - challengeThresholdProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        uint256 previousThreshold = CHALLENGE_THRESHOLD_BPS;
+        CHALLENGE_THRESHOLD_BPS = proposedThreshold;
+        pendingChallengeThresholdBps = 0;
+        challengeThresholdProposedAt = 0;
+        _invalidatePendingTransitions();
+        emit ChallengeThresholdChanged(previousThreshold, proposedThreshold);
     }
 
     /**
@@ -197,7 +332,7 @@ contract TellorShepherd is ITellorShepherd {
         address proposedBackup = pendingBackupSource;
         if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
         if (!paused) revert NotPaused();
-        if (block.timestamp - sourcesProposedAt < SOURCES_CHANGE_DELAY) revert SourcesChangeDelayNotElapsed();
+        if (block.timestamp - sourcesProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
         _checkSourceCompatibility(proposedPrimary, queryId, decimals);
         _checkSourceCompatibility(proposedBackup, queryId, decimals);
         address previousPrimary = address(primarySource);
@@ -308,7 +443,8 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @notice Restores consumer reads after the minimum pause duration; admin only.
-     * @dev Equality is sufficient. Elapsed time is measured in EVM seconds.
+     * @dev Uses the current duration, including updates executed during this pause.
+     * Equality is sufficient, and zero allows unpause with no elapsed time; EVM seconds.
      * A pending source-pair proposal must be executed or cancelled first.
      */
     function unpause() external {
@@ -357,8 +493,8 @@ contract TellorShepherd is ITellorShepherd {
         if (IPriceSource(_source).decimals() != _decimals) revert SourceDecimalsMismatch();
     }
 
-    /// @dev A changed dependency requires fresh assessment and a fresh transition timer.
-    /// Called only after migration checks succeed; never consults the replaced sources.
+    /// @dev Changed sources or comparison policy require fresh assessment and transition timers.
+    /// Called only after configuration checks succeed; never reads source data.
     function _invalidatePendingTransitions() internal {
         if (challengePending) {
             challengePending = false;

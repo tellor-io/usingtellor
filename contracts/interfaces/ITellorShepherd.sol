@@ -9,6 +9,15 @@ import {IPriceSource} from "./IPriceSource.sol";
  */
 interface ITellorShepherd {
     // Events
+    event ChallengeThresholdChangeProposed(uint256 proposedThresholdBps, uint256 proposedAt);
+    event ChallengeThresholdChangeCancelled(uint256 proposedThresholdBps);
+    event ChallengeThresholdChanged(uint256 previousThresholdBps, uint256 newThresholdBps);
+    event MinPauseDurationChangeProposed(uint256 proposedDuration, uint256 proposedAt);
+    event MinPauseDurationChangeCancelled(uint256 proposedDuration);
+    event MinPauseDurationChanged(uint256 previousDuration, uint256 newDuration);
+    event AdminChangeProposed(address indexed proposedAdmin, uint256 proposedAt);
+    event AdminChangeCancelled(address indexed proposedAdmin);
+    event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
     event ChallengeCancelled(address indexed caller);
     event ChallengeExecuted(address indexed caller);
     event ChallengeInvalidated();
@@ -26,19 +35,27 @@ interface ITellorShepherd {
     event Unpaused(address indexed caller);
 
     // Errors
+    error ChallengeThresholdChangePending();
+    error ChallengeThresholdUnchanged();
+    error NoPendingChallengeThresholdChange();
+    error MinPauseDurationChangePending();
+    error MinPauseDurationUnchanged();
+    error NoPendingMinPauseDurationChange();
+    error AdminChangePending();
+    error AdminUnchanged();
+    error NoPendingAdminChange();
     error AlreadyPaused();
     error AlreadyPauser();
     error ChallengeAlreadyPending();
     error ChallengeDelayNotElapsed();
-    error SourcesChangeDelayNotElapsed();
+    error ConfigChangeDelayNotElapsed();
     error SourcesChangePending();
     error SourceHasNoCode();
     error SourcesUnchanged();
     error InvalidAdmin();
     error InvalidChallengeDelay();
     error InvalidChallengeThreshold();
-    error InvalidSourcesChangeDelay();
-    error InvalidMinPauseDuration();
+    error InvalidConfigChangeDelay();
     error InvalidPauser();
     error InvalidQueryId();
     error InvalidDecimals();

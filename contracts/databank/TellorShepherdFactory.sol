@@ -24,7 +24,7 @@ contract TellorShepherdFactory {
         address backupSource;
         address admin;
         uint256 minPauseDuration;
-        uint256 sourcesChangeDelay;
+        uint256 configChangeDelay;
         uint256 challengeThresholdBps;
         uint256 challengeDelaySeconds;
         uint256 recoveryDelaySeconds;
@@ -38,8 +38,8 @@ contract TellorShepherdFactory {
      * @dev Shepherd's constructor owns validation. Reverts leave no registration
      * or creation event. Duplicate configurations are allowed. Event source
      * addresses describe deployment; read Shepherd getters after source migration.
-     * @param configuration Initial sources, authority, and immutable settings.
-     * All durations are seconds; threshold is basis points. Source timing calibration
+     * @param configuration Initial sources, authority, pause duration, threshold, and immutable settings.
+     * All durations are seconds; minPauseDuration may be zero. Threshold is basis points. Source timing calibration
      * remains the deployer/admin responsibility, including after source replacement.
      * @return shepherd Address of the newly deployed and registered instance.
      */
@@ -51,7 +51,7 @@ contract TellorShepherdFactory {
             configuration.backupSource,
             configuration.admin,
             configuration.minPauseDuration,
-            configuration.sourcesChangeDelay,
+            configuration.configChangeDelay,
             configuration.challengeThresholdBps,
             [configuration.challengeDelaySeconds, configuration.recoveryDelaySeconds],
             configuration.maxDataAge

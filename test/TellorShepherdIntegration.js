@@ -183,7 +183,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
       await f.shepherd.proposeSourcesChange(next.primary.target, next.backup.target);
       await f.shepherd.pause();
       const pauseClock = await f.shepherd.pausedAt();
-      await expect(f.shepherd.executeSourcesChange()).to.be.revertedWithCustomError(f.shepherd, "SourcesChangeDelayNotElapsed");
+      await expect(f.shepherd.executeSourcesChange()).to.be.revertedWithCustomError(f.shepherd, "ConfigChangeDelayNotElapsed");
       await time.increase(300);
       const code = await ethers.provider.getCode(next.backup.target);
       await setCode(next.backup.target, "0x60006000fd");

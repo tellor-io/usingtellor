@@ -25,7 +25,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
     const s = await f.Shepherd.deploy(...f.args);
     for (const [getter, expected] of Object.entries({ queryId, decimals: 8,
       primarySource: f.primary.target, backupSource: f.backup.target, admin: f.admin.address,
-      MIN_PAUSE_DURATION: 120, SOURCES_CHANGE_DELAY: 300, CHALLENGE_THRESHOLD_BPS: 2000,
+      MIN_PAUSE_DURATION: 120, CONFIG_CHANGE_DELAY: 300, CHALLENGE_THRESHOLD_BPS: 2000,
       CHALLENGE_DELAY_SECONDS: 30, RECOVERY_DELAY_SECONDS: 90, mode: 0,
       paused: false, pausedAt: 0, pendingPrimarySource: ethers.ZeroAddress,
       pendingBackupSource: ethers.ZeroAddress, sourcesProposedAt: 0 })) {
@@ -37,8 +37,8 @@ describe("TellorShepherd - Generic configuration and reads", function () {
   for (const [index, value, error] of [
     [0, ethers.ZeroHash, "InvalidQueryId"], [1, 78, "InvalidDecimals"],
     [2, ethers.ZeroAddress, "SourceHasNoCode"], [3, ethers.ZeroAddress, "SourceHasNoCode"],
-    [4, ethers.ZeroAddress, "InvalidAdmin"], [5, 0, "InvalidMinPauseDuration"],
-    [6, 0, "InvalidSourcesChangeDelay"], [7, 0, "InvalidChallengeThreshold"],
+    [4, ethers.ZeroAddress, "InvalidAdmin"],
+    [6, 0, "InvalidConfigChangeDelay"], [7, 0, "InvalidChallengeThreshold"],
     [7, 10000, "InvalidChallengeThreshold"], [7, ethers.MaxUint256, "InvalidChallengeThreshold"],
     [8, [0, 90], "InvalidChallengeDelay"], [8, [30, 0], "InvalidRecoveryDelay"],
   ]) {
@@ -493,7 +493,7 @@ describe("TellorShepherd - Source pair migration", function () {
     await shepherd.connect(admin).proposeSourcesChange(alternate.target, backup.target);
     expect(await shepherd.sourcesProposedAt()).to.be.greaterThan(proposedAt);
     await expect(shepherd.connect(admin).executeSourcesChange())
-      .to.be.revertedWithCustomError(shepherd, "SourcesChangeDelayNotElapsed");
+      .to.be.revertedWithCustomError(shepherd, "ConfigChangeDelayNotElapsed");
   });
 
   it("rejects one second early, allows equality with empty history, and preserves the pause minimum", async function () {
@@ -505,7 +505,7 @@ describe("TellorShepherd - Source pair migration", function () {
     const pausedAt = await shepherd.pausedAt();
     await time.setNextBlockTimestamp(start + changeDelay - 1);
     await expect(shepherd.connect(admin).executeSourcesChange())
-      .to.be.revertedWithCustomError(shepherd, "SourcesChangeDelayNotElapsed");
+      .to.be.revertedWithCustomError(shepherd, "ConfigChangeDelayNotElapsed");
     expect(await shepherd.primarySource()).to.equal(bank.target);
     await time.setNextBlockTimestamp(start + changeDelay);
     await shepherd.connect(admin).executeSourcesChange();

@@ -5,37 +5,22 @@
   "abi": [
     {
       "inputs": [],
+      "name": "AdminChangePending",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "AdminUnchanged",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "AlreadyPaused",
       "type": "error"
     },
     {
       "inputs": [],
       "name": "AlreadyPauser",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "BackupChangeDelayNotElapsed",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "BackupChangePending",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "BackupHasNoCode",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "BackupOracleHasNoCode",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "BackupUnchanged",
       "type": "error"
     },
     {
@@ -50,37 +35,22 @@
     },
     {
       "inputs": [],
-      "name": "DataBankChangeDelayNotElapsed",
+      "name": "ChallengeThresholdChangePending",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "DataBankChangePending",
+      "name": "ChallengeThresholdUnchanged",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "DataBankHasNoCode",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "DataBankUnchanged",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "DiagnosticUnavailable",
+      "name": "ConfigChangeDelayNotElapsed",
       "type": "error"
     },
     {
       "inputs": [],
       "name": "InvalidAdmin",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "InvalidBackupChangeDelay",
       "type": "error"
     },
     {
@@ -95,12 +65,17 @@
     },
     {
       "inputs": [],
-      "name": "InvalidDataBankChangeDelay",
+      "name": "InvalidConfigChangeDelay",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "InvalidMinPauseDuration",
+      "name": "InvalidDecimals",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidMaxAge",
       "type": "error"
     },
     {
@@ -120,32 +95,22 @@
     },
     {
       "inputs": [],
-      "name": "InvalidRelayReadDelay",
+      "name": "InvalidTimestamp",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "InvalidTwapReference",
+      "name": "MinPauseDurationChangePending",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "InvalidTwapWindow",
+      "name": "MinPauseDurationUnchanged",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "InvalidValueLength",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "NoMatureData",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "NoPendingBackupChange",
+      "name": "NoPendingAdminChange",
       "type": "error"
     },
     {
@@ -155,12 +120,22 @@
     },
     {
       "inputs": [],
-      "name": "NoPendingDataBankChange",
+      "name": "NoPendingChallengeThresholdChange",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoPendingMinPauseDurationChange",
       "type": "error"
     },
     {
       "inputs": [],
       "name": "NoPendingRecovery",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoPendingSourcesChange",
       "type": "error"
     },
     {
@@ -230,6 +205,41 @@
     },
     {
       "inputs": [],
+      "name": "SignedPriceOverflow",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SourceDecimalsMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SourceHasNoCode",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SourceQueryIdMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SourcesChangePending",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SourcesUnchanged",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "StalePrice",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "StillDeviating",
       "type": "error"
     },
@@ -244,11 +254,11 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "proposedBackup",
+          "name": "proposedAdmin",
           "type": "address"
         }
       ],
-      "name": "BackupChangeCancelled",
+      "name": "AdminChangeCancelled",
       "type": "event"
     },
     {
@@ -257,7 +267,7 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "proposedBackup",
+          "name": "proposedAdmin",
           "type": "address"
         },
         {
@@ -267,7 +277,7 @@
           "type": "uint256"
         }
       ],
-      "name": "BackupChangeProposed",
+      "name": "AdminChangeProposed",
       "type": "event"
     },
     {
@@ -276,17 +286,17 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "previousBackup",
+          "name": "previousAdmin",
           "type": "address"
         },
         {
           "indexed": true,
           "internalType": "address",
-          "name": "newBackup",
+          "name": "newAdmin",
           "type": "address"
         }
       ],
-      "name": "BackupChanged",
+      "name": "AdminChanged",
       "type": "event"
     },
     {
@@ -344,23 +354,23 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "proposedBank",
-          "type": "address"
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "proposedThresholdBps",
+          "type": "uint256"
         }
       ],
-      "name": "DataBankChangeCancelled",
+      "name": "ChallengeThresholdChangeCancelled",
       "type": "event"
     },
     {
       "anonymous": false,
       "inputs": [
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "proposedBank",
-          "type": "address"
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "proposedThresholdBps",
+          "type": "uint256"
         },
         {
           "indexed": false,
@@ -369,26 +379,77 @@
           "type": "uint256"
         }
       ],
-      "name": "DataBankChangeProposed",
+      "name": "ChallengeThresholdChangeProposed",
       "type": "event"
     },
     {
       "anonymous": false,
       "inputs": [
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "previousBank",
-          "type": "address"
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "previousThresholdBps",
+          "type": "uint256"
         },
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "newBank",
-          "type": "address"
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newThresholdBps",
+          "type": "uint256"
         }
       ],
-      "name": "DataBankChanged",
+      "name": "ChallengeThresholdChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "proposedDuration",
+          "type": "uint256"
+        }
+      ],
+      "name": "MinPauseDurationChangeCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "proposedDuration",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "proposedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "MinPauseDurationChangeProposed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "previousDuration",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newDuration",
+          "type": "uint256"
+        }
+      ],
+      "name": "MinPauseDurationChanged",
       "type": "event"
     },
     {
@@ -487,12 +548,126 @@
         {
           "indexed": true,
           "internalType": "address",
+          "name": "proposedPrimary",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposedBackup",
+          "type": "address"
+        }
+      ],
+      "name": "SourcesChangeCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposedPrimary",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposedBackup",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "proposedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "SourcesChangeProposed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "previousPrimary",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "previousBackup",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newPrimary",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newBackup",
+          "type": "address"
+        }
+      ],
+      "name": "SourcesChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
           "name": "caller",
           "type": "address"
         }
       ],
       "name": "Unpaused",
       "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "MAX_DATA_AGE",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "backupSource",
+      "outputs": [
+        {
+          "internalType": "contract IPriceSource",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     },
     {
       "inputs": [],
@@ -507,6 +682,52 @@
           "internalType": "uint256",
           "name": "aggregateTimestamp",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "latestRoundData",
+      "outputs": [
+        {
+          "internalType": "uint80",
+          "name": "roundId",
+          "type": "uint80"
+        },
+        {
+          "internalType": "int256",
+          "name": "answer",
+          "type": "int256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "startedAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "updatedAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint80",
+          "name": "answeredInRound",
+          "type": "uint80"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "primarySource",
+      "outputs": [
+        {
+          "internalType": "contract IPriceSource",
+          "name": "",
+          "type": "address"
         }
       ],
       "stateMutability": "view",

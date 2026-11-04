@@ -7,10 +7,10 @@ import {TellorShepherd} from "../databank/TellorShepherd.sol";
 contract TellorShepherdHarness is TellorShepherd {
     constructor(
         bytes32 _queryId, uint8 _decimals, address _primary, address _backup, address _admin,
-        uint256 _minPauseDuration, uint256 _sourcesChangeDelay, uint256 _threshold,
+        uint256 _minPauseDuration, uint256 _configChangeDelay, uint256 _threshold,
         uint256[2] memory _delays, uint256 _maxDataAge
     ) TellorShepherd(_queryId, _decimals, _primary, _backup, _admin,
-        _minPauseDuration, _sourcesChangeDelay, _threshold, _delays, _maxDataAge) {}
+        _minPauseDuration, _configChangeDelay, _threshold, _delays, _maxDataAge) {}
 
     function setModeForTest(Mode _mode) external { mode = _mode; }
 
