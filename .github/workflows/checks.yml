@@ -16,7 +16,7 @@ jobs:
       - name: Run Solhint
         uses: actions/setup-node@v1
         with:
-          node-version: '14.x'
+          node-version: '24.x'
       - run: npm install -g solhint
       - run: make solhint
   Security:
@@ -27,5 +27,5 @@ jobs:
       - name: Slither Static Analysis
         uses: actions/setup-node@v1
         with:
-          node-version: '14.x'
+          node-version: '24.x'
       - run: npm install
