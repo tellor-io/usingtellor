@@ -1,47 +1,50 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {IBackupOracle} from "../interfaces/IBackupOracle.sol";
-import {ITellorDataBank} from "../interfaces/ITellorDataBank.sol";
+import {IPriceSource} from "../interfaces/IPriceSource.sol";
 import {ITellorShepherd} from "../interfaces/ITellorShepherd.sol";
 
 /**
  * @title TellorShepherd
- * @notice Per-feed Tellor safety layer with mature primary selection.
- * @dev Freshness checks belong to adaptors. Adaptor integration and release
- * validation remain incomplete. This version is not ready for consumer deployment.
+ * @notice Per-feed selector of interchangeable primary and backup price sources.
+ * @dev Price, timestamp validity and the immutable maximum data age are checked here.
+ * Source compatibility does not establish trust or appropriate timing configuration.
  */
 contract TellorShepherd is ITellorShepherd {
     // Immutables
-    bytes32 public immutable override queryId;
-    uint256 public immutable BACKUP_CHANGE_DELAY;
     uint256 public immutable CHALLENGE_DELAY_SECONDS;
-    uint256 public immutable CHALLENGE_THRESHOLD_BPS;
-    uint256 public immutable DATA_BANK_CHANGE_DELAY;
-    uint256 public immutable MIN_PAUSE_DURATION;
+    uint256 public immutable CONFIG_CHANGE_DELAY;
+    uint8 public immutable override decimals;
+    uint256 public immutable override MAX_DATA_AGE;
+    bytes32 public immutable override queryId;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
-    uint256 public immutable RELAY_READ_DELAY;
-    uint256 public immutable TWAP_WINDOW_MS;
 
     // Storage
-    // Both source addresses change only through delayed, paused migration.
-    ITellorDataBank public dataBank;
     address public admin;
-    address public backupOracle;
-    address public pendingBackupOracle;
-    address public pendingDataBank;
-    uint256 public backupProposedAt;
-    uint256 public challengeRequestedAt;
-    uint256 public dataBankProposedAt;
-    uint256 public pausedAt;
-    uint256 public recoveryRequestedAt;
+    uint256 public adminProposedAt;
+    IPriceSource public override backupSource;
     bool public challengePending;
-    bool public paused;
-    bool public recoveryPending;
+    uint256 public challengeRequestedAt;
+    uint256 public challengeThresholdBps;
+    uint256 public challengeThresholdProposedAt;
+    uint256 public minPauseDuration;
+    bool public minPauseDurationChangePending;
+    uint256 public minPauseDurationProposedAt;
     Mode public mode;
+    bool public paused;
+    uint256 public pausedAt;
+    address public pendingAdmin;
+    address public pendingBackupSource;
+    uint256 public pendingChallengeThresholdBps;
+    uint256 public pendingMinPauseDuration;
+    address public pendingPrimarySource;
+    IPriceSource public override primarySource;
+    bool public recoveryPending;
+    uint256 public recoveryRequestedAt;
+    uint256 public sourcesProposedAt;
 
-    // Additional operational keys; the admin's pause authority is independent.
     mapping(address => bool) public isPauser;
+
 
     // Enums
     enum Mode {
@@ -52,65 +55,57 @@ contract TellorShepherd is ITellorShepherd {
     // Constructor
 
     /**
-     * @notice Binds the feed, initial sources, administrator, and timing configuration.
-     * @dev Code presence does not establish source compatibility or trustworthiness.
-     * No existing feed history is required at deployment.
-     * @param _queryId Nonzero Tellor query ID, fixed for this instance.
-     * @param _dataBank Initial deployed DataBank contract.
-     * @param _backupOracle Initial deployed backup source contract.
+     * @notice Binds the feed, source pair, administrator, initial policies, and immutable control settings.
+     * @dev Metadata is checked without requiring available prices. Deployers must calibrate
+     * challenge/recovery delays against source timing and security requirements, including
+     * every replacement. The common age limit must accommodate both sources; metadata cannot prove this.
+     * A replacement needing different core delays or maximum age requires a new Shepherd.
+     * @param _queryId Nonzero agreed base/quote identifier, fixed for this instance.
+     * @param _decimals Fixed raw-price precision, from 0 to 77; no prices are rescaled here.
+     * @param _primarySource Initial primary reader implementing IPriceSource.
+     * @param _backupSource Initial backup reader implementing the same interface.
      * @param _admin Nonzero administrator, independent of the deployment caller.
-     * @param _relayReadDelay Positive delay in seconds, measured from EVM relay time.
-     * @param _minPauseDuration Positive minimum uninterrupted pause duration in seconds.
-     * @param _dataBankChangeDelay Positive notice period for replacing the bank, in seconds.
-     * @param _backupChangeDelay Positive notice period for replacing the backup, in seconds.
-     * @param _twapWindowMs Positive minimum TWAP duration in aggregate milliseconds.
-     * @param _challengeThresholdBps Strict symmetric deviation threshold, from 1 to 9999 bps.
-     * @param _transitionDelaysSeconds Challenge and recovery waits in seconds, respectively.
-     * Challenge wait must cover the rounded-up TWAP window; recovery wait must be positive.
+     * @param _minPauseDuration Initial minimum uninterrupted pause duration in seconds; zero is allowed.
+     * @param _configChangeDelay Positive shared notice period for source-pair, admin, pause-duration and threshold changes, in seconds.
+     * @param _challengeThresholdBps Initial strict absolute deviation relative to primary, from 1 to 9999 bps.
+     * @param _transitionDelaysSeconds Positive challenge and recovery waits in seconds, respectively.
+     * @param _maxDataAge Positive maximum observation age in seconds, shared by both sources.
      */
     constructor(
         bytes32 _queryId,
-        address _dataBank,
-        address _backupOracle,
+        uint8 _decimals,
+        address _primarySource,
+        address _backupSource,
         address _admin,
-        uint256 _relayReadDelay,
         uint256 _minPauseDuration,
-        uint256 _dataBankChangeDelay,
-        uint256 _backupChangeDelay,
-        uint256 _twapWindowMs,
+        uint256 _configChangeDelay,
         uint256 _challengeThresholdBps,
-        uint256[2] memory _transitionDelaysSeconds
+        uint256[2] memory _transitionDelaysSeconds,
+        uint256 _maxDataAge
     ) {
         if (_queryId == bytes32(0)) revert InvalidQueryId();
-        if (_dataBank.code.length == 0) revert DataBankHasNoCode();
-        if (_backupOracle.code.length == 0) revert BackupOracleHasNoCode();
+        if (_decimals > 77) revert InvalidDecimals();
         if (_admin == address(0)) revert InvalidAdmin();
-        if (_relayReadDelay == 0) revert InvalidRelayReadDelay();
-        if (_minPauseDuration == 0) revert InvalidMinPauseDuration();
-        if (_dataBankChangeDelay == 0) revert InvalidDataBankChangeDelay();
-        if (_backupChangeDelay == 0) revert InvalidBackupChangeDelay();
-        if (_twapWindowMs == 0) revert InvalidTwapWindow();
-
+        if (_configChangeDelay == 0) revert InvalidConfigChangeDelay();
         if (_challengeThresholdBps == 0 || _challengeThresholdBps >= 10000) revert InvalidChallengeThreshold();
-        // Division plus remainder avoids overflowing when converting the window to seconds.
-        uint256 minimumChallengeDelay = _twapWindowMs / 1000;
-        if (_twapWindowMs % 1000 != 0) minimumChallengeDelay += 1;
-        if (_transitionDelaysSeconds[0] < minimumChallengeDelay) revert InvalidChallengeDelay();
-
+        if (_transitionDelaysSeconds[0] == 0) revert InvalidChallengeDelay();
         if (_transitionDelaysSeconds[1] == 0) revert InvalidRecoveryDelay();
+        // Validate once so the millisecond conversion is safe on every read.
+        if (_maxDataAge == 0 || _maxDataAge > type(uint256).max / 1000) revert InvalidMaxAge();
 
         queryId = _queryId;
-        dataBank = ITellorDataBank(_dataBank);
-        backupOracle = _backupOracle;
+        decimals = _decimals;
+        _checkSourceCompatibility(_primarySource, _queryId, _decimals);
+        _checkSourceCompatibility(_backupSource, _queryId, _decimals);
+        primarySource = IPriceSource(_primarySource);
+        backupSource = IPriceSource(_backupSource);
         admin = _admin;
-        RELAY_READ_DELAY = _relayReadDelay;
-        MIN_PAUSE_DURATION = _minPauseDuration;
-        DATA_BANK_CHANGE_DELAY = _dataBankChangeDelay;
-        BACKUP_CHANGE_DELAY = _backupChangeDelay;
-        TWAP_WINDOW_MS = _twapWindowMs;
-        CHALLENGE_THRESHOLD_BPS = _challengeThresholdBps;
+        minPauseDuration = _minPauseDuration;
+        CONFIG_CHANGE_DELAY = _configChangeDelay;
+        challengeThresholdBps = _challengeThresholdBps;
         CHALLENGE_DELAY_SECONDS = _transitionDelaysSeconds[0];
         RECOVERY_DELAY_SECONDS = _transitionDelaysSeconds[1];
+        MAX_DATA_AGE = _maxDataAge;
         mode = Mode.PRIMARY;
     }
 
@@ -131,29 +126,26 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Cancels the backup proposal; admin only, including while paused.
-     * @dev Does not call the target, so a broken backup cannot prevent cancellation.
+     * @notice Cancels the pending admin change; current admin only, in either pause state.
      */
-    function cancelBackupChange() external {
+    function cancelAdminChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        address proposedBackup = pendingBackupOracle;
-        if (proposedBackup == address(0)) revert NoPendingBackupChange();
-
-        pendingBackupOracle = address(0);
-        backupProposedAt = 0;
-        emit BackupChangeCancelled(proposedBackup);
+        address proposedAdmin = pendingAdmin;
+        if (proposedAdmin == address(0)) revert NoPendingAdminChange();
+        pendingAdmin = address(0);
+        adminProposedAt = 0;
+        emit AdminChangeCancelled(proposedAdmin);
     }
 
     /**
      * @notice Anyone may cancel a pending primary challenge when deviation has resolved.
-     * @dev No waiting period or pause restriction. Missing or broken diagnostics cannot
+     * @dev No waiting period or pause restriction. Missing or broken source data cannot
      * establish resolution, so failures preserve the original challenge and its clock.
      */
     function cancelChallenge() external {
         if (mode != Mode.PRIMARY) revert NotPrimaryMode();
         if (!challengePending) revert NoPendingChallenge();
-        (bool available, bool deviating) = _readDeviation();
-        if (!available) revert DiagnosticUnavailable();
+        bool deviating = _readDeviation();
         if (deviating) revert StillDeviating();
 
         challengePending = false;
@@ -162,28 +154,40 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Cancels the pending bank proposal; admin only, including while paused.
-     * @dev Cancellation does not consult the proposed bank, which may have stopped working.
+     * @notice Cancels the threshold proposal without affecting transition requests; current admin only.
      */
-    function cancelDataBankChange() external {
+    function cancelChallengeThresholdChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        address proposedBank = pendingDataBank;
-        if (proposedBank == address(0)) revert NoPendingDataBankChange();
-
-        pendingDataBank = address(0);
-        dataBankProposedAt = 0;
-        emit DataBankChangeCancelled(proposedBank);
+        uint256 proposedThreshold = pendingChallengeThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+        pendingChallengeThresholdBps = 0;
+        challengeThresholdProposedAt = 0;
+        emit ChallengeThresholdChangeCancelled(proposedThreshold);
     }
 
     /**
-     * @notice Anyone may cancel a pending recovery when the backup explicitly returns false.
+     * @notice Cancels a pending duration change without affecting the current pause; admin only.
+     */
+    function cancelMinPauseDurationChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
+        uint256 proposedDuration = pendingMinPauseDuration;
+        pendingMinPauseDuration = 0;
+        minPauseDurationProposedAt = 0;
+        minPauseDurationChangePending = false;
+        emit MinPauseDurationChangeCancelled(proposedDuration);
+    }
+
+    /**
+     * @notice Anyone may cancel a pending recovery when deviation returns.
      * @dev No delay or pause restriction. Failed assessments revert without clearing state.
-     * A transient false assessment does not reset the clock unless cancellation is submitted.
+     * Transient deviation does not reset the clock unless cancellation is submitted.
      */
     function cancelRecovery() external {
         if (mode != Mode.BACKUP) revert NotBackupMode();
         if (!recoveryPending) revert NoPendingRecovery();
-        if (IBackupOracle(backupOracle).canRecover(queryId)) revert RecoveryStillAllowed();
+        bool deviating = _readDeviation();
+        if (!deviating) revert RecoveryStillAllowed();
 
         recoveryPending = false;
         recoveryRequestedAt = 0;
@@ -191,37 +195,48 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Replaces the backup after its notice period; admin only and paused.
-     * @dev Equality permits execution. Invalidates transition requests; preserves mode, pause clock, and any bank proposal.
+     * @notice Cancels the pending pair proposal; admin only, including while paused.
+     * @dev Does not consult proposed dependencies, which may have stopped working.
      */
-    function executeBackupChange() external {
+    function cancelSourcesChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        address proposedBackup = pendingBackupOracle;
-        if (proposedBackup == address(0)) revert NoPendingBackupChange();
-        if (!paused) revert NotPaused();
-        if (block.timestamp - backupProposedAt < BACKUP_CHANGE_DELAY) revert BackupChangeDelayNotElapsed();
-        _checkBackupCompatibility(proposedBackup);
+        address proposedPrimary = pendingPrimarySource;
+        address proposedBackup = pendingBackupSource;
+        if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
+        pendingPrimarySource = address(0);
+        pendingBackupSource = address(0);
+        sourcesProposedAt = 0;
+        emit SourcesChangeCancelled(proposedPrimary, proposedBackup);
+    }
 
-        address previousBackup = backupOracle;
-        backupOracle = proposedBackup;
-        _invalidatePendingTransitions();
-        pendingBackupOracle = address(0);
-        backupProposedAt = 0;
-        emit BackupChanged(previousBackup, proposedBackup);
+    /**
+     * @notice Transfers authority after the full notice; executed by the outgoing admin.
+     * @dev Equality is sufficient. Does not change pause, sources, other proposal clocks,
+     * transition requests or separately granted pauser memberships. No recipient call occurs.
+     */
+    function executeAdminChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedAdmin = pendingAdmin;
+        if (proposedAdmin == address(0)) revert NoPendingAdminChange();
+        if (block.timestamp - adminProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        address previousAdmin = admin;
+        admin = proposedAdmin;
+        pendingAdmin = address(0);
+        adminProposedAt = 0;
+        emit AdminChanged(previousAdmin, proposedAdmin);
     }
 
     /**
      * @notice Anyone may select backup after the challenge delay if deviation is re-established.
      * @dev Equality permits execution. Pause and its clock survive the switch.
-     * Backup availability does not gate selection; failed backup reads subsequently revert.
+     * Both sources must be usable at execution; a failing backup prevents selection.
      * Request and execution checks do not prove continuous deviation between calls.
      */
     function executeChallenge() external {
         if (mode != Mode.PRIMARY) revert NotPrimaryMode();
         if (!challengePending) revert NoPendingChallenge();
         if (block.timestamp - challengeRequestedAt < CHALLENGE_DELAY_SECONDS) revert ChallengeDelayNotElapsed();
-        (bool available, bool deviating) = _readDeviation();
-        if (!available) revert DiagnosticUnavailable();
+        bool deviating = _readDeviation();
         if (!deviating) revert NotDeviating();
 
         challengePending = false;
@@ -231,40 +246,83 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Executes a pending bank change after its notice period; admin only and paused.
-     * @dev Equality permits execution. Rechecks compatibility, invalidates transition requests, and preserves mode and pause clock.
+     * @notice Applies the pending threshold after the shared notice; current admin only.
+     * @dev Invalidates transition timers accumulated under the previous comparison policy.
+     * Does not read sources or change mode, pause, its clock, or other configuration proposals.
      */
-    function executeDataBankChange() external {
+    function executeChallengeThresholdChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        address proposedBank = pendingDataBank;
-        if (proposedBank == address(0)) revert NoPendingDataBankChange();
-        if (!paused) revert NotPaused();
-        if (block.timestamp - dataBankProposedAt < DATA_BANK_CHANGE_DELAY) revert DataBankChangeDelayNotElapsed();
-        _checkDataBankCompatibility(proposedBank);
-
-        address previousBank = address(dataBank);
-        dataBank = ITellorDataBank(proposedBank);
+        uint256 proposedThreshold = pendingChallengeThresholdBps;
+        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+        if (block.timestamp - challengeThresholdProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        uint256 previousThreshold = challengeThresholdBps;
+        challengeThresholdBps = proposedThreshold;
+        pendingChallengeThresholdBps = 0;
+        challengeThresholdProposedAt = 0;
         _invalidatePendingTransitions();
-        pendingDataBank = address(0);
-        dataBankProposedAt = 0;
-        emit DataBankChanged(previousBank, proposedBank);
+        emit ChallengeThresholdChanged(previousThreshold, proposedThreshold);
     }
 
     /**
-     * @notice Anyone may return to primary after the recovery delay and a fresh approval.
+     * @notice Applies the pending duration after the shared notice period; current admin only.
+     * @dev Applies immediately to an active pause without changing pausedAt or unpausing.
+     * Zero removes the elapsed-time wait, but not admin authority or the pending-source block.
+     * Preserves all other proposals, transition requests, source state and pauser memberships.
+     */
+    function executeMinPauseDurationChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
+        if (block.timestamp - minPauseDurationProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        uint256 previousDuration = minPauseDuration;
+        uint256 proposedDuration = pendingMinPauseDuration;
+        minPauseDuration = proposedDuration;
+        pendingMinPauseDuration = 0;
+        minPauseDurationProposedAt = 0;
+        minPauseDurationChangePending = false;
+        emit MinPauseDurationChanged(previousDuration, proposedDuration);
+    }
+
+    /**
+     * @notice Anyone may return to primary after the recovery delay if deviation is still resolved.
      * @dev Equality permits execution; failed assessments preserve the pending timer.
-     * Pause survives the switch. Primary readability is not an additional prerequisite.
+     * Pause survives the switch. Request/execution checks do not prove continuous agreement.
      */
     function executeRecovery() external {
         if (mode != Mode.BACKUP) revert NotBackupMode();
         if (!recoveryPending) revert NoPendingRecovery();
         if (block.timestamp - recoveryRequestedAt < RECOVERY_DELAY_SECONDS) revert RecoveryDelayNotElapsed();
-        if (!IBackupOracle(backupOracle).canRecover(queryId)) revert RecoveryNotAllowed();
+        bool deviating = _readDeviation();
+        if (deviating) revert RecoveryNotAllowed();
 
         recoveryPending = false;
         recoveryRequestedAt = 0;
         mode = Mode.PRIMARY;
         emit RecoveryExecuted(msg.sender);
+    }
+
+    /**
+     * @notice Replaces both sources atomically after notice; admin only and paused.
+     * @dev Rechecks metadata without reading prices. Invalidates transition requests,
+     * preserves mode/pause clock and immutable delays/maximum age, and never consults the old sources.
+     */
+    function executeSourcesChange() external {
+        if (msg.sender != admin) revert NotAdmin();
+        address proposedPrimary = pendingPrimarySource;
+        address proposedBackup = pendingBackupSource;
+        if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
+        if (!paused) revert NotPaused();
+        if (block.timestamp - sourcesProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+        _checkSourceCompatibility(proposedPrimary, queryId, decimals);
+        _checkSourceCompatibility(proposedBackup, queryId, decimals);
+        address previousPrimary = address(primarySource);
+        address previousBackup = address(backupSource);
+        primarySource = IPriceSource(proposedPrimary);
+        backupSource = IPriceSource(proposedBackup);
+        _invalidatePendingTransitions();
+        pendingPrimarySource = address(0);
+        pendingBackupSource = address(0);
+        sourcesProposedAt = 0;
+        emit SourcesChanged(previousPrimary, previousBackup, proposedPrimary, proposedBackup);
     }
 
     /**
@@ -282,37 +340,64 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Proposes a backup replacement; admin only, paused or unpaused.
-     * @dev Cancel before replacing a proposal. Requires a decodable getCurrentValue(queryId)
-     * response at proposal and execution; this does not establish price truth or future availability.
-     * @param _newBackupOracle Deployed backup that can currently answer the configured query.
+     * @notice Announces a nonzero replacement admin; current admin only, in either pause state.
+     * @dev No recipient acceptance or liveness check: a throwaway address is permitted.
+     * Cancel an existing proposal before reproposing and starting a new notice period.
      */
-    function proposeBackupChange(address _newBackupOracle) external {
+    function proposeAdminChange(address _newAdmin) external {
         if (msg.sender != admin) revert NotAdmin();
-        if (pendingBackupOracle != address(0)) revert BackupChangePending();
-        if (_newBackupOracle == backupOracle) revert BackupUnchanged();
-        _checkBackupCompatibility(_newBackupOracle);
-
-        pendingBackupOracle = _newBackupOracle;
-        backupProposedAt = block.timestamp;
-        emit BackupChangeProposed(_newBackupOracle, block.timestamp);
+        if (pendingAdmin != address(0)) revert AdminChangePending();
+        if (_newAdmin == address(0)) revert InvalidAdmin();
+        if (_newAdmin == admin) revert AdminUnchanged();
+        pendingAdmin = _newAdmin;
+        adminProposedAt = block.timestamp;
+        emit AdminChangeProposed(_newAdmin, block.timestamp);
     }
 
     /**
-     * @notice Announces a replacement bank; admin only, whether paused or unpaused.
-     * @dev Cancel an existing proposal before replacing it so every target gets fresh notice.
-     * Empty history is allowed. Compatibility does not establish source trust or read readiness.
-     * @param _newDataBank Deployed bank distinct from the current bank.
+     * @notice Proposes a new deviation threshold in basis points; current admin only.
+     * @dev The active threshold governs transitions until execution. Zero means no proposal.
      */
-    function proposeDataBankChange(address _newDataBank) external {
+    function proposeChallengeThresholdChange(uint256 _newThresholdBps) external {
         if (msg.sender != admin) revert NotAdmin();
-        if (pendingDataBank != address(0)) revert DataBankChangePending();
-        if (_newDataBank == address(dataBank)) revert DataBankUnchanged();
-        _checkDataBankCompatibility(_newDataBank);
+        if (pendingChallengeThresholdBps != 0) revert ChallengeThresholdChangePending();
+        if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
+        if (_newThresholdBps == challengeThresholdBps) revert ChallengeThresholdUnchanged();
+        pendingChallengeThresholdBps = _newThresholdBps;
+        challengeThresholdProposedAt = block.timestamp;
+        emit ChallengeThresholdChangeProposed(_newThresholdBps, block.timestamp);
+    }
 
-        pendingDataBank = _newDataBank;
-        dataBankProposedAt = block.timestamp;
-        emit DataBankChangeProposed(_newDataBank, block.timestamp);
+    /**
+     * @notice Proposes a new minimum pause duration in seconds; current admin only.
+     * @dev Zero is valid. Until execution, the current duration still governs every pause.
+     */
+    function proposeMinPauseDurationChange(uint256 _newDuration) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (minPauseDurationChangePending) revert MinPauseDurationChangePending();
+        if (_newDuration == minPauseDuration) revert MinPauseDurationUnchanged();
+        pendingMinPauseDuration = _newDuration;
+        minPauseDurationProposedAt = block.timestamp;
+        minPauseDurationChangePending = true;
+        emit MinPauseDurationChangeProposed(_newDuration, block.timestamp);
+    }
+
+    /**
+     * @notice Announces a replacement source pair; admin only, whether paused or unpaused.
+     * @dev May retain one current source. Cancel any existing proposal before replacing it.
+     * Empty history is allowed. Metadata does not prove trust, readiness, or timing suitability.
+     * Admins must reassess source timing against this Shepherd's immutable transition delays.
+     */
+    function proposeSourcesChange(address _newPrimary, address _newBackup) external {
+        if (msg.sender != admin) revert NotAdmin();
+        if (pendingPrimarySource != address(0)) revert SourcesChangePending();
+        if (_newPrimary == address(primarySource) && _newBackup == address(backupSource)) revert SourcesUnchanged();
+        _checkSourceCompatibility(_newPrimary, queryId, decimals);
+        _checkSourceCompatibility(_newBackup, queryId, decimals);
+        pendingPrimarySource = _newPrimary;
+        pendingBackupSource = _newBackup;
+        sourcesProposedAt = block.timestamp;
+        emit SourcesChangeProposed(_newPrimary, _newBackup, block.timestamp);
     }
 
     /**
@@ -331,14 +416,13 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @notice Anyone may request a challenge in primary mode when deviation is established.
-     * @dev Pause does not block diagnostics. Duplicate requests cannot restart the timer.
+     * @dev Pause does not block source comparisons. Duplicate requests cannot restart the timer.
      * A pending challenge does not halt reads or prove continuous deviation.
      */
     function requestChallenge() external {
         if (mode != Mode.PRIMARY) revert NotPrimaryMode();
         if (challengePending) revert ChallengeAlreadyPending();
-        (bool available, bool deviating) = _readDeviation();
-        if (!available) revert DiagnosticUnavailable();
+        bool deviating = _readDeviation();
         if (!deviating) revert NotDeviating();
 
         challengePending = true;
@@ -347,14 +431,14 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Anyone may request recovery in backup mode when the backup approves the primary.
-     * @dev Duplicate requests cannot reset the clock. Pause and backup price availability
-     * do not gate assessment. The backup owns identifying and assessing the current primary.
+     * @notice Anyone may request recovery in backup mode when deviation has resolved.
+     * @dev Duplicate requests cannot reset the clock. Source comparisons remain available while paused.
      */
     function requestRecovery() external {
         if (mode != Mode.BACKUP) revert NotBackupMode();
         if (recoveryPending) revert RecoveryAlreadyPending();
-        if (!IBackupOracle(backupOracle).canRecover(queryId)) revert RecoveryNotAllowed();
+        bool deviating = _readDeviation();
+        if (deviating) revert RecoveryNotAllowed();
 
         recoveryPending = true;
         recoveryRequestedAt = block.timestamp;
@@ -363,15 +447,15 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @notice Restores consumer reads after the minimum pause duration; admin only.
-     * @dev Equality is sufficient. Elapsed time is measured in EVM seconds.
-     * Both pending source proposals must be executed or cancelled first.
+     * @dev Uses the current duration, including updates executed during this pause.
+     * Equality is sufficient, and zero allows unpause with no elapsed time; EVM seconds.
+     * A pending source-pair proposal must be executed or cancelled first.
      */
     function unpause() external {
         if (msg.sender != admin) revert NotAdmin();
         if (!paused) revert NotPaused();
-        if (pendingDataBank != address(0)) revert DataBankChangePending();
-        if (pendingBackupOracle != address(0)) revert BackupChangePending();
-        if (block.timestamp - pausedAt < MIN_PAUSE_DURATION) revert PauseDurationNotElapsed();
+        if (pendingPrimarySource != address(0)) revert SourcesChangePending();
+        if (block.timestamp - pausedAt < minPauseDuration) revert PauseDurationNotElapsed();
 
         paused = false;
         pausedAt = 0;
@@ -381,50 +465,40 @@ contract TellorShepherd is ITellorShepherd {
     // Getter functions
 
     /**
-     * @notice Returns the selected source's value and supplied timestamp, unless paused.
-     * @dev Primary eligibility is strict: relayTimestamp < block.timestamp - RELAY_READ_DELAY.
-     * Primary payloads need one ABI word; trailing bytes are accepted. Backup reads have no
-     * Shepherd maturity delay and do not consult the primary. Invalid values or dependency
-     * failures revert without substituting another source. Freshness belongs to adaptors.
-     * @return value The selected source's nonzero value.
-     * @return aggregateTimestamp The unchanged source timestamp in milliseconds.
+     * @notice Returns only the selected source's price and original millisecond timestamp.
+     * @dev Paused or unusable reads revert without switching or consulting the other source.
+     * Age equality is accepted; a TWAP endpoint does not bound contributor age.
      */
     function getCurrentValue() external view override returns (uint256 value, uint256 aggregateTimestamp) {
-        if (paused) revert ShepherdPaused();
-        if (mode == Mode.BACKUP) return _readBackup();
-        uint256 cutoff = block.timestamp - RELAY_READ_DELAY;
-        (bool found, ITellorDataBank.AggregateData memory record) = dataBank.getRelayBefore(queryId, cutoff);
-        if (!found) revert NoMatureData();
-        if (record.value.length < 32) revert InvalidValueLength();
+        return _readSelectedSource();
+    }
 
-        value = abi.decode(record.value, (uint256));
-        if (value == 0) revert ZeroValue();
-        return (value, record.aggregateTimestamp);
+    /**
+     * @inheritdoc ITellorShepherd
+     */
+    function latestRoundData() external view override returns (
+        uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound
+    ) {
+        (uint256 value, uint256 timestampMs) = _readSelectedSource();
+        if (value > uint256(type(int256).max)) revert SignedPriceOverflow();
+        return (0, int256(value), 0, timestampMs / 1000, 0);
     }
 
     // Internal functions
 
     /**
-     * @dev Requires a successful, decodable getCurrentValue(queryId) response.
-     * Does not validate price, timestamp, or recovery permission; unreadable targets are rejected.
-     * A reverting call or undecodable response rejects the target; failures propagate.
+     * @dev Compatibility is not authenticity. Price availability is deliberately not probed.
      */
-    function _checkBackupCompatibility(address _backup) internal view {
-        if (_backup.code.length == 0) revert BackupHasNoCode();
-        IBackupOracle(_backup).getCurrentValue(queryId);
+    function _checkSourceCompatibility(address _source, bytes32 _queryId, uint8 _decimals) internal view {
+        if (_source.code.length == 0) revert SourceHasNoCode();
+        if (IPriceSource(_source).queryId() != _queryId) revert SourceQueryIdMismatch();
+        if (IPriceSource(_source).decimals() != _decimals) revert SourceDecimalsMismatch();
     }
 
     /**
-     * @dev Exercises the lookup ABI without requiring history or applying read eligibility.
-     * A reverting call or undecodable response rejects the target; failures propagate.
+     * @dev Changed sources or comparison policy require fresh assessment and transition timers.
+     * Called only after configuration checks succeed; never reads source data.
      */
-    function _checkDataBankCompatibility(address _bank) internal view {
-        if (_bank.code.length == 0) revert DataBankHasNoCode();
-        ITellorDataBank(_bank).getRelayBefore(queryId, block.timestamp);
-    }
-
-    /// @dev A changed dependency requires fresh assessment and a fresh transition timer.
-    /// Called only after migration checks succeed; never consults the replaced sources.
     function _invalidatePendingTransitions() internal {
         if (challengePending) {
             challengePending = false;
@@ -439,66 +513,36 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @dev Reads the configured backup without substituting another source on failure.
-     * Observation eligibility belongs to the backup; timestamp checks belong to adaptors.
-     * Preserve the supplied millisecond timestamp, including zero or future timestamps.
-     * Consumer pause enforcement belongs to the read entry point, not this source helper.
+     * @dev Compares the same primary and backup observations used by consumers, independent of pause.
+     * Failures propagate; they never count as agreement or authorize a transition.
      */
-    function _readBackup() internal view returns (uint256 value, uint256 timestamp) {
-        (value, timestamp) = IBackupOracle(backupOracle).getCurrentValue(queryId);
-        if (value == 0) revert ZeroValue();
-    }
-
-    /**
-     * @dev Shared diagnostic for future challenge actions; independent of pause and consumer reads.
-     * Missing reference history is not evidence of resolved deviation. Broken dependencies revert.
-     * Inspect the latest candidate immediately, even when its relay is not yet consumable.
-     */
-    function _readDeviation() internal view returns (bool available, bool deviating) {
-        ITellorDataBank.TwapData memory twap;
-        (available, twap) = _readTwapReference();
-        if (!available) return (false, false);
-
-        ITellorDataBank.AggregateData memory candidate = dataBank.getCurrentAggregateData(queryId);
-        if (candidate.value.length < 32) revert InvalidValueLength();
-        uint256 value = abi.decode(candidate.value, (uint256));
-        if (value == 0) revert ZeroValue();
-        uint256 difference = value > twap.value ? value - twap.value : twap.value - value;
+    function _readDeviation() internal view returns (bool) {
+        (uint256 primaryValue,) = _readSource(primarySource);
+        (uint256 value,) = _readSource(backupSource);
+        uint256 difference = value > primaryValue ? value - primaryValue : primaryValue - value;
         // Exactly floor(reference * threshold / 10000), without an overflowing product.
-        // threshold < 10000 bounds the total by reference; the remainder product is < 1e8.
         // Integer difference > this floor is equivalent to the strict rational comparison.
-        uint256 allowedDifference = (twap.value / 10000) * CHALLENGE_THRESHOLD_BPS
-            + ((twap.value % 10000) * CHALLENGE_THRESHOLD_BPS) / 10000;
-        return (true, difference > allowedDifference);
+        uint256 allowedDifference = (primaryValue / 10000) * challengeThresholdBps
+            + ((primaryValue % 10000) * challengeThresholdBps) / 10000;
+        return difference > allowedDifference;
     }
 
     /**
-     * @dev Reads a diagnostic reference independently of consumer reads and pause state.
-     * Missing history returns unavailable; malformed responses and dependency failures revert.
-     * A two-record interval with one contributing price is sufficient. No maximum duration,
-     * age, or gap policy is applied. Consistency checks do not authenticate a malicious bank's math.
+     * @dev Shared consumer policy; validates original milliseconds before any output conversion.
      */
-    function _readTwapReference() internal view returns (bool available, ITellorDataBank.TwapData memory twap) {
-        uint256 cutoff = block.timestamp - RELAY_READ_DELAY;
-        (available, twap) = dataBank.getTwapBefore(queryId, cutoff, TWAP_WINDOW_MS);
-        if (!available) {
-            // Never expose an unavailable dependency's payload as a usable reference.
-            ITellorDataBank.TwapData memory empty;
-            return (false, empty);
-        }
-        if (twap.value == 0 || twap.startIndex >= twap.endIndex
-            || twap.startTimestamp >= twap.endTimestamp) revert InvalidTwapReference();
-        if (twap.observationCount != twap.endIndex - twap.startIndex
-            || twap.endTimestamp - twap.startTimestamp < TWAP_WINDOW_MS) revert InvalidTwapReference();
-
-        ITellorDataBank.AggregateData memory start = dataBank.getAggregateByIndex(queryId, twap.startIndex);
-        ITellorDataBank.AggregateData memory end = dataBank.getAggregateByIndex(queryId, twap.endIndex);
-        (bool found, ITellorDataBank.AggregateData memory selectedEnd) = dataBank.getRelayBefore(queryId, cutoff);
-        if (!found || start.aggregateTimestamp != twap.startTimestamp
-            || end.aggregateTimestamp != twap.endTimestamp
-            || selectedEnd.aggregateTimestamp != twap.endTimestamp
-            || selectedEnd.relayTimestamp != end.relayTimestamp
-            || end.relayTimestamp >= cutoff) revert InvalidTwapReference();
+    function _readSelectedSource() internal view returns (uint256 value, uint256 timestampMs) {
+        if (paused) revert ShepherdPaused();
+        return _readSource(mode == Mode.PRIMARY ? primarySource : backupSource);
     }
 
+    /**
+     * @dev Both sources share the same maximum age; compare without rounding observation milliseconds.
+     */
+    function _readSource(IPriceSource _source) internal view returns (uint256 value, uint256 timestampMs) {
+        (value, timestampMs) = _source.getCurrentValue();
+        if (value == 0) revert ZeroValue();
+        uint256 nowMs = block.timestamp * 1000;
+        if (timestampMs == 0 || timestampMs > nowMs) revert InvalidTimestamp();
+        if (nowMs - timestampMs > MAX_DATA_AGE * 1000) revert StalePrice();
+    }
 }

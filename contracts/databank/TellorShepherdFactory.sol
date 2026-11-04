@@ -19,17 +19,16 @@ contract TellorShepherdFactory {
     // Structs
     struct Configuration {
         bytes32 queryId;
-        address dataBank;
-        address backupOracle;
+        uint8 decimals;
+        address primarySource;
+        address backupSource;
         address admin;
-        uint256 relayReadDelay;
         uint256 minPauseDuration;
-        uint256 dataBankChangeDelay;
-        uint256 backupChangeDelay;
-        uint256 twapWindowMs;
+        uint256 configChangeDelay;
         uint256 challengeThresholdBps;
         uint256 challengeDelaySeconds;
         uint256 recoveryDelaySeconds;
+        uint256 maxDataAge;
     }
 
     // State-changing functions
@@ -37,25 +36,25 @@ contract TellorShepherdFactory {
     /**
      * @notice Deploys a fresh instance using the supplied configuration and admin.
      * @dev Shepherd's constructor owns validation. Reverts leave no registration
-     * or creation event. Duplicate configurations are allowed. Event source
-     * addresses describe deployment; read Shepherd getters after source migration.
-     * @param configuration Initial sources, authority, and immutable settings.
-     * All durations are seconds except twapWindowMs; threshold is basis points.
+     * or creation event. Duplicate configurations are allowed. The event records initial
+     * configuration; read Shepherd getters for current sources, authority and mutable policies.
+     * @param configuration Initial sources, authority, pause duration, threshold, and immutable settings.
+     * All durations are seconds; minPauseDuration may be zero. Threshold is basis points.
+     * Source timing calibration remains the deployer/admin responsibility, including after replacement.
      * @return shepherd Address of the newly deployed and registered instance.
      */
     function createShepherd(Configuration calldata configuration) external returns (address shepherd) {
         shepherd = address(new TellorShepherd(
             configuration.queryId,
-            configuration.dataBank,
-            configuration.backupOracle,
+            configuration.decimals,
+            configuration.primarySource,
+            configuration.backupSource,
             configuration.admin,
-            configuration.relayReadDelay,
             configuration.minPauseDuration,
-            configuration.dataBankChangeDelay,
-            configuration.backupChangeDelay,
-            configuration.twapWindowMs,
+            configuration.configChangeDelay,
             configuration.challengeThresholdBps,
-            [configuration.challengeDelaySeconds, configuration.recoveryDelaySeconds]
+            [configuration.challengeDelaySeconds, configuration.recoveryDelaySeconds],
+            configuration.maxDataAge
         ));
 
         isShepherd[shepherd] = true;
