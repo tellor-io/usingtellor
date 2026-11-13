@@ -46,7 +46,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const shepherdFactory = await (await ethers.getContractFactory("TellorShepherdFactory")).deploy();
     const { primary, backup } = await sources(bank.target, queryId, feedDecimals);
     const config = [queryId, feedDecimals, primary.target, backup.target, admin.address,
-      120, 300, 2000, 30, 90, 3600];
+      120, 300, 2000, 30, 90, 3600, true];
     const address = await shepherdFactory.createShepherd.staticCall(config, ethers.ZeroHash);
     await shepherdFactory.createShepherd(config, ethers.ZeroHash);
     const shepherd = await ethers.getContractAt("TellorShepherd", address);

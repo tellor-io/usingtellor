@@ -13,7 +13,7 @@ async function fixture() {
   await sources[1].configureRead(150, timestamp, 0);
   const Shepherd = await ethers.getContractFactory("TellorShepherdHarness");
   const args = [queryId, 8, sources[0].target, sources[1].target, admin.address,
-    10, 20, 2000, [5, 7], 60];
+    10, 20, 2000, [5, 7], 60, true];
   const s = await Shepherd.deploy(...args);
   return { admin, queryId, Source, sources, timestamp, Shepherd, args, s };
 }

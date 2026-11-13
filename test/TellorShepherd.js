@@ -12,7 +12,7 @@ async function fixture() {
   await primary.configureRead(100, timestamp, 0);
   await backup.configureRead(150, timestamp + 1000n, 0);
   const Shepherd = await ethers.getContractFactory("TellorShepherdHarness");
-  const args = [queryId, 8, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90], 3600];
+  const args = [queryId, 8, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90], 3600, true];
   const shepherd = await Shepherd.deploy(...args);
   return { deployer, admin, pauser, outsider, Source, primary, backup, timestamp, Shepherd, args, shepherd };
 }
@@ -27,7 +27,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
       primarySource: f.primary.target, backupSource: f.backup.target, admin: f.admin.address,
       minPauseDuration: 120, CONFIG_CHANGE_DELAY: 300, challengeThresholdBps: 2000,
       CHALLENGE_DELAY_SECONDS: 30, RECOVERY_DELAY_SECONDS: 90, mode: 0,
-      paused: false, pausedAt: 0, pendingPrimarySource: ethers.ZeroAddress,
+      isPausable: true, paused: false, pausedAt: 0, pendingPrimarySource: ethers.ZeroAddress,
       pendingBackupSource: ethers.ZeroAddress, sourcesProposedAt: 0 })) {
       expect(await s[getter](), getter).to.equal(expected);
     }
