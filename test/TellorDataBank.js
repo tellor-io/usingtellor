@@ -31,7 +31,7 @@ describe("TellorDataBank - Function Tests", function () {
     await dataBridge.init(validatorSet.powerThreshold, validatorSet.timestamp, UNBONDING_PERIOD, validatorSet.checkpoint);
 
     const TellorDataBank = await ethers.getContractFactory("TellorDataBank");
-    const tellorDataBank = await TellorDataBank.deploy(dataBridge.target);
+    const tellorDataBank = await TellorDataBank.deploy(dataBridge.target, OPTIMISTIC_DELAY, MAX_ATTESTATION_AGE, MAX_DATA_AGE);
     await tellorDataBank.waitForDeployment();
 
     return {
@@ -189,7 +189,7 @@ describe("TellorDataBank - Function Tests", function () {
     async function fixture() {
       const { dataBridge, validatorSet } = await deployTellorDataBankFixture();
       const Harness = await ethers.getContractFactory("TellorDataBankHarness");
-      const bank = await Harness.deploy(dataBridge.target);
+      const bank = await Harness.deploy(dataBridge.target, OPTIMISTIC_DELAY, MAX_ATTESTATION_AGE, MAX_DATA_AGE);
       const startTime = (await time.latest() - 100) * 1000 + 17;
       return { bank, validatorSet, startTime };
     }

@@ -241,7 +241,7 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
     const valset = await h.createTellorValset({ tellorChainId: "tellor-1" });
     const bridge = await (await ethers.getContractFactory("TellorDataBridge")).deploy(f.admin.address, valset.domainSeparator);
     await bridge.init(valset.powerThreshold, valset.timestamp, 21 * 86400, valset.checkpoint);
-    const bank = await (await ethers.getContractFactory("TellorDataBank")).deploy(bridge.target);
+    const bank = await (await ethers.getContractFactory("TellorDataBank")).deploy(bridge.target, 43200, 600, 86400);
     const pairs = [], shepherds = [];
     for (const leg of [0, 1]) {
       const primary = await (await ethers.getContractFactory("TellorTwapSource")).deploy(bank.target, f.ids[leg], f.feedDecimals[leg], 60, 30000);

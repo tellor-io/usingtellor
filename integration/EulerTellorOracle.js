@@ -42,23 +42,26 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const bridge = await Bridge.deploy(admin.address, validatorSet.domainSeparator);
     await bridge.init(validatorSet.powerThreshold, validatorSet.timestamp, 21 * 86400, validatorSet.checkpoint);
     const Bank = await ethers.getContractFactory("TellorDataBank");
-    const bank = await Bank.deploy(bridge.target);
-    const Shepherd = await ethers.getContractFactory("TellorShepherd");
+    const bank = await Bank.deploy(bridge.target, 43200, 600, 86400);
+    const shepherdFactory = await (await ethers.getContractFactory("TellorShepherdFactory")).deploy();
     const { primary, backup } = await sources(bank.target, queryId, feedDecimals);
-    const shepherd = await Shepherd.deploy(queryId, feedDecimals, primary.target, backup.target, admin.address,
-      120, 300, 2000, [30, 90], 3600);
+    const config = [queryId, feedDecimals, primary.target, backup.target, admin.address,
+      120, 300, 2000, 30, 90, 3600];
+    const address = await shepherdFactory.createShepherd.staticCall(config, ethers.ZeroHash);
+    await shepherdFactory.createShepherd(config, ethers.ZeroHash);
+    const shepherd = await ethers.getContractAt("TellorShepherd", address);
     const Token = new ethers.ContractFactory(tokenArtifact.abi, tokenArtifact.bytecode.object, admin);
     const base = (await Token.deploy(18)).target;
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
     const f = { admin, outsider, queryId, validatorSet, Bank, bank,
-      shepherd, primary, backup, Token, Adaptor, base, quote: usd };
+      shepherdFactory, shepherd, primary, backup, Token, Adaptor, base, quote: usd };
     f.oracle = await deployAdaptor(f, { decimals: feedDecimals });
     f.startMs = (await time.latest() - 120) * 1000 + 17;
     return f;
   }
 
   function deployAdaptor(f, { base = f.base, quote = f.quote, decimals = 18, queryId = f.queryId } = {}) {
-    return f.Adaptor.deploy(base, quote, f.shepherd.target, queryId, decimals);
+    return f.Adaptor.deploy(f.shepherdFactory.target, base, quote, f.shepherd.target, queryId, decimals);
   }
 
   async function relay(f, value, stamp, bank = f.bank) {
@@ -137,6 +140,14 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     expect(await f.oracle.shepherd()).to.equal(f.shepherd.target);
     expect(await f.oracle.queryId()).to.equal(f.queryId);
     await expect(deployAdaptor(f, { queryId: ethers.id("wrong-feed") }))
+      .to.be.revertedWithCustomError(f.oracle, "PriceOracle_InvalidConfiguration");
+  });
+
+  it("rejects a genuine Shepherd registered only in a different factory", async function () {
+    const f = await loadFixture(primaryFixture);
+    expect(await f.shepherdFactory.isShepherd(f.shepherd.target)).to.equal(true);
+    const otherFactory = await (await ethers.getContractFactory("TellorShepherdFactory")).deploy();
+    await expect(deployAdaptor({ ...f, shepherdFactory: otherFactory }))
       .to.be.revertedWithCustomError(f.oracle, "PriceOracle_InvalidConfiguration");
   });
 
@@ -267,7 +278,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
   it("keeps adaptor wiring through paused source-pair migration and recovery", async function () {
     const f = await loadFixture(backupFixture);
     const replacementPrice = 3200n * unit;
-    const bank = await f.Bank.deploy(await f.bank.dataBridge());
+    const bank = await f.Bank.deploy(await f.bank.dataBridge(), 43200, 600, 86400);
     await relayWindow(f, replacementPrice, f.startMs + 50000, bank);
     const next = await sources(bank.target, f.queryId);
     await f.shepherd.proposeSourcesChange(next.primary.target, next.backup.target);

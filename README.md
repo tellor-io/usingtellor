@@ -74,10 +74,14 @@ const shepherd = await Shepherd.deploy(
   config.minPauseDuration, config.configChangeDelay, config.challengeThresholdBps,
   [config.challengeDelaySeconds, config.recoveryDelaySeconds], config.maxDataAge
 );
-// Alternatively, factory.createShepherd(config) accepts the same named settings.
+// Alternatively, factory.createShepherd(config, ethers.ZeroHash) accepts the same named settings.
 ```
 
 Reader relay delays and all Shepherd durations are seconds; the TWAP window `30000` is milliseconds and the threshold `2000` is basis points. These values illustrate the API only. Calibrate the common age bound and independent transition delays for both sources, including replacements. Migration preserves identity, precision, delays and age policy; different immutable settings require a new deployment. A recent TWAP endpoint still does not bound its contributors' age or sampling gaps.
+
+DataBank construction is `(dataBridge, optimisticDelay, maxAttestationAge, maxDataAge)`. All three timing values are positive immutable seconds; there is no additional optimistic-delay floor. Previous values were `43200`, `600`, and `86400`, respectively. Deployers must choose a dispute-safe delay and compatible age limits. DataBank retains exclusive whole-second age limits and inclusive optimistic-delay equality; Shepherd independently validates original milliseconds.
+
+`createShepherd(config, userSalt)` uses CREATE2 with `keccak256(abi.encode(msg.sender, userSalt))`. The address commits to all constructor arguments; duplicate configurations require distinct caller salts. Factory registration proves provenance, not safe policy. The custom Morpho/Euler adapters now require a trusted Shepherd factory as their first constructor argument and reject unregistered Shepherds. The stock upstream consumers are unchanged. These ABI changes require updated deployment callers and fresh deployments.
 
 3. Deploy the protocol consumer after its Shepherds. For collateral with 18 token decimals, loan with 6 token decimals, and respective feed precisions 8 and 18:
 
