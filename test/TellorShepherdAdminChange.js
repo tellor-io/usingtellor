@@ -11,7 +11,7 @@ async function fixture() {
   await primary.configureRead(100, timestamp, 0);
   await backup.configureRead(150, timestamp, 0);
   const s = await (await ethers.getContractFactory("TellorShepherd")).deploy(
-    queryId, 8, primary.target, backup.target, admin.address, 10, 100, 2000, [5, 7], 3600);
+    queryId, 8, primary.target, backup.target, admin.address, 10, 100, 2000, [5, 7], 3600, true);
   await s.connect(admin).addPauser(pauser.address);
   return { deployer, admin, next, pauser, outsider, queryId, Source, primary, backup, timestamp, s };
 }

@@ -48,7 +48,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       const pair = await sources(bank.target, id, feedDecimals[leg]);
       sourcePairs.push(pair);
       const config = [id, feedDecimals[leg], pair.primary.target, pair.backup.target, admin.address,
-        120, 300, 2000, 30, 90, 3600];
+        120, 300, 2000, 30, 90, 3600, true];
       const address = await shepherdFactory.createShepherd.staticCall(config, ethers.ZeroHash);
       await shepherdFactory.createShepherd(config, ethers.ZeroHash);
       shepherds.push(await ethers.getContractAt("TellorShepherd", address));

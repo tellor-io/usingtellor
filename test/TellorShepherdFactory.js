@@ -20,7 +20,7 @@ describe("TellorShepherdFactory", function () {
       minPauseDuration: 122n, configChangeDelay: 303n,
       challengeThresholdBps: 2005n,
       challengeDelaySeconds: 1n, recoveryDelaySeconds: 97n,
-      maxDataAge: 3600n,
+      maxDataAge: 3600n, isPausable: true,
     };
     return { deployer, caller, admin, otherAdmin, bank, primary, backup, Factory, factory, Shepherd, configuration };
   }
@@ -28,7 +28,7 @@ describe("TellorShepherdFactory", function () {
   function constructorArgs(c) {
     return [c.queryId, c.decimals, c.primarySource, c.backupSource, c.admin,
       c.minPauseDuration, c.configChangeDelay, c.challengeThresholdBps,
-      [c.challengeDelaySeconds, c.recoveryDelaySeconds], c.maxDataAge];
+      [c.challengeDelaySeconds, c.recoveryDelaySeconds], c.maxDataAge, c.isPausable];
   }
 
   async function predict(f, configuration, salt = ethers.ZeroHash, caller = f.caller) {
@@ -53,7 +53,7 @@ describe("TellorShepherdFactory", function () {
     const shepherd = await create(f.factory, f.caller, c);
     const getters = {
       queryId: "queryId", decimals: "decimals", primarySource: "primarySource", backupSource: "backupSource", admin: "admin",
-      minPauseDuration: "minPauseDuration",
+      minPauseDuration: "minPauseDuration", isPausable: "isPausable",
       configChangeDelay: "CONFIG_CHANGE_DELAY",
       challengeThresholdBps: "challengeThresholdBps",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
@@ -69,6 +69,19 @@ describe("TellorShepherdFactory", function () {
     expect(await shepherd.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     // Empty sources are allowed by the existing constructor policy.
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "NoTwapData");
+  });
+
+  it("deploys and records a non-pausable instance at the address bound to its flag", async function () {
+    const f = await loadFixture(deployFixture);
+    const configuration = { ...f.configuration, isPausable: false };
+    const s = await create(f.factory, f.caller, configuration);
+    expect(s.target).to.equal(await predict(f, configuration));
+    expect(s.target).not.to.equal(await predict(f, f.configuration));
+    expect(await s.isPausable()).to.equal(false);
+    await expect(s.connect(f.admin).pause()).to.be.revertedWithCustomError(s, "NotPausable");
+    const direct = await f.Shepherd.deploy(...constructorArgs(configuration));
+    expect(await direct.isPausable()).to.equal(false);
+    expect(await s.paused()).to.equal(false);
   });
 
   it("gives authority only to the nominated admin, independently of deployment callers", async function () {
@@ -121,7 +134,7 @@ describe("TellorShepherdFactory", function () {
       queryId: ethers.id("other-feed"), decimals: 9, primarySource: f.backup.target,
       backupSource: f.primary.target, admin: f.otherAdmin.address, minPauseDuration: 123n,
       configChangeDelay: 304n, challengeThresholdBps: 2006n, challengeDelaySeconds: 2n,
-      recoveryDelaySeconds: 98n, maxDataAge: 3601n,
+      recoveryDelaySeconds: 98n, maxDataAge: 3601n, isPausable: false,
     };
     for (const [field, value] of Object.entries(mutations)) {
       expect(await predict(f, { ...f.configuration, [field]: value }), field).not.to.equal(predicted);
