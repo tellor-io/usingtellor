@@ -10,7 +10,7 @@ async function fixture() {
   const timestamp = BigInt(await time.latest() - 10) * 1000n + 17n;
   await primary.configureRead(100, timestamp, 0); await backup.configureRead(150, timestamp, 0);
   const Shepherd = await ethers.getContractFactory("TellorShepherd");
-  const args = [queryId, 8, primary.target, backup.target, admin.address, 200, 100, 2000, [5, 7], 3600];
+  const args = [queryId, 8, primary.target, backup.target, admin.address, 200, 100, 2000, [5, 7], 3600, true];
   const s = (await Shepherd.deploy(...args)).connect(admin);
   await s.addPauser(pauser.address);
   return { deployer, admin, next, pauser, queryId, Source, primary, backup, timestamp, Shepherd, args, s };

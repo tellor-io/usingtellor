@@ -21,7 +21,7 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
   }
   async function deployShepherd(f, leg, primary, backup) {
     return f.Shepherd.deploy(f.ids[leg], f.feedDecimals[leg], primary.target, backup.target,
-      f.admin.address, 10, 20, 2000, [5, 7], 3600);
+      f.admin.address, 10, 20, 2000, [5, 7], 3600, true);
   }
   async function consumers(f, maxStaleness = 3600) {
     const morpho = await deployConsumer("morpho", f.admin, [

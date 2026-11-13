@@ -66,6 +66,7 @@ interface ITellorShepherd {
     error NotAuthorizedToPause();
     error NotBackupMode();
     error NotDeviating();
+    error NotPausable();
     error NotPaused();
     error NotPauser();
     error NotPrimaryMode();
@@ -104,6 +105,12 @@ interface ITellorShepherd {
      * A TWAP endpoint does not establish contributor freshness. No adaptor-specific rescaling occurs.
      */
     function getCurrentValue() external view returns (uint256 value, uint256 aggregateTimestamp);
+
+    /**
+     * @notice Whether explicit pausing is enabled, fixed at deployment.
+     * @dev False does not guarantee price availability or prevent delayed source replacement.
+     */
+    function isPausable() external view returns (bool);
 
     /**
      * @notice Latest-read Chainlink ABI subset; not a historical-round interface.

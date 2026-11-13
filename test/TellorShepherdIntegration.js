@@ -24,7 +24,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const { primary, backup } = await sources(bank.target, queryId);
     const shepherd = await Shepherd.deploy(queryId, 18, primary.target, backup.target, admin.address,
-      120, 300, 2000, [30, 90], 3600);
+      120, 300, 2000, [30, 90], 3600, true);
     return { admin, requester, executor, queryId, validatorSet, bridge, Bank, bank, primary, backup, Shepherd, shepherd,
       start: (await time.latest() - 120) * 1000 + 17 };
   }
@@ -124,7 +124,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
     const otherId = ethers.id("other-real-feed");
     const otherSources = await sources(f.bank.target, otherId);
     const otherShepherd = await f.Shepherd.deploy(otherId, 18, otherSources.primary.target, otherSources.backup.target, f.admin.address,
-      120, 300, 2000, [30, 90], 3600);
+      120, 300, 2000, [30, 90], 3600, true);
     const other = { ...f, queryId: otherId, shepherd: otherShepherd };
     await expect(otherShepherd.getCurrentValue()).to.be.revertedWithCustomError(otherSources.primary, "NoTwapData");
     await relay(other, 0, 200);
