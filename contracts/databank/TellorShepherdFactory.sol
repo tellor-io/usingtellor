@@ -36,15 +36,16 @@ contract TellorShepherdFactory {
     /**
      * @notice Deploys a fresh instance using the supplied configuration and admin.
      * @dev Shepherd's constructor owns validation. Reverts leave no registration
-     * or creation event. Duplicate configurations are allowed. The event records initial
+     * or creation event. Duplicate configurations require distinct caller salts. The event records initial
      * configuration; read Shepherd getters for current sources, authority and mutable policies.
      * @param configuration Initial sources, authority, pause duration, threshold, and immutable settings.
      * All durations are seconds; minPauseDuration may be zero. Threshold is basis points.
      * Source timing calibration remains the deployer/admin responsibility, including after replacement.
+     * @param userSalt Caller-scoped salt; the address also commits to all constructor arguments.
      * @return shepherd Address of the newly deployed and registered instance.
      */
-    function createShepherd(Configuration calldata configuration) external returns (address shepherd) {
-        shepherd = address(new TellorShepherd(
+    function createShepherd(Configuration calldata configuration, bytes32 userSalt) external returns (address shepherd) {
+        shepherd = address(new TellorShepherd{salt: keccak256(abi.encode(msg.sender, userSalt))}(
             configuration.queryId,
             configuration.decimals,
             configuration.primarySource,

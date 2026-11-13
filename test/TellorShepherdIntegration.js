@@ -20,7 +20,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
     const bridge = await Bridge.deploy(admin.address, validatorSet.domainSeparator);
     await bridge.init(validatorSet.powerThreshold, validatorSet.timestamp, 21 * 86400, validatorSet.checkpoint);
     const Bank = await ethers.getContractFactory("TellorDataBank");
-    const bank = await Bank.deploy(bridge.target);
+    const bank = await Bank.deploy(bridge.target, 43200, 600, 86400);
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
     const { primary, backup } = await sources(bank.target, queryId);
     const shepherd = await Shepherd.deploy(queryId, 18, primary.target, backup.target, admin.address,
@@ -172,7 +172,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
       const clock = `${transition.toLowerCase()}RequestedAt`;
       const original = await f.shepherd[clock]();
       const mode = await f.shepherd.mode();
-      const replacement = await f.Bank.deploy(f.bridge.target);
+      const replacement = await f.Bank.deploy(f.bridge.target, 43200, 600, 86400);
       const next = { ...f, bank: replacement, ...await sources(replacement.target, f.queryId) };
       await relay(next, 0, 200);
       await relay(next, 30000, 200);

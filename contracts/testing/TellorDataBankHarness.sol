@@ -9,7 +9,8 @@ import {ITellorDataBank} from "../interfaces/ITellorDataBank.sol";
  * @dev Uses real bank admission and accumulation; provides no history-writing shortcuts.
  */
 contract TellorDataBankHarness is TellorDataBank {
-    constructor(address _dataBridge) TellorDataBank(_dataBridge) {}
+    constructor(address _dataBridge, uint256 _optimisticDelay, uint256 _maxAttestationAge, uint256 _maxDataAge)
+        TellorDataBank(_dataBridge, _optimisticDelay, _maxAttestationAge, _maxDataAge) {}
 
     function calculateTwapBefore(bytes32 _queryId, uint256 _relayCutoffSeconds, uint256 _minWindowMs)
         external

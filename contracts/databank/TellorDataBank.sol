@@ -8,20 +8,20 @@ import {ITellorDataBank} from "../interfaces/ITellorDataBank.sol";
  @author Tellor Inc.
  @title TellorDataBank
  @dev this contract is used to store data for multiple data feeds. It prioritizes consensus data,
- and falls back to optimistic data if consensus data is not available. It has hardcoded preferences
- for max data age, max attestation age, optimistic delay, and optimistic power threshold.
+ and falls back to optimistic data if consensus data is not available. Timing policy is fixed
+ at deployment; the optimistic power threshold is derived from the bridge.
 */
 contract TellorDataBank is ITellorDataBank {
     // Constants
     uint256 public constant MAX_AGGREGATE_TIMESTAMP = type(uint64).max;
-    uint256 public constant MAX_ATTESTATION_AGE = 10 minutes; // the max age of an attestation
-    uint256 public constant MAX_DATA_AGE = 24 hours; // the max age of relayed data
     uint256 public constant MAX_SPOT_PRICE = type(uint192).max;
     uint256 public constant MS_PER_SECOND = 1000; // the number of milliseconds in a second
-    uint256 public constant OPTIMISTIC_DELAY = 12 hours; // the min time from report to attestation for nonconsensus data
 
     // Immutables
     ITellorDataBridge public immutable dataBridge; // interface to the Tellor data bridge
+    uint256 public immutable MAX_ATTESTATION_AGE; // exclusive attestation age limit, seconds
+    uint256 public immutable MAX_DATA_AGE; // exclusive report age limit, seconds
+    uint256 public immutable OPTIMISTIC_DELAY; // inclusive report-to-attestation minimum, seconds
 
     // Storage
     // Index-aligned with data; units are price * aggregate milliseconds.
@@ -33,18 +33,31 @@ contract TellorDataBank is ITellorDataBank {
 
     // Errors
     error AggregateTimestampOutOfRange();
+    error AttestationBeforeReport();
+    error AttestationTimestampInFuture();
     error InvalidPriceLength();
+    error InvalidTimingConfiguration();
     error InvalidTwapWindow();
+    error NextTimestampInFuture();
     error PriceOutOfRange();
+    error ReportTimestampInFuture();
 
     // Constructor
 
     /**
      * @dev initializes the TellorDataBank with a data bridge
      * @param _dataBridge address of the Tellor data bridge contract
+     * @param _optimisticDelay Positive nonconsensus report-to-attestation delay, in seconds.
+     * @param _maxAttestationAge Positive exclusive attestation age limit, in seconds.
+     * @param _maxDataAge Positive exclusive report age limit, in seconds.
+     * @dev The deployer must calibrate dispute safety and compatible source/consumer timing.
      */
-    constructor(address _dataBridge) {
+    constructor(address _dataBridge, uint256 _optimisticDelay, uint256 _maxAttestationAge, uint256 _maxDataAge) {
+        if (_optimisticDelay == 0 || _maxAttestationAge == 0 || _maxDataAge == 0) revert InvalidTimingConfiguration();
         dataBridge = ITellorDataBridge(_dataBridge);
+        OPTIMISTIC_DELAY = _optimisticDelay;
+        MAX_ATTESTATION_AGE = _maxAttestationAge;
+        MAX_DATA_AGE = _maxDataAge;
     }
 
     // State-changing functions
@@ -251,6 +264,11 @@ contract TellorDataBank is ITellorDataBank {
         if (_attestData.report.value.length < 32) revert InvalidPriceLength();
         uint256 price = abi.decode(_attestData.report.value, (uint256));
         if (price == 0 || price > MAX_SPOT_PRICE) revert PriceOutOfRange();
+        // Validate subtraction operands first, preserving the bank's whole-second age policy.
+        if (_attestData.report.timestamp / MS_PER_SECOND > block.timestamp) revert ReportTimestampInFuture();
+        if (_attestData.attestationTimestamp / MS_PER_SECOND > block.timestamp) revert AttestationTimestampInFuture();
+        if (_attestData.report.nextTimestamp / MS_PER_SECOND > block.timestamp) revert NextTimestampInFuture();
+        if (_attestData.attestationTimestamp < _attestData.report.timestamp) revert AttestationBeforeReport();
         // check that the data is not too old
         require(block.timestamp - (_attestData.report.timestamp / MS_PER_SECOND) < MAX_DATA_AGE, "TellorDataBank: Data too old");
         // check that the attestation is not too old
@@ -261,8 +279,6 @@ contract TellorDataBank is ITellorDataBank {
             require(_attestData.report.timestamp > _previousData.aggregateTimestamp, "TellorDataBank: Report timestamp must increase");
             require(_previousData.relayTimestamp < block.timestamp, "TellorDataBank: Only one relay per block");
         }
-        // check that the current block timestamp is greater than or equal to the report timestamp
-        require(block.timestamp >= (_attestData.report.timestamp / MS_PER_SECOND), "TellorDataBank: Report timestamp is in the future");
         // check if there's a more recent optimistic report available
         if (_attestData.report.nextTimestamp != 0) {
             require(block.timestamp - (_attestData.report.nextTimestamp / MS_PER_SECOND) < OPTIMISTIC_DELAY, "TellorDataBank: More recent optimistic report available");

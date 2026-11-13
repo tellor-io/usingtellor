@@ -41,7 +41,7 @@ contract TellorDataBridge is ECDSA {
     address public guardian; /// Able to reset the validator set only if the validator set becomes stale.
     bytes32 public lastValidatorSetCheckpoint; ///Domain-separated commitment to the latest validator set.
     uint256 public powerThreshold; /// Voting power required to submit a new update.
-    uint256 public unbondingPeriod; /// Time period after which a validator can withdraw their stake.
+    uint256 public unbondingPeriod; /// Unbonding duration in EVM seconds.
     uint256 public validatorTimestamp; /// Timestamp of the block where validator set is updated.
     address public deployer; /// Address that deployed the contract.
     bool public initialized; /// True if the contract is initialized.
@@ -54,20 +54,23 @@ contract TellorDataBridge is ECDSA {
     bytes32 public immutable VALIDATOR_SET_HASH_DOMAIN_SEPARATOR;
 
     /*Events*/
-    event GuardianResetValidatorSet(uint256 _powerThreshold, uint256 _validatorTimestamp, bytes32 _validatorSetHash);
+    event GuardianResetValidatorSet(uint256 _powerThreshold, uint256 _validatorTimestamp, bytes32 _validatorSetCheckpoint);
     event ValidatorSetUpdated(uint256 _powerThreshold, uint256 _validatorTimestamp, bytes32 _validatorSetHash);
 
     /*Errors*/
     error AlreadyInitialized();
     error InsufficientVotingPower();
+    error InvalidGuardian();
     error InvalidPowerThreshold();
     error InvalidSignature();
+    error InvalidUnbondingPeriod();
     error MalformedCurrentValidatorSet();
     error NotDeployer();
     error NotGuardian();
     error StaleValidatorSet();
     error SuppliedValidatorSetInvalid();
     error ValidatorSetNotStale();
+    error ValidatorTimestampInFuture();
     error ValidatorTimestampMustIncrease();
 
     /*Functions*/
@@ -77,6 +80,9 @@ contract TellorDataBridge is ECDSA {
         address _guardian,
         bytes32 _validatorSetHashDomainSeparator
     ) {
+        if (_guardian == address(0)) {
+            revert InvalidGuardian();
+        }
         guardian = _guardian;
         deployer = msg.sender;
         VALIDATOR_SET_HASH_DOMAIN_SEPARATOR = _validatorSetHashDomainSeparator;
@@ -85,7 +91,7 @@ contract TellorDataBridge is ECDSA {
     /// @notice This function is called only once by the deployer to initialize the contract
     /// @param _powerThreshold Initial voting power that is needed to approve operations
     /// @param _validatorTimestamp Timestamp of the block where validator set is updated.
-    /// @param _unbondingPeriod Time period after which a validator can withdraw their stake.
+    /// @param _unbondingPeriod Positive unbonding duration in EVM seconds.
     /// @param _validatorSetCheckpoint Initial checkpoint of the validator set.
     function init(
         uint256 _powerThreshold,
@@ -99,6 +105,15 @@ contract TellorDataBridge is ECDSA {
         if (initialized) {
             revert AlreadyInitialized();
         }
+        if (_powerThreshold == 0) {
+            revert InvalidPowerThreshold();
+        }
+        if (_validatorTimestamp > block.timestamp * MS_PER_SECOND) {
+            revert ValidatorTimestampInFuture();
+        }
+        if (_unbondingPeriod == 0) {
+            revert InvalidUnbondingPeriod();
+        }
         initialized = true;
         powerThreshold = _powerThreshold;
         validatorTimestamp = _validatorTimestamp;
@@ -110,7 +125,7 @@ contract TellorDataBridge is ECDSA {
     /// only if it becomes stale.
     /// @param _powerThreshold Amount of voting power needed to approve operations.
     /// @param _validatorTimestamp The timestamp of the block where validator set is updated.
-    /// @param _validatorSetCheckpoint The hash of the validator set.
+    /// @param _validatorSetCheckpoint Domain-separated commitment to the validator set, threshold and timestamp.
     function guardianResetValidatorSet(
         uint256 _powerThreshold,
         uint256 _validatorTimestamp,
@@ -124,6 +139,12 @@ contract TellorDataBridge is ECDSA {
         }
         if (_validatorTimestamp <= validatorTimestamp) {
             revert ValidatorTimestampMustIncrease();
+        }
+        if (_validatorTimestamp > block.timestamp * MS_PER_SECOND) {
+            revert ValidatorTimestampInFuture();
+        }
+        if (_powerThreshold == 0) {
+            revert InvalidPowerThreshold();
         }
         powerThreshold = _powerThreshold;
         validatorTimestamp = _validatorTimestamp;
@@ -150,6 +171,9 @@ contract TellorDataBridge is ECDSA {
         }
         if (_newValidatorTimestamp < validatorTimestamp) {
             revert ValidatorTimestampMustIncrease();
+        }
+        if (_newValidatorTimestamp > block.timestamp * MS_PER_SECOND) {
+            revert ValidatorTimestampInFuture();
         }
         if (_newPowerThreshold == 0) {
             revert InvalidPowerThreshold();

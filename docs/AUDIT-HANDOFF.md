@@ -1,5 +1,29 @@
 # Shepherd audit handoff
 
+## Requested audit fixes — 2026-11-13
+
+Base: `usingtellor` `2934cfd`, custom Morpho `739c904`, custom Euler `782d666`. Changes remain uncommitted.
+
+- Reviewed the human's M01 zero-threshold checks and L01 event-field rename; added the authorized full-millisecond validator timestamp checks to all three setters. Equality is accepted. R09 rejects only zero guardian and zero unbonding duration.
+- R02 validates all timestamp subtraction operands before use; DataBank retains its existing whole-second admission policy. R03 changes DataBank construction to `(bridge, optimisticDelay, maxAttestationAge, maxDataAge)`, all positive immutable seconds, with no extra optimistic minimum or upper bounds by explicit human choice.
+- L07 makes both factories use caller-scoped CREATE2 salts. The Morpho factory now registers instances and emits decimals/name with the previous fields. R05 requires configured Shepherd-factory membership in both custom adapter constructors, including direct deployments. Registry trust and safe settings remain deployment obligations.
+- R07 caps the custom Morpho scale exponent at 54 while retaining final overflow/zero refusal. Source precision limits and stock upstream consumers are unchanged.
+
+Validation used disposable copies and the installed dependencies, preserving workspace artifacts. Hardhat CLI was invoked directly using bundled Node.js `v24.22.1` (`node node_modules/hardhat/internal/cli/cli.js ...`); default shell Node 16 initially failed an existing `findLastIndex` test, and the same baseline passed with Node 24.
+
+| Command / scope | Result |
+| --- | --- |
+| Hardhat `test` | 405 passed, including 17 new bridge cases and 12 new DataBank timing cases |
+| Hardhat `test test/TellorShepherdFactory.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` | 69 passed: 20 factory and 49 real custom-adapter integration cases |
+| Hardhat `test integration/UpstreamConsumers.js` | 47 passed; actual pinned upstream consumers freshly rebuilt |
+| `forge test --offline` in custom Morpho | 33 passed, including fuzz cases |
+| `forge test --offline` in custom Euler | 29 passed, including deployment-script and fuzz cases |
+| `git diff --check` in all three repositories | Passed |
+
+Regression checks reject zero thresholds, unsigned reports, future validator timestamps, malformed DataBank timing, unregistered sources and unsupported exponents; CREATE2 tests verify address binding, caller isolation and duplicate behavior. Valid signatures, timing equality, price scaling, both source modes, migration/recovery and upstream composition remain covered. One fresh independent static review found stale Euler constructor examples, now corrected, and no remaining concrete issues within scope.
+
+Existing Foundry nightly/dependency-revision/signature-cache and lint warnings remain; clean-machine dependency installation was not verified. This is local oracle integration evidence, not live market validation. New constructor/factory/event ABIs are reflected in callers, scripts and READMEs. No commits, deployment, publication or release-artifact changes were performed; the artifact release work below remains required. Earlier validation sections are historical checkpoints.
+
 ## Scope
 
 Paths are relative to the named repository. Include imported interfaces and libraries in review.
