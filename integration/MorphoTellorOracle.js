@@ -40,24 +40,27 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     const bridge = await Bridge.deploy(admin.address, validatorSet.domainSeparator);
     await bridge.init(validatorSet.powerThreshold, validatorSet.timestamp, 21 * 86400, validatorSet.checkpoint);
     const Bank = await ethers.getContractFactory("TellorDataBank");
-    const bank = await Bank.deploy(bridge.target);
-    const Shepherd = await ethers.getContractFactory("TellorShepherd");
+    const bank = await Bank.deploy(bridge.target, 43200, 600, 86400);
+    const shepherdFactory = await (await ethers.getContractFactory("TellorShepherdFactory")).deploy();
     const shepherds = [];
     const sourcePairs = [];
     for (const [leg, id] of ids.entries()) {
       const pair = await sources(bank.target, id, feedDecimals[leg]);
       sourcePairs.push(pair);
-      shepherds.push(await Shepherd.deploy(id, feedDecimals[leg], pair.primary.target, pair.backup.target, admin.address,
-        120, 300, 2000, [30, 90], 3600));
+      const config = [id, feedDecimals[leg], pair.primary.target, pair.backup.target, admin.address,
+        120, 300, 2000, 30, 90, 3600, true];
+      const address = await shepherdFactory.createShepherd.staticCall(config, ethers.ZeroHash);
+      await shepherdFactory.createShepherd(config, ethers.ZeroHash);
+      shepherds.push(await ethers.getContractAt("TellorShepherd", address));
     }
     const Adaptor = new ethers.ContractFactory(adaptorArtifact.abi, adaptorArtifact.bytecode.object, admin);
-    const f = { admin, outsider, ids, validatorSet, Bank, bank, shepherds, sourcePairs, Adaptor };
+    const f = { admin, outsider, ids, validatorSet, Bank, bank, shepherdFactory, shepherds, sourcePairs, Adaptor };
     f.oracle = await deployAdaptor(f, { decimals: [18, 6, ...feedDecimals] });
     return f;
   }
 
   async function deployAdaptor(f, { skew = 600, decimals = [18, 6, 18, 18], ids = f.ids } = {}) {
-    return f.Adaptor.deploy(f.shepherds[0].target, f.shepherds[1].target,
+    return f.Adaptor.deploy(f.shepherdFactory.target, f.shepherds[0].target, f.shepherds[1].target,
       skew, "Local Shepherd WETH/USDC", ...ids, ...decimals);
   }
 
@@ -121,6 +124,14 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     expect(await f.oracle.loanShepherd()).to.equal(f.shepherds[1].target);
     expect(await f.oracle.collateralQueryId()).to.equal(f.ids[0]);
     expect(await f.oracle.loanQueryId()).to.equal(f.ids[1]);
+  });
+
+  it("rejects genuine Shepherds registered only in a different factory", async function () {
+    const f = await loadFixture(primaryFixture);
+    for (const shepherd of f.shepherds) expect(await f.shepherdFactory.isShepherd(shepherd.target)).to.equal(true);
+    const otherFactory = await (await ethers.getContractFactory("TellorShepherdFactory")).deploy();
+    await expect(deployAdaptor({ ...f, shepherdFactory: otherFactory }))
+      .to.be.revertedWithCustomError(f.oracle, "InvalidConfiguration");
   });
 
   for (const leg of [0, 1]) {
@@ -234,7 +245,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     { label: "mixed token/feed decimals", prices: [3000n * 10n ** 8n, 2n * unit], decimals: [18, 6, 8, 18], scale: 10n ** 34n },
     { label: "rounding only at final division", prices: [10n, 3n], decimals: [18, 6, 18, 18], scale: 10n ** 24n },
     { label: "a 512-bit intermediate product", prices: [(1n << 191n) + 1n, (1n << 190n) + 3n], decimals: [18, 6, 18, 18], scale: 10n ** 24n },
-    { label: "maximum supported scale", prices: [1n, 10n ** 18n], decimals: [0, 41, 0, 0], scale: 10n ** 77n },
+    { label: "maximum supported scale", prices: [1n, 10n ** 18n], decimals: [0, 18, 0, 0], scale: 10n ** 54n },
   ]) {
     it(`computes ${example.label} from real primary reports`, async function () {
       const f = await fixture(example.decimals.slice(2));
@@ -257,20 +268,20 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
 
   it("refuses an unrepresentable final result even though both primary prices are valid", async function () {
     const f = await fixture([0, 0]);
-    const oracle = await deployAdaptor(f, { decimals: [0, 41, 0, 0] });
+    const oracle = await deployAdaptor(f, { decimals: [0, 18, 0, 0] });
     const stamp = (await time.latest() - 120) * 1000;
     const collateral = (1n << 192n) - 1n;
     await relayWindow(f, 0, collateral, stamp);
     await relayWindow(f, 1, 1n, stamp);
     await time.increase(61);
-    expect(collateral * 10n ** 77n).to.be.greaterThan(ethers.MaxUint256);
+    expect(collateral * 10n ** 54n).to.be.greaterThan(ethers.MaxUint256);
     await expect(oracle.price()).to.be.revertedWithCustomError(oracle, "MulDivOverflow");
   });
 
   it("keeps the adaptor address wiring through a paused source-pair migration and later recovery", async function () {
     const f = await loadFixture(primaryFixture);
     await switchToBackup(f, 0, 2900n * unit);
-    const replacement = await f.Bank.deploy(await f.bank.dataBridge());
+    const replacement = await f.Bank.deploy(await f.bank.dataBridge(), 43200, 600, 86400);
     await relayWindow(f, 0, 3100n * unit, f.startMs + 50000, replacement);
     const next = await sources(replacement.target, f.ids[0]);
     await f.shepherds[0].proposeSourcesChange(next.primary.target, next.backup.target);

@@ -16,7 +16,7 @@ describe("TellorTwapSource", function () {
     const bridge = await (await ethers.getContractFactory("TellorDataBridge"))
       .deploy(admin.address, validatorSet.domainSeparator);
     await bridge.init(validatorSet.powerThreshold, validatorSet.timestamp, 21 * 86400, validatorSet.checkpoint);
-    const bank = await (await ethers.getContractFactory("TellorDataBank")).deploy(bridge.target);
+    const bank = await (await ethers.getContractFactory("TellorDataBank")).deploy(bridge.target, 43200, 600, 86400);
     const Source = await ethers.getContractFactory("TellorTwapSource");
     const source = await Source.deploy(bank.target, queryId, 8, delay, windowMs);
     const startTime = (await time.latest() - 10800) * 1000 + 17;

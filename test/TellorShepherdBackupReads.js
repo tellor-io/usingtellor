@@ -23,10 +23,10 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const bridge = await Bridge.deploy(admin.address, validatorSet.domainSeparator);
     await bridge.init(validatorSet.powerThreshold, validatorSet.timestamp, 21 * 86400, validatorSet.checkpoint);
     const Bank = await ethers.getContractFactory("TellorDataBank");
-    const bank = await Bank.deploy(bridge.target);
+    const bank = await Bank.deploy(bridge.target, 43200, 600, 86400);
     const Shepherd = await ethers.getContractFactory("TellorShepherdHarness");
     const { primary, backup } = await sources(bank.target, queryId);
-    const shepherd = await Shepherd.deploy(queryId, 18, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90], 3600);
+    const shepherd = await Shepherd.deploy(queryId, 18, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90], 3600, true);
     await shepherd.waitForDeployment();
     await shepherd.setModeForTest(1);
     return { deployer, admin, queryId, validatorSet, bank, primary, backup, Shepherd, shepherd };
@@ -78,7 +78,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
   it("keeps serving the original bank during notice and switches reads only after paused migration", async function () {
     const f = await loadFixture(deployReadFixture);
     const Bank = await ethers.getContractFactory("TellorDataBank");
-    const replacement = await Bank.deploy(await f.bank.dataBridge());
+    const replacement = await Bank.deploy(await f.bank.dataBridge(), 43200, 600, 86400);
     const next = await sources(replacement.target, f.queryId);
     const original = await relay(f, encode(100));
     const updated = await relay({ ...f, bank: replacement }, encode(200));
@@ -176,7 +176,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const f = await loadFixture(deployReadFixture);
     const incompatible = await (await ethers.getContractFactory("TellorLab")).deploy();
     const next = await sources(incompatible.target, f.queryId);
-    const shepherd = await f.Shepherd.deploy(f.queryId, 18, next.primary.target, next.backup.target, f.admin.address, 120, 300, 2000, [30, 90], 3600);
+    const shepherd = await f.Shepherd.deploy(f.queryId, 18, next.primary.target, next.backup.target, f.admin.address, 120, 300, 2000, [30, 90], 3600, true);
     await shepherd.setModeForTest(1);
     await expect(shepherd.getCurrentValue()).to.be.reverted;
   });
@@ -185,7 +185,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const f = await loadFixture(deployReadFixture);
     const futureDelay = (await time.latest()) + 100;
     const backup = await (await ethers.getContractFactory("TellorSpotSource")).deploy(f.bank.target, f.queryId, 18, futureDelay);
-    const shepherd = await f.Shepherd.deploy(f.queryId, 18, f.primary.target, backup.target, f.admin.address, 120, 300, 2000, [30, 90], 3600);
+    const shepherd = await f.Shepherd.deploy(f.queryId, 18, f.primary.target, backup.target, f.admin.address, 120, 300, 2000, [30, 90], 3600, true);
     await shepherd.setModeForTest(1);
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
     await time.increaseTo(futureDelay);

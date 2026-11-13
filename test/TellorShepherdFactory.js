@@ -7,7 +7,7 @@ describe("TellorShepherdFactory", function () {
     const [deployer, caller, admin, otherAdmin] = await ethers.getSigners();
     const queryId = ethers.id("factory-feed");
     const Bank = await ethers.getContractFactory("TellorDataBank");
-    const bank = await Bank.deploy(deployer.address);
+    const bank = await Bank.deploy(deployer.address, 43200, 600, 86400);
     const Factory = await ethers.getContractFactory("TellorShepherdFactory");
     const factory = await Factory.deploy();
     const Shepherd = await ethers.getContractFactory("TellorShepherd");
@@ -20,7 +20,7 @@ describe("TellorShepherdFactory", function () {
       minPauseDuration: 122n, configChangeDelay: 303n,
       challengeThresholdBps: 2005n,
       challengeDelaySeconds: 1n, recoveryDelaySeconds: 97n,
-      maxDataAge: 3600n,
+      maxDataAge: 3600n, isPausable: true,
     };
     return { deployer, caller, admin, otherAdmin, bank, primary, backup, Factory, factory, Shepherd, configuration };
   }
@@ -28,12 +28,19 @@ describe("TellorShepherdFactory", function () {
   function constructorArgs(c) {
     return [c.queryId, c.decimals, c.primarySource, c.backupSource, c.admin,
       c.minPauseDuration, c.configChangeDelay, c.challengeThresholdBps,
-      [c.challengeDelaySeconds, c.recoveryDelaySeconds], c.maxDataAge];
+      [c.challengeDelaySeconds, c.recoveryDelaySeconds], c.maxDataAge, c.isPausable];
   }
 
-  async function create(factory, caller, configuration) {
-    const address = await factory.connect(caller).createShepherd.staticCall(configuration);
-    const tx = await factory.connect(caller).createShepherd(configuration);
+  async function predict(f, configuration, salt = ethers.ZeroHash, caller = f.caller) {
+    const { data } = await f.Shepherd.getDeployTransaction(...constructorArgs(configuration));
+    const scopedSalt = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder()
+      .encode(["address", "bytes32"], [caller.address, salt]));
+    return ethers.getCreate2Address(f.factory.target, scopedSalt, ethers.keccak256(data));
+  }
+
+  async function create(factory, caller, configuration, salt = ethers.ZeroHash) {
+    const address = await factory.connect(caller).createShepherd.staticCall(configuration, salt);
+    const tx = await factory.connect(caller).createShepherd(configuration, salt);
     await expect(tx).to.emit(factory, "ShepherdCreated")
       .withArgs(address, caller.address, Object.values(configuration));
     expect(await factory.isShepherd(address)).to.equal(true);
@@ -46,7 +53,7 @@ describe("TellorShepherdFactory", function () {
     const shepherd = await create(f.factory, f.caller, c);
     const getters = {
       queryId: "queryId", decimals: "decimals", primarySource: "primarySource", backupSource: "backupSource", admin: "admin",
-      minPauseDuration: "minPauseDuration",
+      minPauseDuration: "minPauseDuration", isPausable: "isPausable",
       configChangeDelay: "CONFIG_CHANGE_DELAY",
       challengeThresholdBps: "challengeThresholdBps",
       challengeDelaySeconds: "CHALLENGE_DELAY_SECONDS", recoveryDelaySeconds: "RECOVERY_DELAY_SECONDS",
@@ -62,6 +69,19 @@ describe("TellorShepherdFactory", function () {
     expect(await shepherd.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     // Empty sources are allowed by the existing constructor policy.
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "NoTwapData");
+  });
+
+  it("deploys and records a non-pausable instance at the address bound to its flag", async function () {
+    const f = await loadFixture(deployFixture);
+    const configuration = { ...f.configuration, isPausable: false };
+    const s = await create(f.factory, f.caller, configuration);
+    expect(s.target).to.equal(await predict(f, configuration));
+    expect(s.target).not.to.equal(await predict(f, f.configuration));
+    expect(await s.isPausable()).to.equal(false);
+    await expect(s.connect(f.admin).pause()).to.be.revertedWithCustomError(s, "NotPausable");
+    const direct = await f.Shepherd.deploy(...constructorArgs(configuration));
+    expect(await direct.isPausable()).to.equal(false);
+    expect(await s.paused()).to.equal(false);
   });
 
   it("gives authority only to the nominated admin, independently of deployment callers", async function () {
@@ -107,6 +127,31 @@ describe("TellorShepherdFactory", function () {
     }
   });
 
+  it("binds addresses to every setting and isolates callers and salts", async function () {
+    const f = await loadFixture(deployFixture);
+    const predicted = await predict(f, f.configuration);
+    const mutations = {
+      queryId: ethers.id("other-feed"), decimals: 9, primarySource: f.backup.target,
+      backupSource: f.primary.target, admin: f.otherAdmin.address, minPauseDuration: 123n,
+      configChangeDelay: 304n, challengeThresholdBps: 2006n, challengeDelaySeconds: 2n,
+      recoveryDelaySeconds: 98n, maxDataAge: 3601n, isPausable: false,
+    };
+    for (const [field, value] of Object.entries(mutations)) {
+      expect(await predict(f, { ...f.configuration, [field]: value }), field).not.to.equal(predicted);
+    }
+    // An intervening attacker deployment cannot occupy the intended configuration's address.
+    const changed = await create(f.factory, f.caller, { ...f.configuration, admin: f.otherAdmin.address });
+    expect(changed.target).not.to.equal(predicted);
+    const other = await create(f.factory, f.otherAdmin, f.configuration);
+    expect(other.target).not.to.equal(predicted);
+    const first = await create(f.factory, f.caller, f.configuration);
+    expect(first.target).to.equal(predicted);
+    const duplicate = await create(f.factory, f.caller, f.configuration, ethers.id("duplicate"));
+    expect(duplicate.target).to.equal(await predict(f, f.configuration, ethers.id("duplicate")));
+    expect(duplicate.target).not.to.equal(first.target);
+    await expect(f.factory.connect(f.caller).createShepherd(f.configuration, ethers.ZeroHash)).to.be.reverted;
+  });
+
   it("forwards both valid age-conversion endpoints without truncation", async function () {
     const f = await loadFixture(deployFixture);
     const largest = ethers.MaxUint256 / 1000n;
@@ -144,16 +189,16 @@ describe("TellorShepherdFactory", function () {
   for (const [field, value, error] of invalidCases) {
     it(`propagates ${error} for ${field}=${value} without partial registration`, async function () {
       const f = await loadFixture(deployFixture);
-      const nonce = await ethers.provider.getTransactionCount(f.factory.target);
-      const predicted = ethers.getCreateAddress({ from: f.factory.target, nonce });
-      await expect(f.factory.connect(f.caller).createShepherd({ ...f.configuration, [field]: value }))
+      const invalid = { ...f.configuration, [field]: value };
+      const predicted = await predict(f, invalid);
+      await expect(f.factory.connect(f.caller).createShepherd(invalid, ethers.ZeroHash))
         .to.be.revertedWithCustomError(f.Shepherd, error);
       expect(await ethers.provider.getCode(predicted)).to.equal("0x");
       expect(await f.factory.isShepherd(predicted)).to.equal(false);
       expect(await f.factory.queryFilter(f.factory.filters.ShepherdCreated())).to.have.length(0);
-      // The failed CREATE also rolls back the factory nonce; a corrected retry works.
+      // A failed creation leaves the salt usable; corrected arguments bind a different address.
       const shepherd = await create(f.factory, f.caller, f.configuration);
-      expect(shepherd.target).to.equal(predicted);
+      expect(shepherd.target).to.equal(await predict(f, f.configuration));
     });
   }
 });

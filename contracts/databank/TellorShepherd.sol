@@ -15,6 +15,7 @@ contract TellorShepherd is ITellorShepherd {
     uint256 public immutable CHALLENGE_DELAY_SECONDS;
     uint256 public immutable CONFIG_CHANGE_DELAY;
     uint8 public immutable override decimals;
+    bool public immutable override isPausable;
     uint256 public immutable override MAX_DATA_AGE;
     bytes32 public immutable override queryId;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
@@ -70,6 +71,7 @@ contract TellorShepherd is ITellorShepherd {
      * @param _challengeThresholdBps Initial strict absolute deviation relative to primary, from 1 to 9999 bps.
      * @param _transitionDelaysSeconds Positive challenge and recovery waits in seconds, respectively.
      * @param _maxDataAge Positive maximum observation age in seconds, shared by both sources.
+     * @param _isPausable Whether this instance can ever be paused; fixed at deployment.
      */
     constructor(
         bytes32 _queryId,
@@ -81,7 +83,8 @@ contract TellorShepherd is ITellorShepherd {
         uint256 _configChangeDelay,
         uint256 _challengeThresholdBps,
         uint256[2] memory _transitionDelaysSeconds,
-        uint256 _maxDataAge
+        uint256 _maxDataAge,
+        bool _isPausable
     ) {
         if (_queryId == bytes32(0)) revert InvalidQueryId();
         if (_decimals > 77) revert InvalidDecimals();
@@ -106,6 +109,7 @@ contract TellorShepherd is ITellorShepherd {
         CHALLENGE_DELAY_SECONDS = _transitionDelaysSeconds[0];
         RECOVERY_DELAY_SECONDS = _transitionDelaysSeconds[1];
         MAX_DATA_AGE = _maxDataAge;
+        isPausable = _isPausable;
         mode = Mode.PRIMARY;
     }
 
@@ -114,6 +118,7 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @notice Immediately grants pauser membership; callable only by the admin.
      * @dev Membership grants no authority to manage other pausers or unpause.
+     * Membership has no effect when isPausable is false.
      * @param _pauser Nonzero address not already in the pauser set.
      */
     function addPauser(address _pauser) external {
@@ -268,6 +273,7 @@ contract TellorShepherd is ITellorShepherd {
      * @dev Applies immediately to an active pause without changing pausedAt or unpausing.
      * Zero removes the elapsed-time wait, but not admin authority or the pending-source block.
      * Preserves all other proposals, transition requests, source state and pauser memberships.
+     * Duration remains configurable but has no effect when isPausable is false.
      */
     function executeMinPauseDurationChange() external {
         if (msg.sender != admin) revert NotAdmin();
@@ -301,8 +307,9 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Replaces both sources atomically after notice; admin only and paused.
-     * @dev Rechecks metadata without reading prices. Invalidates transition requests,
+     * @notice Replaces both sources atomically after notice; admin only.
+     * @dev Pausable instances must be paused; non-pausable instances migrate while live.
+     * Rechecks metadata without reading prices. Invalidates transition requests,
      * preserves mode/pause clock and immutable delays/maximum age, and never consults the old sources.
      */
     function executeSourcesChange() external {
@@ -310,7 +317,7 @@ contract TellorShepherd is ITellorShepherd {
         address proposedPrimary = pendingPrimarySource;
         address proposedBackup = pendingBackupSource;
         if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
-        if (!paused) revert NotPaused();
+        if (isPausable && !paused) revert NotPaused();
         if (block.timestamp - sourcesProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
         _checkSourceCompatibility(proposedPrimary, queryId, decimals);
         _checkSourceCompatibility(proposedBackup, queryId, decimals);
@@ -329,9 +336,11 @@ contract TellorShepherd is ITellorShepherd {
      * @notice Immediately blocks consumer reads; callable by the admin or an active pauser.
      * @dev Repeated calls revert so a pauser cannot extend the current pause's clock.
      * Source mode and elapsed-time checks are independent of pause state.
+     * Non-pausable instances reject authorized callers with NotPausable.
      */
     function pause() external {
         if (msg.sender != admin && !isPauser[msg.sender]) revert NotAuthorizedToPause();
+        if (!isPausable) revert NotPausable();
         if (paused) revert AlreadyPaused();
 
         paused = true;

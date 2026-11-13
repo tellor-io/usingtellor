@@ -21,7 +21,7 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
   }
   async function deployShepherd(f, leg, primary, backup) {
     return f.Shepherd.deploy(f.ids[leg], f.feedDecimals[leg], primary.target, backup.target,
-      f.admin.address, 10, 20, 2000, [5, 7], 3600);
+      f.admin.address, 10, 20, 2000, [5, 7], 3600, true);
   }
   async function consumers(f, maxStaleness = 3600) {
     const morpho = await deployConsumer("morpho", f.admin, [
@@ -241,7 +241,7 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
     const valset = await h.createTellorValset({ tellorChainId: "tellor-1" });
     const bridge = await (await ethers.getContractFactory("TellorDataBridge")).deploy(f.admin.address, valset.domainSeparator);
     await bridge.init(valset.powerThreshold, valset.timestamp, 21 * 86400, valset.checkpoint);
-    const bank = await (await ethers.getContractFactory("TellorDataBank")).deploy(bridge.target);
+    const bank = await (await ethers.getContractFactory("TellorDataBank")).deploy(bridge.target, 43200, 600, 86400);
     const pairs = [], shepherds = [];
     for (const leg of [0, 1]) {
       const primary = await (await ethers.getContractFactory("TellorTwapSource")).deploy(bank.target, f.ids[leg], f.feedDecimals[leg], 60, 30000);
