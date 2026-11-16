@@ -83,6 +83,7 @@ interface ITellorShepherd {
     error SourcesChangePending();
     error SourcesUnchanged();
     error StalePrice();
+    error UnexpectedState();
     error ZeroValue();
 
     // Getter functions

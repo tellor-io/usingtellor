@@ -1,5 +1,12 @@
 # Shepherd audit handoff
 
+## R04: expected-selection unpause — 2026-11-16
+
+Approved scope: replace `unpause()` with `unpause(expectedMode, expectedPrimary, expectedBackup)` and reject mismatches with `UnexpectedState`, after the unchanged authorization/pause/proposal/duration checks. Reverts preserve state; successful calls retain the existing pause reset/event. This binds selection only at execution, not prices, pending timers, pausers, governance or intervening history. Other state still needs review; later permissionless transitions remain allowed. Administrative callers and fresh deployments require the new ABI. README, design notes and the R04 CSV disposition record this limitation.
+
+Validation in disposable copies using bundled Node.js v24.22.1: Hardhat `test test/TellorShepherdUnpause.js` compiled 20 files and passed 10 focused cases; `test --no-compile` passed 439; `test --no-compile integration/UpstreamConsumers.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 101. Tests cover stale expectations after challenge/recovery and either source replacement, isolated mismatches, unchanged pause/transition state on failure, matching-state success and old-selector refusal. Self-review confirmed existing test edits only adapt unpause arguments via a test-only snapshot helper. Diff checks passed. Existing Foundry nightly/dependency-revision/signature-cache/lint warnings remain. Workspace artifacts and sibling sources were preserved. Human review/comprehension and commit remain pending; release rebuilding/retracking remains required.
+
+
 ## L04: reject zero cross-feed skew — 2026-11-16
 
 The approved fix rejects zero in the custom Morpho oracle constructor and factory-default constructor with `InvalidConfiguration`. Both factory creation overloads enforce the oracle check. Positive skew up to `floor(type(uint256).max / 1000)` seconds remains valid; exact millisecond skew equality is accepted and +1ms is rejected in either direction. NatSpec, adapter README and the L04 CSV row are updated. Positive settings still require feed-cadence calibration. Existing instances/factories retain old behavior; new bytecode changes CREATE2 address predictions.

@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("../test/helpers/unpauseSelection");
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -236,9 +237,9 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     expect(await f.shepherd.mode()).to.equal(1);
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
-    await expect(f.shepherd.unpause()).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
+    await expect(f.shepherd.unpause(...await unpauseSelection(f.shepherd))).to.be.revertedWithCustomError(f.shepherd, "PauseDurationNotElapsed");
     if (BigInt(await time.latest()) < pausedAt + 120n) await time.setNextBlockTimestamp(pausedAt + 120n);
-    await f.shepherd.unpause();
+    await f.shepherd.unpause(...await unpauseSelection(f.shepherd));
     await expectQuotes(f, backupPrice);
   });
 
@@ -269,7 +270,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     expect(await f.shepherd.pausedAt()).to.equal(pausedAt);
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
     if (BigInt(await time.latest()) < pausedAt + 120n) await time.setNextBlockTimestamp(pausedAt + 120n);
-    await f.shepherd.unpause();
+    await f.shepherd.unpause(...await unpauseSelection(f.shepherd));
     // 4500 held for 40000ms plus 9000 for 10000ms over 50000ms gives 5400.
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([backupPrice * 6n / 5n, BigInt(f.startMs + 90000)]);
     await expectQuotes(f, backupPrice * 6n / 5n);
@@ -294,7 +295,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await time.setNextBlockTimestamp((await f.shepherd.recoveryRequestedAt()) + 90n);
     await f.shepherd.connect(f.outsider).executeRecovery();
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
-    await f.shepherd.unpause();
+    await f.shepherd.unpause(...await unpauseSelection(f.shepherd));
     expect(await f.oracle.shepherd()).to.equal(f.shepherd.target);
     expect(await f.shepherd.description()).to.equal("ETH/USD");
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([replacementPrice, BigInt(f.startMs + 50000)]);
@@ -309,7 +310,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await f.shepherd.pause();
     await time.setNextBlockTimestamp((await f.shepherd.sourcesProposedAt()) + 300n);
     await f.shepherd.executeSourcesChange();
-    await f.shepherd.unpause();
+    await f.shepherd.unpause(...await unpauseSelection(f.shepherd));
     await expectQuotes(f, backupPrice);
     // Only the source is a fault double; all reads traverse the production Shepherd.
     await mock.configureRead(backupPrice, 0, 0);

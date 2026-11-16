@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -119,7 +120,7 @@ describe("TellorShepherd - Mutable deviation threshold", function () {
         if (paused) {
           await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "ShepherdPaused");
           await expect(s.latestRoundData()).to.be.revertedWithCustomError(s, "ShepherdPaused");
-          await expect(s.unpause()).to.be.revertedWithCustomError(s, "SourcesChangePending");
+          await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "SourcesChangePending");
         } else {
           expect(await s.getCurrentValue()).to.deep.equal(native); expect(await s.latestRoundData()).to.deep.equal(round);
         }
@@ -141,7 +142,7 @@ describe("TellorShepherd - Mutable deviation threshold", function () {
       await s.proposeChallengeThresholdChange(3000); await s.cancelChallengeThresholdChange();
       await executeUpdate(s, 9999);
       expect(await otherState(f)).to.deep.equal(before); expect(await transitions(s)).to.deep.equal([false, 0n, false, 0n]);
-      if (paused) await s.unpause();
+      if (paused) await s.unpause(...await unpauseSelection(s));
       await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
       // Malformed successful return data still reverts outside the source try/catch.
       await expect(s.requestChallenge()).to.be.reverted;
@@ -238,11 +239,11 @@ describe("TellorShepherd - Mutable deviation threshold", function () {
     await s.proposeAdminChange(f.next.address); await s.proposeMinPauseDurationChange(500);
     await s.proposeChallengeThresholdChange(3000);
     const threshold = await thresholdState(s);
-    await s.pause(); await s.unpause(); expect(await thresholdState(s)).to.deep.equal(threshold);
+    await s.pause(); await s.unpause(...await unpauseSelection(s)); expect(await thresholdState(s)).to.deep.equal(threshold);
     const replacement = await f.Source.deploy(f.queryId, 8);
     await s.proposeSourcesChange(replacement.target, f.backup.target); await s.pause();
-    await expect(s.unpause()).to.be.revertedWithCustomError(s, "SourcesChangePending");
-    await s.cancelSourcesChange(); await s.unpause();
+    await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "SourcesChangePending");
+    await s.cancelSourcesChange(); await s.unpause(...await unpauseSelection(s));
     expect(await s.minPauseDuration()).to.equal(0); expect(await thresholdState(s)).to.deep.equal(threshold);
   });
 });

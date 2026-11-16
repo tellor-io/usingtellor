@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -180,8 +181,8 @@ describe("TellorShepherdFactory", function () {
       const s = await create(f.factory, f.caller, { ...f.configuration, minPauseDuration });
       expect(await s.minPauseDuration()).to.equal(minPauseDuration);
       await s.connect(f.admin).pause();
-      if (minPauseDuration === 0n) await s.connect(f.admin).unpause();
-      else await expect(s.connect(f.admin).unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
+      if (minPauseDuration === 0n) await s.connect(f.admin).unpause(...await unpauseSelection(s));
+      else await expect(s.connect(f.admin).unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
     });
   }
 
