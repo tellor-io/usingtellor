@@ -456,12 +456,21 @@ contract TellorShepherd is ITellorShepherd {
      * @dev Uses the current duration, including updates executed during this pause.
      * Equality is sufficient, and zero allows unpause with no elapsed time; EVM seconds.
      * A pending source-pair proposal must be executed or cancelled first.
+     * Binds only mode and source addresses to the admin's reviewed selection, not prices or other state.
+     * Permissionless transitions remain possible after unpause.
+     * @param _expectedMode Mode reviewed by the admin before submitting the transaction.
+     * @param _expectedPrimary Reviewed primary source address.
+     * @param _expectedBackup Reviewed backup source address.
      */
-    function unpause() external {
+    function unpause(Mode _expectedMode, address _expectedPrimary, address _expectedBackup) external {
         if (msg.sender != admin) revert NotAdmin();
         if (!paused) revert NotPaused();
         if (pendingPrimarySource != address(0)) revert SourcesChangePending();
         if (block.timestamp - pausedAt < minPauseDuration) revert PauseDurationNotElapsed();
+
+        if (mode != _expectedMode || address(primarySource) != _expectedPrimary || address(backupSource) != _expectedBackup) {
+            revert UnexpectedState();
+        }
 
         paused = false;
         pausedAt = 0;

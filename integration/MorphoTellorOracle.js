@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("../test/helpers/unpauseSelection");
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -173,7 +174,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       await f.shepherds[leg].pause();
       await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "ShepherdPaused");
       await time.increase(120);
-      await f.shepherds[leg].unpause();
+      await f.shepherds[leg].unpause(...await unpauseSelection(f.shepherds[leg]));
       await setCode(f.bank.target, "0x60006000fd");
       await expect(f.oracle.price()).to.be.reverted;
     });
@@ -230,7 +231,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       await f.shepherds[leg].pause();
       await time.increase(300);
       await f.shepherds[leg].executeSourcesChange();
-      await f.shepherds[leg].unpause();
+      await f.shepherds[leg].unpause(...await unpauseSelection(f.shepherds[leg]));
       // Fault injection at the common source boundary, without bypassing Shepherd.
       const uncheckedAgeOracle = await deployAdaptor(f, { skew: ethers.MaxUint256 / 1000n });
       await mock.configureRead(value, 0, 0);
@@ -300,7 +301,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     await time.increase(90);
     await f.shepherds[0].connect(f.outsider).executeRecovery();
     await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[0], "ShepherdPaused");
-    await f.shepherds[0].unpause();
+    await f.shepherds[0].unpause(...await unpauseSelection(f.shepherds[0]));
     expect(await f.oracle.collateralShepherd()).to.equal(f.shepherds[0].target);
     expect(await f.oracle.price()).to.equal(3100n * 10n ** 24n);
   });

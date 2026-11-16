@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -112,10 +113,10 @@ describe("TellorShepherd - Delayed outgoing-admin transfer", function () {
         await expect(s.addPauser(f.admin.address)).to.be.revertedWithCustomError(s, "NotAdmin");
         await expect(s.removePauser(f.pauser.address)).to.be.revertedWithCustomError(s, "NotAdmin");
         await expect(s.pause()).to.be.revertedWithCustomError(s, "NotAuthorizedToPause");
-        await expect(s.unpause()).to.be.revertedWithCustomError(s, "NotAdmin");
+        await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "NotAdmin");
         if (paused) {
           await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "ShepherdPaused");
-          await s.connect(f.next).unpause(); // Same old pause clock; minimum already elapsed.
+          await s.connect(f.next).unpause(...await unpauseSelection(s)); // Same old pause clock; minimum already elapsed.
         }
         expect(await s.getCurrentValue()).to.deep.equal(native);
         expect(await s.latestRoundData()).to.deep.equal(round);
@@ -134,7 +135,7 @@ describe("TellorShepherd - Delayed outgoing-admin transfer", function () {
     await s.proposeAdminChange(f.next.address); await time.increase(100); await s.executeAdminChange();
     for (const account of [f.admin, f.next, f.pauser]) expect(await s.isPauser(account.address)).to.equal(true);
     await s.pause(); // Old admin retains only explicitly granted pauser authority.
-    await expect(s.unpause()).to.be.revertedWithCustomError(s, "NotAdmin");
+    await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "NotAdmin");
     await s.connect(f.next).removePauser(f.admin.address);
     expect(await s.isPauser(f.admin.address)).to.equal(false);
   });
@@ -168,7 +169,7 @@ describe("TellorShepherd - Delayed outgoing-admin transfer", function () {
         expect(await s.sourcesProposedAt()).to.equal(sourceAt);
         await s.connect(f.next).pause();
         await time.increase(10);
-        await expect(s.connect(f.next).unpause()).to.be.revertedWithCustomError(s, "SourcesChangePending");
+        await expect(s.connect(f.next).unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "SourcesChangePending");
         await expect(s.proposeSourcesChange(replacement.target, f.backup.target)).to.be.revertedWithCustomError(s, "NotAdmin");
         for (const method of ["executeSourcesChange", "cancelSourcesChange"]) {
           await expect(s[method]()).to.be.revertedWithCustomError(s, "NotAdmin");
@@ -188,7 +189,7 @@ describe("TellorShepherd - Delayed outgoing-admin transfer", function () {
           expect(await s.primarySource()).to.equal(f.primary.target);
         }
         expect(await s.sourcesProposedAt()).to.equal(0);
-        await s.connect(f.next).unpause();
+        await s.connect(f.next).unpause(...await unpauseSelection(s));
       });
     }
   }
@@ -214,7 +215,7 @@ describe("TellorShepherd - Delayed outgoing-admin transfer", function () {
     await s.pause(); const pausedAt = await s.pausedAt();
     await s.proposeAdminChange(f.next.address); const adminAt = await s.adminProposedAt();
     expect(await s.pausedAt()).to.equal(pausedAt);
-    await time.setNextBlockTimestamp(pausedAt + 10n); await s.unpause();
+    await time.setNextBlockTimestamp(pausedAt + 10n); await s.unpause(...await unpauseSelection(s));
     expect(await s.pendingAdmin()).to.equal(f.next.address);
     expect(await s.adminProposedAt()).to.equal(adminAt);
     expect(await s.paused()).to.equal(false);

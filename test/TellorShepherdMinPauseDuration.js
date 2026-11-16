@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
@@ -36,20 +37,20 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
       expect(await s.minPauseDuration()).to.equal(duration);
       expect(await s.minPauseDurationChangePending()).to.equal(false);
       await s.pause();
-      if (duration === ethers.MaxUint256) await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
-      else await s.unpause();
+      if (duration === ethers.MaxUint256) await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
+      else await s.unpause(...await unpauseSelection(s));
     });
   }
 
   it("zero permits actual pause/unpause transactions in the same block and timestamp", async function () {
     const f = await loadFixture(fixture), args = [...f.args]; args[5] = 0;
     const s = (await f.Shepherd.deploy(...args)).connect(f.admin);
-    await expect(s.unpause()).to.be.revertedWithCustomError(s, "NotPaused");
+    await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "NotPaused");
     const nonce = await f.admin.getNonce();
     await network.provider.send("evm_setAutomine", [false]);
     try {
       const pause = await s.pause({ nonce, gasLimit: 500000 });
-      const unpause = await s.unpause({ nonce: nonce + 1, gasLimit: 500000 });
+      const unpause = await s.unpause(...await unpauseSelection(s), { nonce: nonce + 1, gasLimit: 500000 });
       await network.provider.send("evm_mine");
       const [a, b] = await Promise.all([pause.wait(), unpause.wait()]);
       expect(a.blockNumber).to.equal(b.blockNumber);
@@ -122,7 +123,7 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
         expect(await otherState(f)).to.deep.equal(before);
         if (paused) {
           await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "ShepherdPaused");
-          await expect(s.unpause()).to.be.revertedWithCustomError(s, "SourcesChangePending");
+          await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "SourcesChangePending");
         } else {
           expect(await s.getCurrentValue()).to.deep.equal(native); expect(await s.latestRoundData()).to.deep.equal(round);
         }
@@ -137,12 +138,12 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
       await s.pause(); const start = await s.pausedAt();
       await s.proposeMinPauseDurationChange(reduced); const at = await s.minPauseDurationProposedAt();
       await time.setNextBlockTimestamp(at + 99n);
-      await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
+      await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
       expect(await s.minPauseDuration()).to.equal(200);
       await time.setNextBlockTimestamp(at + 100n); await s.executeMinPauseDurationChange();
       expect(await s.pausedAt()).to.equal(start); expect(await s.paused()).to.equal(true);
-      await expect(s.connect(f.pauser).unpause()).to.be.revertedWithCustomError(s, "NotAdmin");
-      await s.unpause(); expect(await s.pausedAt()).to.equal(0);
+      await expect(s.connect(f.pauser).unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "NotAdmin");
+      await s.unpause(...await unpauseSelection(s)); expect(await s.pausedAt()).to.equal(0);
     });
   }
   it("increasing an active pause extends eligibility from the original start, with exact equality", async function () {
@@ -152,17 +153,17 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
     expect(await s.pausedAt()).to.equal(start);
     for (const elapsed of [200n, 399n]) {
       await time.setNextBlockTimestamp(start + elapsed);
-      await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
+      await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
     }
-    await time.setNextBlockTimestamp(start + 400n); await s.unpause();
+    await time.setNextBlockTimestamp(start + 400n); await s.unpause(...await unpauseSelection(s));
   });
   it("a pending increase does not affect unpause until executed", async function () {
     const { s } = await loadFixture(fixture);
     await s.pause(); const start = await s.pausedAt();
     await s.proposeMinPauseDurationChange(ethers.MaxUint256);
     await time.setNextBlockTimestamp(start + 199n);
-    await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
-    await time.setNextBlockTimestamp(start + 200n); await s.unpause();
+    await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
+    await time.setNextBlockTimestamp(start + 200n); await s.unpause(...await unpauseSelection(s));
     expect(await s.minPauseDuration()).to.equal(200); expect(await s.minPauseDurationChangePending()).to.equal(true);
   });
   it("uint256-max updates avoid deadline overflow and remain reducible with unusable sources", async function () {
@@ -173,9 +174,9 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
     await s.proposeMinPauseDurationChange(ethers.MaxUint256);
     await time.increase(100); await s.executeMinPauseDurationChange();
     await s.pause(); const start = await s.pausedAt();
-    await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
+    await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
     await s.proposeMinPauseDurationChange(0); await time.increase(100); await s.executeMinPauseDurationChange();
-    expect(await s.pausedAt()).to.equal(start); await s.unpause();
+    expect(await s.pausedAt()).to.equal(start); await s.unpause(...await unpauseSelection(s));
     await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
   });
 

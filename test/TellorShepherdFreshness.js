@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -138,7 +139,7 @@ describe("TellorShepherd - Immutable shared freshness", function () {
     const f = await loadFixture(fixture);
     await f.s.pause();
     await time.increase(61);
-    await f.s.unpause();
+    await f.s.unpause(...await unpauseSelection(f.s));
     expect(await f.sources[0].getCurrentValue()).to.deep.equal([100n, f.timestamp]);
     await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "SourceNotUsable");
   });
@@ -170,7 +171,7 @@ describe("TellorShepherd - Immutable shared freshness", function () {
     await f.s.executeSourcesChange(); // Metadata-only migration permits stale history.
     expect(await f.s.pausedAt()).to.equal(pauseClock);
     expect(await f.s.MAX_DATA_AGE()).to.equal(60);
-    await f.s.unpause();
+    await f.s.unpause(...await unpauseSelection(f.s));
     for (const role of [0, 1]) {
       await f.s.setModeForTest(role);
       expect(await replacements[role].getCurrentValue()).to.deep.equal([111n, stamp]);

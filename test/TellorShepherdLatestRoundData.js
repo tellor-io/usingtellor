@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -146,7 +147,7 @@ describe("TellorShepherd - Chainlink latest-read subset", function () {
       await f.s.executeSourcesChange();
       expect(await f.s.pausedAt()).to.equal(pauseClock);
       await refusal(f.s, "ShepherdPaused");
-      await f.s.unpause();
+      await f.s.unpause(...await unpauseSelection(f.s));
       for (const source of f.sources) await source.configureRead(0, 0, 1);
       // The new unselected source is also unavailable; only the selected source is read.
       await parity(f.s, 1234567890123456789n, stamp);

@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, setCode, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -50,7 +51,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
     await s.setModeForTest(1);
     await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
     await s.proposeSourcesChange(empty.target, ready.target);
-    await s.pause(); await time.increase(300); await s.executeSourcesChange(); await s.unpause();
+    await s.pause(); await time.increase(300); await s.executeSourcesChange(); await s.unpause(...await unpauseSelection(s));
     expect(await s.getCurrentValue()).to.deep.equal([123n, f.timestamp]);
     expect(await s.description()).to.equal("ETH/USD");
   });
@@ -279,7 +280,7 @@ describe("TellorShepherd - Pause and unpause", function () {
       expect(await shepherd.pausedAt()).to.equal(start);
     }
     await time.setNextBlockTimestamp(start + duration);
-    await shepherd.connect(admin).unpause();
+    await shepherd.connect(admin).unpause(...await unpauseSelection(shepherd));
     expect(await shepherd.paused()).to.equal(false);
   });
 
@@ -288,34 +289,34 @@ describe("TellorShepherd - Pause and unpause", function () {
     await shepherd.connect(pauser).pause();
     await time.increase(duration);
     for (const caller of [deployer, outsider, pauser]) {
-      await expect(shepherd.connect(caller).unpause()).to.be.revertedWithCustomError(shepherd, "NotAdmin");
+      await expect(shepherd.connect(caller).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "NotAdmin");
     }
     await shepherd.connect(admin).removePauser(pauser.address);
-    await expect(shepherd.connect(pauser).unpause()).to.be.revertedWithCustomError(shepherd, "NotAdmin");
+    await expect(shepherd.connect(pauser).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "NotAdmin");
     expect(await shepherd.paused()).to.equal(true);
   });
 
   it("rejects unpaused and early unpause, accepts equality, and starts a fresh clock next time", async function () {
     const { admin, pauser, shepherd } = await loadFixture(deployPauseFixture);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "NotPaused");
+    await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "NotPaused");
     await shepherd.connect(pauser).pause();
     const start = Number(await shepherd.pausedAt());
     await time.setNextBlockTimestamp(start + duration - 1);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
+    await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
     expect(await shepherd.paused()).to.equal(true);
     expect(await shepherd.pausedAt()).to.equal(start);
     await time.setNextBlockTimestamp(start + duration);
-    await expect(shepherd.connect(admin).unpause()).to.emit(shepherd, "Unpaused").withArgs(admin.address);
+    await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.emit(shepherd, "Unpaused").withArgs(admin.address);
     expect(await shepherd.paused()).to.equal(false);
     expect(await shepherd.pausedAt()).to.equal(0);
     expect(await shepherd.mode()).to.equal(0);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "NotPaused");
+    await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "NotPaused");
     await shepherd.connect(pauser).pause();
     const nextStart = Number(await shepherd.pausedAt());
     expect(nextStart).to.be.greaterThan(start + duration);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
+    await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
     await time.setNextBlockTimestamp(nextStart + duration);
-    await shepherd.connect(admin).unpause();
+    await shepherd.connect(admin).unpause(...await unpauseSelection(shepherd));
   });
 
   it("reports pause before dependency failure", async function () {
@@ -393,8 +394,8 @@ describe("TellorShepherd - Two-source transitions", function () {
         }
         if (paused) {
           await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "ShepherdPaused");
-          await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
-          await time.setNextBlockTimestamp(pauseClock + 120n); await s.unpause();
+          await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
+          await time.setNextBlockTimestamp(pauseClock + 120n); await s.unpause(...await unpauseSelection(s));
         }
         expect((await s.getCurrentValue())[0]).to.equal(mode ? 100 : 150);
       });
@@ -623,9 +624,9 @@ describe("TellorShepherd - Source pair migration", function () {
     expect(await shepherd.primarySource()).to.equal(replacement.target);
     expect(await shepherd.paused()).to.equal(true);
     expect(await shepherd.pausedAt()).to.equal(pausedAt);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
+    await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
     await time.setNextBlockTimestamp(Number(pausedAt) + 120);
-    await shepherd.connect(admin).unpause();
+    await shepherd.connect(admin).unpause(...await unpauseSelection(shepherd));
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
   });
 
@@ -636,9 +637,9 @@ describe("TellorShepherd - Source pair migration", function () {
     await expect(shepherd.connect(admin).executeSourcesChange()).to.be.revertedWithCustomError(shepherd, "NotPaused");
     await shepherd.connect(admin).pause();
     await time.increase(120);
-    await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "SourcesChangePending");
+    await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "SourcesChangePending");
     await shepherd.connect(admin).cancelSourcesChange();
-    await shepherd.connect(admin).unpause();
+    await shepherd.connect(admin).unpause(...await unpauseSelection(shepherd));
     expect(await shepherd.primarySource()).to.equal(bank.target);
   });
 
@@ -666,7 +667,7 @@ describe("TellorShepherd - Source pair migration", function () {
       expect(await shepherd.sourcesProposedAt()).to.equal(start);
       expect(await shepherd.pausedAt()).to.equal(pausedAt);
       await shepherd.connect(admin).cancelSourcesChange();
-      await shepherd.connect(admin).unpause();
+      await shepherd.connect(admin).unpause(...await unpauseSelection(shepherd));
     });
   }
 });
@@ -735,7 +736,7 @@ describe("TellorShepherd - Atomic source metadata checks", function () {
     expect(await s.mode()).to.equal(0); expect(await s.pausedAt()).to.equal(pauseClock);
     expect(await s.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     expect(await s.pendingBackupSource()).to.equal(ethers.ZeroAddress);
-    await s.unpause();
+    await s.unpause(...await unpauseSelection(s));
     await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
   });
 });

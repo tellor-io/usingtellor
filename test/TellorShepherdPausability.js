@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, setCode, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -43,7 +44,7 @@ describe("TellorShepherd - Immutable pausability", function () {
       expect(await migrationState(s)).to.deep.equal(before);
     }
     await expect(s.connect(f.outsider).pause()).to.be.revertedWithCustomError(s, "NotAuthorizedToPause");
-    await expect(s.unpause()).to.be.revertedWithCustomError(s, "NotPaused");
+    await expect(s.unpause(...await unpauseSelection(s))).to.be.revertedWithCustomError(s, "NotPaused");
     await expectLive(s, 100n, f.timestamp);
   });
 

@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, setCode } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -64,7 +65,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
     const second = await relay(f, encode(200));
     await time.increaseTo(Number(await f.shepherd.pausedAt()) + 120);
-    await f.shepherd.connect(f.admin).unpause();
+    await f.shepherd.connect(f.admin).unpause(...await unpauseSelection(f.shepherd));
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([200n, second.aggregateTimestamp]);
     expect(await f.shepherd.mode()).to.equal(1);
   });
@@ -96,7 +97,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     expect(await f.shepherd.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     expect(await f.shepherd.sourcesProposedAt()).to.equal(0);
     await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
-    await f.shepherd.connect(f.admin).unpause();
+    await f.shepherd.connect(f.admin).unpause(...await unpauseSelection(f.shepherd));
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([200n, updated.aggregateTimestamp]);
     await expect(f.shepherd.connect(f.admin).executeSourcesChange())
       .to.be.revertedWithCustomError(f.shepherd, "NoPendingSourcesChange");

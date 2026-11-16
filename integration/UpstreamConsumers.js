@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("../test/helpers/unpauseSelection");
 const { loadFixture, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -153,7 +154,7 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
         if (leg === 0) await eulerRefusal(f, s, "ShepherdPaused");
         await time.increase(20);
         await s.executeSourcesChange();
-        await s.unpause();
+        await s.unpause(...await unpauseSelection(s));
         for (const source of f.sources[leg]) await source.configureRead(0, 0, 1);
         const prices = [...f.prices]; prices[leg] = price;
         expect(await f.morpho.price()).to.equal(morphoPrice(f, prices));

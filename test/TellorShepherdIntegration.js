@@ -1,3 +1,4 @@
+const { unpauseSelection } = require("./helpers/unpauseSelection");
 const { loadFixture, time, setCode } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -175,7 +176,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
     expect(await f.shepherd.mode()).to.equal(0);
     expect(await f.shepherd.pausedAt()).to.equal(pauseClock);
     await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ShepherdPaused");
-    await f.shepherd.unpause();
+    await f.shepherd.unpause(...await unpauseSelection(f.shepherd));
     expect((await f.shepherd.getCurrentValue())[0]).to.equal(150);
   });
 
@@ -223,7 +224,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
       await f.shepherd[`request${transition}`]();
       expect(await f.shepherd[clock]()).to.be.greaterThan(original);
       await expect(f.shepherd[`execute${transition}`]()).to.be.revertedWithCustomError(f.shepherd, `${transition}DelayNotElapsed`);
-      await f.shepherd.unpause();
+      await f.shepherd.unpause(...await unpauseSelection(f.shepherd));
       expect((await f.shepherd.getCurrentValue())[0]).to.equal(200);
     });
   }
