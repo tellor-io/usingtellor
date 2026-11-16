@@ -132,6 +132,12 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       .to.be.revertedWithCustomError(f.oracle, "InvalidConfiguration");
   });
 
+  it("rejects zero skew with genuine registered Shepherds", async function () {
+    const f = await loadFixture(primaryFixture);
+    await expect(deployAdaptor(f, { skew: 0 }))
+      .to.be.revertedWithCustomError(f.oracle, "InvalidConfiguration");
+  });
+
   for (const leg of [0, 1]) {
     for (const delta of [-1, 0, 1]) {
       it(`enforces primary age at 3600s ${delta >= 0 ? "+" : ""}${delta}ms on leg ${leg}`, async function () {
@@ -185,20 +191,23 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     });
   }
 
-  for (const olderLeg of [0, 1]) {
-    for (const excess of [0, 1]) {
-      it(`checks ${600000 + excess}ms cross-feed skew with leg ${olderLeg} older`, async function () {
-        const f = await loadFixture(fixture);
-        const baseMs = (await time.latest() - 120) * 1000 + 17;
-        for (const leg of [0, 1]) {
-          await relayWindow(f, leg, leg === 0 ? collateralPrice : loanPrice,
-            baseMs - (leg === olderLeg ? 600000 + excess : 0));
-        }
-        await time.increase(61);
-        // Both feeds are within 3600 seconds; only the skew differs between cases.
-        if (excess) await expect(f.oracle.price()).to.be.revertedWithCustomError(f.oracle, "CrossFeedSkew");
-        else expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
-      });
+  for (const skew of [1, 600]) {
+    for (const olderLeg of [0, 1]) {
+      for (const excess of [0, 1]) {
+        it(`checks ${skew * 1000 + excess}ms cross-feed skew at ${skew}s limit with leg ${olderLeg} older`, async function () {
+          const f = await loadFixture(fixture);
+          const oracle = await deployAdaptor(f, { skew });
+          const baseMs = (await time.latest() - 120) * 1000 + 17;
+          for (const leg of [0, 1]) {
+            await relayWindow(f, leg, leg === 0 ? collateralPrice : loanPrice,
+              baseMs - (leg === olderLeg ? skew * 1000 + excess : 0));
+          }
+          await time.increase(61);
+          // Both feeds are within 3600 seconds; only the skew differs between cases.
+          if (excess) await expect(oracle.price()).to.be.revertedWithCustomError(oracle, "CrossFeedSkew");
+          else expect(await oracle.price()).to.equal(3000n * 10n ** 24n);
+        });
+      }
     }
   }
 
