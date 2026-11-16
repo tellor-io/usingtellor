@@ -1,5 +1,11 @@
 # Shepherd audit handoff
 
+## L04: reject zero cross-feed skew — 2026-11-16
+
+The approved fix rejects zero in the custom Morpho oracle constructor and factory-default constructor with `InvalidConfiguration`. Both factory creation overloads enforce the oracle check. Positive skew up to `floor(type(uint256).max / 1000)` seconds remains valid; exact millisecond skew equality is accepted and +1ms is rejected in either direction. NatSpec, adapter README and the L04 CSV row are updated. Positive settings still require feed-cadence calibration. Existing instances/factories retain old behavior; new bytecode changes CREATE2 address predictions.
+
+Validation in disposable copies: three new zero-rejection tests failed on the old constructors while positive controls passed. After the fix, `forge test --offline` passed 35 tests; Hardhat `compile` compiled 20 files; `test --no-compile integration/MorphoTellorOracle.js` passed 37 tests, including genuine registered Shepherds and 1-second boundaries. Hardhat used bundled Node.js v24.22.1. Existing Foundry nightly/dependency-revision/signature-cache/lint warnings remain. No broader core/Euler/upstream rerun or live-market claim. Workspace artifacts and prior edits were preserved. Review/comprehension and commit remain pending; release artifact rebuilding/retracking remains required.
+
 ## Source compatibility and description — 2026-11-15
 
 The approved change removes Shepherd's query-ID field, constructor argument, getter and compatibility checks. Its first constructor argument and factory Configuration field are now `string description`, a display-only label set at deployment with no setter; empty labels are allowed. Code presence and decimals equality remain mandatory at construction and both migration stages; live price availability is not probed. IPriceSource requires only getCurrentValue/decimals; Tellor readers retain their own query IDs. Deployers/admins must establish compatible units, direction and valuation policies independently of the label.
