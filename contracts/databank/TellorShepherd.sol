@@ -499,6 +499,14 @@ contract TellorShepherd is ITellorShepherd {
         return (0, int256(value), 0, timestampMs / 1000, 0);
     }
 
+    /**
+     * @inheritdoc ITellorShepherd
+     */
+    function validateSource(address _source) external view override returns (uint256 value, uint256 timestampMs) {
+        _checkSourceCompatibility(_source, decimals);
+        return _readUsableSource(IPriceSource(_source));
+    }
+
     // Internal functions
 
     /**
@@ -557,10 +565,7 @@ contract TellorShepherd is ITellorShepherd {
      */
     function _readSelectedSource() internal view returns (uint256 _value, uint256 _timestampMs) {
         if (paused) revert ShepherdPaused();
-        bool _isUsable;
-        (_value, _timestampMs, _isUsable) = _readSource(mode == Mode.PRIMARY ? primarySource : backupSource);
-        if (!_isUsable) revert SourceNotUsable();
-        return (_value, _timestampMs);
+        return _readUsableSource(mode == Mode.PRIMARY ? primarySource : backupSource);
     }
 
     /**
@@ -572,12 +577,24 @@ contract TellorShepherd is ITellorShepherd {
         try _source.getCurrentValue() returns (uint256 value_, uint256 timestampMs_) {
             if (value_ == 0) return (value_, timestampMs_, false); // ZeroValue
             uint256 _nowMs = block.timestamp * 1000;
-            if (timestampMs_ == 0 || timestampMs_ > _nowMs) return (value_, timestampMs_, false); // InvalidTimestamp
-            if (_nowMs - timestampMs_ > MAX_DATA_AGE * 1000) return (value_, timestampMs_, false); // StalePrice
+            // Short-circuit timestamp validity before subtracting to check age.
+            if (timestampMs_ == 0 || timestampMs_ > _nowMs || _nowMs - timestampMs_ > MAX_DATA_AGE * 1000) {
+                return (value_, timestampMs_, false);
+            }
             return (value_, timestampMs_, true); // Success
         } catch {
             return (0, 0, false); // SourceError
         }
+    }
+
+    /**
+     * @dev Shared refusal for native consumer reads and manual source validation; ignores pause.
+     */
+    function _readUsableSource(IPriceSource _source) internal view returns (uint256 _value, uint256 _timestampMs) {
+        bool _isUsable;
+        (_value, _timestampMs, _isUsable) = _readSource(_source);
+        if (!_isUsable) revert SourceNotUsable();
+        return (_value, _timestampMs);
     }
 
     /**

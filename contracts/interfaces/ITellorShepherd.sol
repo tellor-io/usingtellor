@@ -5,7 +5,7 @@ import {IPriceSource} from "./IPriceSource.sol";
 
 /**
  * @title ITellorShepherd
- * @notice Consumer reads, events, and errors for a per-feed Tellor safety layer.
+ * @notice Consumer reads, source diagnostics, events, and errors for a per-feed Tellor safety layer.
  */
 interface ITellorShepherd {
     // Events
@@ -142,5 +142,20 @@ interface ITellorShepherd {
      * @notice Returns the current primary source.
      */
     function primarySource() external view returns (IPriceSource);
+
+    /**
+     * @notice Manually checks a candidate source's metadata and current native-read usability.
+     * @dev Callable by anyone, including while paused, without selecting or registering the source.
+     * Requires code, matching decimals, a nonzero price, and a nonzero/nonfuture timestamp
+     * no older than MAX_DATA_AGE at full millisecond precision; age equality is accepted.
+     * Metadata failures revert; caught price-read failures and invalid values revert with SourceNotUsable.
+     * Malformed successful ABI output can revert during decoding. No guarantee of a specific error for it.
+     * Success does not establish asset identity, trustworthy prices or future availability.
+     * Construction and source migration remain metadata-only; this check does not change their policy.
+     * @param _source Candidate IPriceSource, whether or not currently configured.
+     * @return value Original raw uint256 price, without the signed latestRoundData bound.
+     * @return timestampMs Original source observation timestamp in Unix milliseconds.
+     */
+    function validateSource(address _source) external view returns (uint256 value, uint256 timestampMs);
 
 }
