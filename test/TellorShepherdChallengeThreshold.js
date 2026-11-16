@@ -142,8 +142,9 @@ describe("TellorShepherd - Mutable deviation threshold", function () {
       await executeUpdate(s, 9999);
       expect(await otherState(f)).to.deep.equal(before); expect(await transitions(s)).to.deep.equal([false, 0n, false, 0n]);
       if (paused) await s.unpause();
-      await expect(s.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "ReadUnavailable");
-      await expect(s.requestChallenge()).to.be.revertedWithCustomError(f.primary, "ReadUnavailable");
+      await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
+      // Malformed successful return data still reverts outside the source try/catch.
+      await expect(s.requestChallenge()).to.be.reverted;
     });
   }
 
@@ -171,13 +172,13 @@ describe("TellorShepherd - Mutable deviation threshold", function () {
       await executeUpdate(s, threshold);
       for (const sign of [-1n, 1n]) {
         await f.backup.configureRead(10000n + sign * threshold, f.timestamp, 0);
-        await expect(s.requestChallenge()).to.be.revertedWithCustomError(s, "NotDeviating");
+        await expect(s.requestChallenge()).to.be.revertedWithCustomError(s, "ChallengeNotAllowed");
         const beyond = 10000n + sign * (threshold + 1n);
         if (beyond === 0n) continue; // Zero-price refusal is tested by the existing source-validation suite.
         await f.backup.configureRead(beyond, f.timestamp, 0); await s.requestChallenge();
         const start = await s.challengeRequestedAt();
         await f.backup.configureRead(10000n + sign * threshold, f.timestamp, 0); await time.increase(5);
-        await expect(s.executeChallenge()).to.be.revertedWithCustomError(s, "NotDeviating");
+        await expect(s.executeChallenge()).to.be.revertedWithCustomError(s, "ChallengeNotAllowed");
         expect(await s.challengeRequestedAt()).to.equal(start);
         await s.cancelChallenge();
       }

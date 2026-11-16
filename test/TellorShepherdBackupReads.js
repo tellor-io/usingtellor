@@ -104,7 +104,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
 
   it("rejects an empty history", async function () {
     const { shepherd, backup } = await loadFixture(deployReadFixture);
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
   });
 
   it("uses relay time for strict maturity and preserves subsecond observation time", async function () {
@@ -116,9 +116,9 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     });
     // The observation is already old; only EVM relay time starts the read delay.
     await time.increaseTo(record.relayTime + delay - 1);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "NoData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
     await time.increaseTo(record.relayTime + delay);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "NoData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
     await time.increaseTo(record.relayTime + delay + 1);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([2000n, BigInt(observation)]);
   });
@@ -141,7 +141,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     const f = await loadFixture(deployReadFixture);
     const record = await relay(f, encode(2000), {}, ethers.id("another-feed"));
     await time.increaseTo(record.relayTime + delay + 1);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "NoData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
   });
 
   for (const length of [0, 1, 31]) {
@@ -150,7 +150,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
       await relay(f, encode(100));
       await time.increase(10);
       await injectLookupPayload(f, "0x" + "ab".repeat(length));
-      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "InvalidValueLength");
+      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
     });
   }
 
@@ -160,7 +160,7 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
       await relay(f, encode(100));
       await time.increase(10);
       await injectLookupPayload(f, encode(0) + suffix);
-      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.backup, "ZeroValue");
+      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
     });
   }
 
@@ -181,16 +181,16 @@ describe("TellorShepherd - Delayed spot backup reads", function () {
     await expect(shepherd.getCurrentValue()).to.be.reverted;
   });
 
-  it("propagates source unavailability when delay exceeds chain time", async function () {
+  it("reports source unavailability when delay exceeds chain time", async function () {
     const f = await loadFixture(deployReadFixture);
     const futureDelay = (await time.latest()) + 100;
     const backup = await (await ethers.getContractFactory("TellorSpotSource")).deploy(f.bank.target, f.queryId, 18, futureDelay);
     const shepherd = await f.Shepherd.deploy(f.queryId, 18, f.primary.target, backup.target, f.admin.address, 120, 300, 2000, [30, 90], 3600, true);
     await shepherd.setModeForTest(1);
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
     await time.increaseTo(futureDelay);
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
     await time.increaseTo(futureDelay + 1);
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(backup, "NoData");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
   });
 });

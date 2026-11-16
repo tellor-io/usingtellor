@@ -175,9 +175,9 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
             fault === "zero timestamp" ? 0 : fault === "future" ? ethers.MaxUint256 :
               fault === "stale" ? f.stamp - 3600000n : f.stamp,
             fault === "unavailable" ? 1 : fault === "malformed" ? 2 : 0);
-          const error = { "zero price": "ZeroValue", "zero timestamp": "InvalidTimestamp", future: "InvalidTimestamp",
-            stale: "StalePrice", unavailable: "ReadUnavailable", "signed overflow": "SignedPriceOverflow" }[fault];
-          const origin = fault === "unavailable" ? source : s;
+          const error = fault === "malformed" ? undefined :
+            fault === "signed overflow" ? "SignedPriceOverflow" : "SourceNotUsable";
+          const origin = s;
           if (error) await expect(f.morpho.price()).to.be.revertedWithCustomError(origin, error);
           else await expect(f.morpho.price()).to.be.reverted;
           if (leg === 0) await eulerRefusal(f, origin, error);
@@ -208,8 +208,8 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
         await eulerQuotes(f, f.prices[0]);
         expect(BigInt(at) - (await f.shepherds[0].latestRoundData()).updatedAt).to.equal(3600n);
       } else {
-        await expect(f.morpho.price()).to.be.revertedWithCustomError(f.shepherds[0], "StalePrice");
-        await eulerRefusal(f, f.shepherds[0], "StalePrice");
+        await expect(f.morpho.price()).to.be.revertedWithCustomError(f.shepherds[0], "SourceNotUsable");
+        await eulerRefusal(f, f.shepherds[0], "SourceNotUsable");
       }
     });
   }
@@ -232,8 +232,8 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
     const f = await loadFixture(mockFixture), at = await time.latest() + 10;
     await f.sources[0][0].configureRead(f.prices[0], at * 1000 + 1, 0);
     await time.increaseTo(at);
-    await expect(f.morpho.price()).to.be.revertedWithCustomError(f.shepherds[0], "InvalidTimestamp");
-    await eulerRefusal(f, f.shepherds[0], "InvalidTimestamp");
+    await expect(f.morpho.price()).to.be.revertedWithCustomError(f.shepherds[0], "SourceNotUsable");
+    await eulerRefusal(f, f.shepherds[0], "SourceNotUsable");
   });
 
   async function bankFixture() {

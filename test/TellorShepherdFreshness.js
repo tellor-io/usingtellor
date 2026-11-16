@@ -41,7 +41,7 @@ describe("TellorShepherd - Immutable shared freshness", function () {
         await f.sources[role].configureRead(123, timestamp, 0);
         await time.increaseTo(readAt);
         const before = await state(f.s);
-        if (excessMs > 0) await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "StalePrice");
+        if (excessMs > 0) await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "SourceNotUsable");
         else {
           expect(await f.s.getCurrentValue()).to.deep.equal([123n, timestamp]);
           expect(await f.s.getCurrentValue()).to.deep.equal([123n, timestamp]);
@@ -55,8 +55,7 @@ describe("TellorShepherd - Immutable shared freshness", function () {
       await f.sources[1 - role].configureRead(999, f.timestamp - 61000n, 0);
       const pair = await f.sources[role].getCurrentValue();
       expect(await f.s.getCurrentValue()).to.deep.equal(pair);
-      // The same pair cannot authorize a transition assessment.
-      await expect(f.s.readDeviation()).to.be.revertedWithCustomError(f.s, "StalePrice");
+      expect(await f.s.readDeviation()).to.deep.equal([false, role === 0, role === 1]);
       expect(await f.s.mode()).to.equal(role);
     });
   }
@@ -83,23 +82,23 @@ describe("TellorShepherd - Immutable shared freshness", function () {
       await s.setModeForTest(role);
       expect(await s.getCurrentValue()).to.deep.equal([100n, f.timestamp]);
     }
-    expect(await s.readDeviation()).to.equal(false);
+    expect(await s.readDeviation()).to.deep.equal([false, true, true]);
     await time.increaseTo(f.timestamp / 1000n + 61n);
     for (const role of [0, 1]) {
       await s.setModeForTest(role);
-      await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "StalePrice");
+      await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
     }
-    await expect(s.readDeviation()).to.be.revertedWithCustomError(s, "StalePrice");
+    expect(await s.readDeviation()).to.deep.equal([false, false, false]);
   });
 
-  // All six actions must apply the common limit to both sources, even during pause. staticCall checks
-  // exact age equality without consuming the pending request before the refusal case.
+  // All six actions assess both sources at full millisecond precision, even while paused.
+  // Once stale, an active source permits leaving it; a destination source prevents selecting it.
   for (const kind of ["Challenge", "Recovery"]) {
     const mode = kind === "Challenge" ? 0 : 1;
     for (const phase of ["request", "execute", "cancel"]) {
       for (const role of [0, 1]) {
         for (const paused of [false, true]) {
-          it(`${phase}${kind}: role ${role} equality succeeds, +1ms refuses and preserves state; paused=${paused}`, async function () {
+          it(`${phase}${kind}: role ${role} at equality and +1ms; paused=${paused}`, async function () {
             const f = await loadFixture(fixture), s = f.s;
             await s.setModeForTest(mode);
             const eligible = mode ? 100 : 150;
@@ -114,11 +113,21 @@ describe("TellorShepherd - Immutable shared freshness", function () {
             await time.increaseTo(at);
             const before = await state(s);
             await expect(s[`${phase}${kind}`].staticCall()).not.to.be.reverted;
-            const refusalAt = at + 10;
-            await f.sources[role].configureRead(values[role], refusalAt * 1000 - limit - 1, 0);
-            await time.setNextBlockTimestamp(refusalAt);
-            await expect(s[`${phase}${kind}`]()).to.be.revertedWithCustomError(s, "StalePrice");
-            expect(await state(s)).to.deep.equal(before);
+            const staleAt = at + 10;
+            await f.sources[role].configureRead(values[role], staleAt * 1000 - limit - 1, 0);
+            await time.setNextBlockTimestamp(staleAt);
+            const succeeds = phase === "cancel" ? role !== mode : role === mode;
+            if (succeeds) {
+              const event = `${kind}${{ request: "Requested", execute: "Executed", cancel: "Cancelled" }[phase]}`;
+              await expect(s[`${phase}${kind}`]()).to.emit(s, event);
+              expect(await s.mode()).to.equal(phase === "execute" ? 1 - mode : mode);
+              expect(await s.paused()).to.equal(paused); expect(await s.pausedAt()).to.equal(before[2]);
+              expect(await s[`${kind.toLowerCase()}Pending`]()).to.equal(phase === "request");
+            } else {
+              const error = phase === "cancel" ? `${kind}StillAllowed` : `${kind}NotAllowed`;
+              await expect(s[`${phase}${kind}`]()).to.be.revertedWithCustomError(s, error);
+              expect(await state(s)).to.deep.equal(before);
+            }
           });
         }
       }
@@ -131,7 +140,7 @@ describe("TellorShepherd - Immutable shared freshness", function () {
     await time.increase(61);
     await f.s.unpause();
     expect(await f.sources[0].getCurrentValue()).to.deep.equal([100n, f.timestamp]);
-    await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "StalePrice");
+    await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "SourceNotUsable");
   });
 
   it("a real switch and repeated reads preserve observation time and pending clocks", async function () {
@@ -145,7 +154,7 @@ describe("TellorShepherd - Immutable shared freshness", function () {
     expect(await f.s.getCurrentValue()).to.deep.equal([150n, f.timestamp]);
     expect(await f.s.getCurrentValue()).to.deep.equal([150n, f.timestamp]);
     await time.increaseTo(f.timestamp / 1000n + 61n);
-    await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "StalePrice");
+    await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "SourceNotUsable");
     expect(await f.s.mode()).to.equal(1);
   });
 
@@ -165,7 +174,7 @@ describe("TellorShepherd - Immutable shared freshness", function () {
     for (const role of [0, 1]) {
       await f.s.setModeForTest(role);
       expect(await replacements[role].getCurrentValue()).to.deep.equal([111n, stamp]);
-      await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "StalePrice");
+      await expect(f.s.getCurrentValue()).to.be.revertedWithCustomError(f.s, "SourceNotUsable");
     }
   });
 });

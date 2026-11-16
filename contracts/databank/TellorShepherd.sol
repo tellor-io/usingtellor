@@ -143,15 +143,13 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Anyone may cancel a pending primary challenge when deviation has resolved.
-     * @dev No waiting period or pause restriction. Missing or broken source data cannot
-     * establish resolution, so failures preserve the original challenge and its clock.
+     * @notice Anyone may cancel a pending challenge when it is no longer eligible.
+     * @dev No waiting period or pause restriction. An unusable backup permits cancellation.
      */
     function cancelChallenge() external {
         if (mode != Mode.PRIMARY) revert NotPrimaryMode();
         if (!challengePending) revert NoPendingChallenge();
-        bool deviating = _readDeviation();
-        if (deviating) revert StillDeviating();
+        if (_challengeAllowed()) revert ChallengeStillAllowed();
 
         challengePending = false;
         challengeRequestedAt = 0;
@@ -184,15 +182,13 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Anyone may cancel a pending recovery when deviation returns.
-     * @dev No delay or pause restriction. Failed assessments revert without clearing state.
-     * Transient deviation does not reset the clock unless cancellation is submitted.
+     * @notice Anyone may cancel a pending recovery when it is no longer eligible.
+     * @dev No delay or pause restriction. An unusable primary permits cancellation.
      */
     function cancelRecovery() external {
         if (mode != Mode.BACKUP) revert NotBackupMode();
         if (!recoveryPending) revert NoPendingRecovery();
-        bool deviating = _readDeviation();
-        if (!deviating) revert RecoveryStillAllowed();
+        if (_recoveryAllowed()) revert RecoveryStillAllowed();
 
         recoveryPending = false;
         recoveryRequestedAt = 0;
@@ -232,17 +228,16 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Anyone may select backup after the challenge delay if deviation is re-established.
+     * @notice Anyone may select backup after the challenge delay if the challenge remains eligible.
      * @dev Equality permits execution. Pause and its clock survive the switch.
-     * Both sources must be usable at execution; a failing backup prevents selection.
-     * Request and execution checks do not prove continuous deviation between calls.
+     * Backup must be usable; primary must be unusable or deviate from it.
+     * Eligibility is checked at each endpoint; its reason may change without resetting the timer.
      */
     function executeChallenge() external {
         if (mode != Mode.PRIMARY) revert NotPrimaryMode();
         if (!challengePending) revert NoPendingChallenge();
         if (block.timestamp - challengeRequestedAt < CHALLENGE_DELAY_SECONDS) revert ChallengeDelayNotElapsed();
-        bool deviating = _readDeviation();
-        if (!deviating) revert NotDeviating();
+        if (!_challengeAllowed()) revert ChallengeNotAllowed();
 
         challengePending = false;
         challengeRequestedAt = 0;
@@ -289,16 +284,16 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Anyone may return to primary after the recovery delay if deviation is still resolved.
+     * @notice Anyone may return to primary after the recovery delay if recovery remains eligible.
      * @dev Equality permits execution; failed assessments preserve the pending timer.
-     * Pause survives the switch. Request/execution checks do not prove continuous agreement.
+     * Primary must be usable; backup must be unusable or agree within the threshold.
+     * Pause survives the switch. Endpoint checks do not prove continuous eligibility.
      */
     function executeRecovery() external {
         if (mode != Mode.BACKUP) revert NotBackupMode();
         if (!recoveryPending) revert NoPendingRecovery();
         if (block.timestamp - recoveryRequestedAt < RECOVERY_DELAY_SECONDS) revert RecoveryDelayNotElapsed();
-        bool deviating = _readDeviation();
-        if (deviating) revert RecoveryNotAllowed();
+        if (!_recoveryAllowed()) revert RecoveryNotAllowed();
 
         recoveryPending = false;
         recoveryRequestedAt = 0;
@@ -358,6 +353,7 @@ contract TellorShepherd is ITellorShepherd {
         if (pendingAdmin != address(0)) revert AdminChangePending();
         if (_newAdmin == address(0)) revert InvalidAdmin();
         if (_newAdmin == admin) revert AdminUnchanged();
+
         pendingAdmin = _newAdmin;
         adminProposedAt = block.timestamp;
         emit AdminChangeProposed(_newAdmin, block.timestamp);
@@ -372,6 +368,7 @@ contract TellorShepherd is ITellorShepherd {
         if (pendingChallengeThresholdBps != 0) revert ChallengeThresholdChangePending();
         if (_newThresholdBps == 0 || _newThresholdBps >= 10000) revert InvalidChallengeThreshold();
         if (_newThresholdBps == challengeThresholdBps) revert ChallengeThresholdUnchanged();
+
         pendingChallengeThresholdBps = _newThresholdBps;
         challengeThresholdProposedAt = block.timestamp;
         emit ChallengeThresholdChangeProposed(_newThresholdBps, block.timestamp);
@@ -385,6 +382,7 @@ contract TellorShepherd is ITellorShepherd {
         if (msg.sender != admin) revert NotAdmin();
         if (minPauseDurationChangePending) revert MinPauseDurationChangePending();
         if (_newDuration == minPauseDuration) revert MinPauseDurationUnchanged();
+
         pendingMinPauseDuration = _newDuration;
         minPauseDurationProposedAt = block.timestamp;
         minPauseDurationChangePending = true;
@@ -403,6 +401,7 @@ contract TellorShepherd is ITellorShepherd {
         if (_newPrimary == address(primarySource) && _newBackup == address(backupSource)) revert SourcesUnchanged();
         _checkSourceCompatibility(_newPrimary, queryId, decimals);
         _checkSourceCompatibility(_newBackup, queryId, decimals);
+
         pendingPrimarySource = _newPrimary;
         pendingBackupSource = _newBackup;
         sourcesProposedAt = block.timestamp;
@@ -424,15 +423,15 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Anyone may request a challenge in primary mode when deviation is established.
+     * @notice Anyone may request a challenge with a usable backup and an unusable or deviating primary.
      * @dev Pause does not block source comparisons. Duplicate requests cannot restart the timer.
-     * A pending challenge does not halt reads or prove continuous deviation.
+     * A pending challenge does not halt reads or prove continuous eligibility.
      */
     function requestChallenge() external {
         if (mode != Mode.PRIMARY) revert NotPrimaryMode();
         if (challengePending) revert ChallengeAlreadyPending();
-        bool deviating = _readDeviation();
-        if (!deviating) revert NotDeviating();
+
+        if (!_challengeAllowed()) revert ChallengeNotAllowed();
 
         challengePending = true;
         challengeRequestedAt = block.timestamp;
@@ -440,14 +439,13 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @notice Anyone may request recovery in backup mode when deviation has resolved.
+     * @notice Anyone may request recovery with a usable primary and an unusable or agreeing backup.
      * @dev Duplicate requests cannot reset the clock. Source comparisons remain available while paused.
      */
     function requestRecovery() external {
         if (mode != Mode.BACKUP) revert NotBackupMode();
         if (recoveryPending) revert RecoveryAlreadyPending();
-        bool deviating = _readDeviation();
-        if (deviating) revert RecoveryNotAllowed();
+        if (!_recoveryAllowed()) revert RecoveryNotAllowed();
 
         recoveryPending = true;
         recoveryRequestedAt = block.timestamp;
@@ -496,6 +494,14 @@ contract TellorShepherd is ITellorShepherd {
     // Internal functions
 
     /**
+     * @dev One challenge predicate shared by request, execution and cancellation.
+     */
+    function _challengeAllowed() internal view returns (bool) {
+        (bool deviating, bool primaryUsable, bool backupUsable) = _readDeviation();
+        return backupUsable && (!primaryUsable || deviating);
+    }
+
+    /**
      * @dev Compatibility is not authenticity. Price availability is deliberately not probed.
      */
     function _checkSourceCompatibility(address _source, bytes32 _queryId, uint8 _decimals) internal view {
@@ -522,36 +528,56 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @dev Compares the same primary and backup observations used by consumers, independent of pause.
-     * Failures propagate; they never count as agreement or authorize a transition.
+     * @dev Reads both sources independent of pause. Deviation is meaningful only when both are usable.
+     * An unusable source returns false for deviation; callers must also inspect the usability flags.
      */
-    function _readDeviation() internal view returns (bool) {
-        (uint256 primaryValue,) = _readSource(primarySource);
-        (uint256 value,) = _readSource(backupSource);
-        uint256 difference = value > primaryValue ? value - primaryValue : primaryValue - value;
+    function _readDeviation() internal view returns (bool _isDeviating, bool _primaryUsable, bool _backupUsable) {
+        uint256 _primaryValue;
+        uint256 _backupValue;
+        (_primaryValue, , _primaryUsable) = _readSource(primarySource);
+        (_backupValue, , _backupUsable) = _readSource(backupSource);
+        if (!_primaryUsable || !_backupUsable) return (false, _primaryUsable, _backupUsable);
+        uint256 difference = _backupValue > _primaryValue ? _backupValue - _primaryValue : _primaryValue - _backupValue;
         // Exactly floor(reference * threshold / 10000), without an overflowing product.
         // Integer difference > this floor is equivalent to the strict rational comparison.
-        uint256 allowedDifference = (primaryValue / 10000) * challengeThresholdBps
-            + ((primaryValue % 10000) * challengeThresholdBps) / 10000;
-        return difference > allowedDifference;
+        uint256 allowedDifference = (_primaryValue / 10000) * challengeThresholdBps
+            + ((_primaryValue % 10000) * challengeThresholdBps) / 10000;
+        return (difference > allowedDifference, _primaryUsable, _backupUsable);
     }
 
     /**
      * @dev Shared consumer policy; validates original milliseconds before any output conversion.
      */
-    function _readSelectedSource() internal view returns (uint256 value, uint256 timestampMs) {
+    function _readSelectedSource() internal view returns (uint256 _value, uint256 _timestampMs) {
         if (paused) revert ShepherdPaused();
-        return _readSource(mode == Mode.PRIMARY ? primarySource : backupSource);
+        bool _isUsable;
+        (_value, _timestampMs, _isUsable) = _readSource(mode == Mode.PRIMARY ? primarySource : backupSource);
+        if (!_isUsable) revert SourceNotUsable();
+        return (_value, _timestampMs);
     }
 
     /**
      * @dev Both sources share the same maximum age; compare without rounding observation milliseconds.
+     * False marks unusable data; returned numbers must then be ignored. Source reverts are caught,
+     * but malformed successful return data and caller-induced gas starvation remain unresolved.
      */
-    function _readSource(IPriceSource _source) internal view returns (uint256 value, uint256 timestampMs) {
-        (value, timestampMs) = _source.getCurrentValue();
-        if (value == 0) revert ZeroValue();
-        uint256 nowMs = block.timestamp * 1000;
-        if (timestampMs == 0 || timestampMs > nowMs) revert InvalidTimestamp();
-        if (nowMs - timestampMs > MAX_DATA_AGE * 1000) revert StalePrice();
+    function _readSource(IPriceSource _source) internal view returns (uint256 _value, uint256 _timestampMs, bool _isUsable) {
+        try _source.getCurrentValue() returns (uint256 value_, uint256 timestampMs_) {
+            if (value_ == 0) return (value_, timestampMs_, false); // ZeroValue
+            uint256 _nowMs = block.timestamp * 1000;
+            if (timestampMs_ == 0 || timestampMs_ > _nowMs) return (value_, timestampMs_, false); // InvalidTimestamp
+            if (_nowMs - timestampMs_ > MAX_DATA_AGE * 1000) return (value_, timestampMs_, false); // StalePrice
+            return (value_, timestampMs_, true); // Success
+        } catch {
+            return (0, 0, false); // SourceError
+        }
+    }
+
+    /**
+     * @dev One recovery predicate shared by request, execution and cancellation.
+     */
+    function _recoveryAllowed() internal view returns (bool) {
+        (bool deviating, bool primaryUsable, bool backupUsable) = _readDeviation();
+        return primaryUsable && (!backupUsable || !deviating);
     }
 }

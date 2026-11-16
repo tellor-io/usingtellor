@@ -22,5 +22,5 @@ contract TellorShepherdHarness is TellorShepherd {
 
     // Getter functions
 
-    function readDeviation() external view returns (bool) { return _readDeviation(); }
+    function readDeviation() external view returns (bool, bool, bool) { return _readDeviation(); }
 }

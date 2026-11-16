@@ -41,6 +41,8 @@ interface ITellorShepherd {
     error AlreadyPauser();
     error ChallengeAlreadyPending();
     error ChallengeDelayNotElapsed();
+    error ChallengeNotAllowed();
+    error ChallengeStillAllowed();
     error ChallengeThresholdChangePending();
     error ChallengeThresholdUnchanged();
     error ConfigChangeDelayNotElapsed();
@@ -65,7 +67,6 @@ interface ITellorShepherd {
     error NotAdmin();
     error NotAuthorizedToPause();
     error NotBackupMode();
-    error NotDeviating();
     error NotPausable();
     error NotPaused();
     error NotPauser();
@@ -79,11 +80,11 @@ interface ITellorShepherd {
     error SignedPriceOverflow();
     error SourceDecimalsMismatch();
     error SourceHasNoCode();
+    error SourceNotUsable();
     error SourceQueryIdMismatch();
     error SourcesChangePending();
     error SourcesUnchanged();
     error StalePrice();
-    error StillDeviating();
     error ZeroValue();
 
     // Getter functions
