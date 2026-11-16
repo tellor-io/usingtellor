@@ -1,5 +1,12 @@
 # Shepherd audit handoff
 
+## R05: reject identical Morpho Shepherds — 2026-11-16
+
+The approved constructor check rejects identical collateral/loan Shepherd addresses with `InvalidConfiguration` on direct deployment and both factory overloads. Existing Euler/Morpho registry-membership checks remain. Different addresses do not prove independent data, correct asset wiring or safe policy. No ABI, scaling or skew changes. Existing deployments/factories retain old behavior; new bytecode changes CREATE2 predictions. NatSpec, adapter README, design notes and the R05 CSV row are updated.
+
+Three regression tests failed against the old constructor while distinct-feed controls passed. Post-fix validation in disposable copies: `forge test --offline` passed 38 native Morpho tests; Hardhat `test --no-compile integration/MorphoTellorOracle.js` passed 39 real-Shepherd cases using bundled Node.js v24.22.1. Compilation, self-review and diff checks passed. Existing Foundry nightly/dependency-revision/signature-cache/lint warnings remain; core/Euler/upstream suites were not rerun. Workspace artifacts and Euler sources were preserved. Human review/comprehension and commit remain pending; release artifact rebuilding/retracking remains required.
+
+
 ## R04: expected-selection unpause — 2026-11-16
 
 Approved scope: replace `unpause()` with `unpause(expectedMode, expectedPrimary, expectedBackup)` and reject mismatches with `UnexpectedState`, after the unchanged authorization/pause/proposal/duration checks. Reverts preserve state; successful calls retain the existing pause reset/event. This binds selection only at execution, not prices, pending timers, pausers, governance or intervening history. Other state still needs review; later permissionless transitions remain allowed. Administrative callers and fresh deployments require the new ABI. README, design notes and the R04 CSV disposition record this limitation.
