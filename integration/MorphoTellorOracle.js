@@ -133,6 +133,16 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       .to.be.revertedWithCustomError(f.oracle, "InvalidConfiguration");
   });
 
+  for (const leg of [0, 1]) {
+    it(`rejects registered Shepherd ${leg} used for both collateral and loan`, async function () {
+      const f = await loadFixture(primaryFixture);
+      const shepherd = f.shepherds[leg];
+      expect(await f.shepherdFactory.isShepherd(shepherd.target)).to.equal(true);
+      await expect(deployAdaptor({ ...f, shepherds: [shepherd, shepherd] }))
+        .to.be.revertedWithCustomError(f.oracle, "InvalidConfiguration");
+    });
+  }
+
   it("rejects zero skew with genuine registered Shepherds", async function () {
     const f = await loadFixture(primaryFixture);
     await expect(deployAdaptor(f, { skew: 0 }))
