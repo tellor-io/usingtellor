@@ -10,10 +10,10 @@ contract TellorShepherdHarness is TellorShepherd {
     // Constructor
 
     constructor(
-        bytes32 _queryId, uint8 _decimals, address _primary, address _backup, address _admin,
+        string memory _description, uint8 _decimals, address _primary, address _backup, address _admin,
         uint256 _minPauseDuration, uint256 _configChangeDelay, uint256 _threshold,
         uint256[2] memory _delays, uint256 _maxDataAge, bool _isPausable
-    ) TellorShepherd(_queryId, _decimals, _primary, _backup, _admin,
+    ) TellorShepherd(_description, _decimals, _primary, _backup, _admin,
         _minPauseDuration, _configChangeDelay, _threshold, _delays, _maxDataAge, _isPausable) {}
 
     // State-changing functions

@@ -10,7 +10,7 @@ async function fixture() {
   const timestamp = BigInt(await time.latest() - 10) * 1000n + 17n;
   await primary.configureRead(10000, timestamp, 0); await backup.configureRead(15000, timestamp, 0);
   const Shepherd = await ethers.getContractFactory("TellorShepherd");
-  const args = [queryId, 8, primary.target, backup.target, admin.address, 0, 100, 2000, [5, 7], 3600, true];
+  const args = ["ETH/USD", 8, primary.target, backup.target, admin.address, 0, 100, 2000, [5, 7], 3600, true];
   const s = (await Shepherd.deploy(...args)).connect(admin);
   await s.addPauser(pauser.address);
   return { deployer, admin, next, pauser, queryId, Source, primary, backup, timestamp, Shepherd, args, s };
@@ -18,7 +18,7 @@ async function fixture() {
 const thresholdState = s => Promise.all([s.challengeThresholdBps(), s.pendingChallengeThresholdBps(), s.challengeThresholdProposedAt()]);
 const transitions = s => Promise.all([s.challengePending(), s.challengeRequestedAt(), s.recoveryPending(), s.recoveryRequestedAt()]);
 async function otherState(f) {
-  return Promise.all([...["mode", "paused", "pausedAt", "primarySource", "backupSource", "queryId", "decimals",
+  return Promise.all([...["mode", "paused", "pausedAt", "primarySource", "backupSource", "description", "decimals",
     "admin", "pendingAdmin", "adminProposedAt", "pendingPrimarySource", "pendingBackupSource", "sourcesProposedAt",
     "minPauseDuration", "pendingMinPauseDuration", "minPauseDurationProposedAt", "minPauseDurationChangePending",
     "CHALLENGE_DELAY_SECONDS", "RECOVERY_DELAY_SECONDS", "CONFIG_CHANGE_DELAY", "MAX_DATA_AGE"].map(n => f.s[n]()),

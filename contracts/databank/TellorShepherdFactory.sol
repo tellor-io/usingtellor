@@ -18,7 +18,7 @@ contract TellorShepherdFactory {
 
     // Structs
     struct Configuration {
-        bytes32 queryId;
+        string description;
         uint8 decimals;
         address primarySource;
         address backupSource;
@@ -46,9 +46,9 @@ contract TellorShepherdFactory {
      * @param userSalt Caller-scoped salt; the address also commits to all constructor arguments.
      * @return shepherd Address of the newly deployed and registered instance.
      */
-    function createShepherd(Configuration calldata configuration, bytes32 userSalt) external returns (address shepherd) {
+    function createShepherd(Configuration memory configuration, bytes32 userSalt) external returns (address shepherd) {
         shepherd = address(new TellorShepherd{salt: keccak256(abi.encode(msg.sender, userSalt))}(
-            configuration.queryId,
+            configuration.description,
             configuration.decimals,
             configuration.primarySource,
             configuration.backupSource,

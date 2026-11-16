@@ -11,13 +11,13 @@ async function fixture() {
   await primary.configureRead(100, timestamp, 0);
   await backup.configureRead(150, timestamp, 0);
   const s = await (await ethers.getContractFactory("TellorShepherd")).deploy(
-    queryId, 8, primary.target, backup.target, admin.address, 10, 100, 2000, [5, 7], 3600, true);
+    "ETH/USD", 8, primary.target, backup.target, admin.address, 10, 100, 2000, [5, 7], 3600, true);
   await s.connect(admin).addPauser(pauser.address);
   return { deployer, admin, next, pauser, outsider, queryId, Source, primary, backup, timestamp, s };
 }
 // Admin transfer may change only admin and its own pending proposal/clock.
 async function operationalState(s) {
-  return Promise.all(["primarySource", "backupSource", "queryId", "decimals", "mode", "paused", "pausedAt",
+  return Promise.all(["primarySource", "backupSource", "description", "decimals", "mode", "paused", "pausedAt",
     "pendingPrimarySource", "pendingBackupSource", "sourcesProposedAt", "challengePending", "challengeRequestedAt",
     "recoveryPending", "recoveryRequestedAt", "minPauseDuration", "challengeThresholdBps",
     "CHALLENGE_DELAY_SECONDS", "RECOVERY_DELAY_SECONDS", "MAX_DATA_AGE", "CONFIG_CHANGE_DELAY"].map(name => s[name]()));

@@ -17,7 +17,6 @@ contract TellorShepherd is ITellorShepherd {
     uint8 public immutable override decimals;
     bool public immutable override isPausable;
     uint256 public immutable override MAX_DATA_AGE;
-    bytes32 public immutable override queryId;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
 
     // Storage
@@ -28,6 +27,7 @@ contract TellorShepherd is ITellorShepherd {
     uint256 public challengeRequestedAt;
     uint256 public challengeThresholdBps;
     uint256 public challengeThresholdProposedAt;
+    string public override description;
     uint256 public minPauseDuration;
     bool public minPauseDurationChangePending;
     uint256 public minPauseDurationProposedAt;
@@ -61,7 +61,7 @@ contract TellorShepherd is ITellorShepherd {
      * challenge/recovery delays against source timing and security requirements, including
      * every replacement. The common age limit must accommodate both sources; metadata cannot prove this.
      * A replacement needing different core delays or maximum age requires a new Shepherd.
-     * @param _queryId Nonzero agreed base/quote identifier, fixed for this instance.
+     * @param _description Display label set at deployment; may be empty and does not establish source compatibility.
      * @param _decimals Fixed raw-price precision, from 0 to 77; no prices are rescaled here.
      * @param _primarySource Initial primary reader implementing IPriceSource.
      * @param _backupSource Initial backup reader implementing the same interface.
@@ -74,7 +74,7 @@ contract TellorShepherd is ITellorShepherd {
      * @param _isPausable Whether this instance can ever be paused; fixed at deployment.
      */
     constructor(
-        bytes32 _queryId,
+        string memory _description,
         uint8 _decimals,
         address _primarySource,
         address _backupSource,
@@ -86,7 +86,6 @@ contract TellorShepherd is ITellorShepherd {
         uint256 _maxDataAge,
         bool _isPausable
     ) {
-        if (_queryId == bytes32(0)) revert InvalidQueryId();
         if (_decimals > 77) revert InvalidDecimals();
         if (_admin == address(0)) revert InvalidAdmin();
         if (_configChangeDelay == 0) revert InvalidConfigChangeDelay();
@@ -96,10 +95,10 @@ contract TellorShepherd is ITellorShepherd {
         // Validate once so the millisecond conversion is safe on every read.
         if (_maxDataAge == 0 || _maxDataAge > type(uint256).max / 1000) revert InvalidMaxAge();
 
-        queryId = _queryId;
+        description = _description;
         decimals = _decimals;
-        _checkSourceCompatibility(_primarySource, _queryId, _decimals);
-        _checkSourceCompatibility(_backupSource, _queryId, _decimals);
+        _checkSourceCompatibility(_primarySource, _decimals);
+        _checkSourceCompatibility(_backupSource, _decimals);
         primarySource = IPriceSource(_primarySource);
         backupSource = IPriceSource(_backupSource);
         admin = _admin;
@@ -314,8 +313,8 @@ contract TellorShepherd is ITellorShepherd {
         if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
         if (isPausable && !paused) revert NotPaused();
         if (block.timestamp - sourcesProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
-        _checkSourceCompatibility(proposedPrimary, queryId, decimals);
-        _checkSourceCompatibility(proposedBackup, queryId, decimals);
+        _checkSourceCompatibility(proposedPrimary, decimals);
+        _checkSourceCompatibility(proposedBackup, decimals);
         address previousPrimary = address(primarySource);
         address previousBackup = address(backupSource);
         primarySource = IPriceSource(proposedPrimary);
@@ -399,8 +398,8 @@ contract TellorShepherd is ITellorShepherd {
         if (msg.sender != admin) revert NotAdmin();
         if (pendingPrimarySource != address(0)) revert SourcesChangePending();
         if (_newPrimary == address(primarySource) && _newBackup == address(backupSource)) revert SourcesUnchanged();
-        _checkSourceCompatibility(_newPrimary, queryId, decimals);
-        _checkSourceCompatibility(_newBackup, queryId, decimals);
+        _checkSourceCompatibility(_newPrimary, decimals);
+        _checkSourceCompatibility(_newBackup, decimals);
 
         pendingPrimarySource = _newPrimary;
         pendingBackupSource = _newBackup;
@@ -504,9 +503,8 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @dev Compatibility is not authenticity. Price availability is deliberately not probed.
      */
-    function _checkSourceCompatibility(address _source, bytes32 _queryId, uint8 _decimals) internal view {
+    function _checkSourceCompatibility(address _source, uint8 _decimals) internal view {
         if (_source.code.length == 0) revert SourceHasNoCode();
-        if (IPriceSource(_source).queryId() != _queryId) revert SourceQueryIdMismatch();
         if (IPriceSource(_source).decimals() != _decimals) revert SourceDecimalsMismatch();
     }
 

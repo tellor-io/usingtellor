@@ -14,7 +14,7 @@ import {ITellorDataBank} from "../interfaces/ITellorDataBank.sol";
 contract TellorSpotSource is IPriceSource {
     // Immutables
     ITellorDataBank public immutable dataBank;
-    bytes32 public immutable override queryId;
+    bytes32 public immutable queryId;
     uint8 public immutable override decimals;
     uint256 public immutable RELAY_READ_DELAY;
 

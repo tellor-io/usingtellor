@@ -53,7 +53,6 @@ interface ITellorShepherd {
     error InvalidDecimals();
     error InvalidMaxAge();
     error InvalidPauser();
-    error InvalidQueryId();
     error InvalidRecoveryDelay();
     error InvalidTimestamp();
     error MinPauseDurationChangePending();
@@ -81,7 +80,6 @@ interface ITellorShepherd {
     error SourceDecimalsMismatch();
     error SourceHasNoCode();
     error SourceNotUsable();
-    error SourceQueryIdMismatch();
     error SourcesChangePending();
     error SourcesUnchanged();
     error StalePrice();
@@ -98,6 +96,12 @@ interface ITellorShepherd {
      * @notice Returns the immutable source price precision.
      */
     function decimals() external view returns (uint8);
+
+    /**
+     * @notice Returns the display label set at deployment, with no setter.
+     * @dev May be empty. This label does not validate source identity, units, or trust.
+     */
+    function description() external view returns (string memory);
 
     /**
      * @notice Returns only the selected source's nonzero value and original millisecond timestamp.
@@ -138,8 +142,4 @@ interface ITellorShepherd {
      */
     function primarySource() external view returns (IPriceSource);
 
-    /**
-     * @notice Returns the immutable agreed base/quote identifier.
-     */
-    function queryId() external view returns (bytes32);
 }
