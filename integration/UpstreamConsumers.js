@@ -20,7 +20,7 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
     return new ethers.ContractFactory(a.abi, a.bytecode, signer).deploy(...args);
   }
   async function deployShepherd(f, leg, primary, backup) {
-    return f.Shepherd.deploy(f.ids[leg], f.feedDecimals[leg], primary.target, backup.target,
+    return f.Shepherd.deploy(leg === 0 ? "ETH/USD" : "USDC/USD", f.feedDecimals[leg], primary.target, backup.target,
       f.admin.address, 10, 20, 2000, [5, 7], 3600, true);
   }
   async function consumers(f, maxStaleness = 3600) {
@@ -124,7 +124,7 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
     });
   }
 
-  it("isolates query wiring and composes independently fresh observations without a skew check", async function () {
+  it("isolates source wiring and composes independently fresh observations without a skew check", async function () {
     const f = await loadFixture(mockFixture);
     const recent = BigInt(await time.latest() - 1) * 1000n;
     await f.sources[0][0].configureRead(f.prices[0], recent - 1200000n, 0);
@@ -133,11 +133,8 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
     expect(quoteRound.updatedAt - baseRound.updatedAt).to.equal(1200n);
     expect(await f.morpho.price()).to.equal(morphoPrice(f, [f.prices[0], 2n * pow(18)]));
     await eulerQuotes(f, f.prices[0]); // Euler uses only the base feed, not the Morpho quote feed.
-    const wrongQuery = await f.Source.deploy(f.ids[1], f.feedDecimals[0]);
-    await expect(f.shepherds[0].proposeSourcesChange(wrongQuery.target, f.sources[0][1].target))
-      .to.be.revertedWithCustomError(f.shepherds[0], "SourceQueryIdMismatch");
-    expect(await f.shepherds[0].queryId()).to.equal(f.ids[0]);
-    expect(await f.shepherds[1].queryId()).to.equal(f.ids[1]);
+    expect(await f.shepherds[0].description()).to.equal("ETH/USD");
+    expect(await f.shepherds[1].description()).to.equal("USDC/USD");
   });
 
   for (const leg of [0, 1]) {

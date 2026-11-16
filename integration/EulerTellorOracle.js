@@ -45,7 +45,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const bank = await Bank.deploy(bridge.target, 43200, 600, 86400);
     const shepherdFactory = await (await ethers.getContractFactory("TellorShepherdFactory")).deploy();
     const { primary, backup } = await sources(bank.target, queryId, feedDecimals);
-    const config = [queryId, feedDecimals, primary.target, backup.target, admin.address,
+    const config = ["ETH/USD", feedDecimals, primary.target, backup.target, admin.address,
       120, 300, 2000, 30, 90, 3600, true];
     const address = await shepherdFactory.createShepherd.staticCall(config, ethers.ZeroHash);
     await shepherdFactory.createShepherd(config, ethers.ZeroHash);
@@ -60,8 +60,8 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     return f;
   }
 
-  function deployAdaptor(f, { base = f.base, quote = f.quote, decimals = 18, queryId = f.queryId } = {}) {
-    return f.Adaptor.deploy(f.shepherdFactory.target, base, quote, f.shepherd.target, queryId, decimals);
+  function deployAdaptor(f, { base = f.base, quote = f.quote, decimals = 18 } = {}) {
+    return f.Adaptor.deploy(f.shepherdFactory.target, base, quote, f.shepherd.target, decimals);
   }
 
   async function relay(f, value, stamp, bank = f.bank) {
@@ -135,12 +135,12 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     });
   }
 
-  it("binds the real Shepherd query identity and rejects a different feed", async function () {
+  it("binds the real Shepherd address without requiring a query ID", async function () {
     const f = await loadFixture(primaryFixture);
     expect(await f.oracle.shepherd()).to.equal(f.shepherd.target);
-    expect(await f.oracle.queryId()).to.equal(f.queryId);
-    await expect(deployAdaptor(f, { queryId: ethers.id("wrong-feed") }))
-      .to.be.revertedWithCustomError(f.oracle, "PriceOracle_InvalidConfiguration");
+    expect(await f.shepherd.description()).to.equal("ETH/USD");
+    expect(f.shepherd.interface.hasFunction("queryId()")).to.equal(false);
+    await expectQuotes(f, primaryPrice);
   });
 
   it("rejects a genuine Shepherd registered only in a different factory", async function () {
@@ -296,7 +296,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await expectRefusal(f, f.shepherd, "ShepherdPaused");
     await f.shepherd.unpause();
     expect(await f.oracle.shepherd()).to.equal(f.shepherd.target);
-    expect(await f.oracle.queryId()).to.equal(f.queryId);
+    expect(await f.shepherd.description()).to.equal("ETH/USD");
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([replacementPrice, BigInt(f.startMs + 50000)]);
     await expectQuotes(f, replacementPrice);
   });

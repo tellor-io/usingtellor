@@ -6,7 +6,8 @@ pragma solidity 0.8.19;
  * @notice Protocol-neutral reader for one fixed base/quote feed.
  * @dev Feed identity, base/quote direction, and precision must remain immutable.
  * Readers normalize prices to quote units per whole base unit, scaled by 10 ** decimals().
- * Interchangeable primary and backup sources must agree on that meaning, queryId(), and decimals().
+ * Interchangeable primary and backup sources must agree on that meaning and decimals().
+ * Source-specific query identifiers may differ; this interface does not expose or check them.
  * Matching metadata does not prove source authenticity or trustworthiness.
  * These are implementation obligations: this interface enforces no runtime freshness
  * policy and makes no guarantee about TWAP sampling quality or contributor age.
@@ -24,13 +25,6 @@ interface IPriceSource {
      * @return timestampMs Source timestamp in milliseconds, with the documented meaning.
      */
     function getCurrentValue() external view returns (uint256 value, uint256 timestampMs);
-
-    /**
-     * @notice Returns the immutable identifier for the agreed base/quote meaning and direction.
-     * @dev This is a configured identifier, not a prescribed global hash or asset registry.
-     * An existing Tellor query ID may serve as this identifier.
-     */
-    function queryId() external view returns (bytes32);
 
     /// @notice Returns the immutable number of decimal places used to scale prices.
     function decimals() external view returns (uint8);

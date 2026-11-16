@@ -47,7 +47,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     for (const [leg, id] of ids.entries()) {
       const pair = await sources(bank.target, id, feedDecimals[leg]);
       sourcePairs.push(pair);
-      const config = [id, feedDecimals[leg], pair.primary.target, pair.backup.target, admin.address,
+      const config = [leg === 0 ? "ETH/USD" : "USDC/USD", feedDecimals[leg], pair.primary.target, pair.backup.target, admin.address,
         120, 300, 2000, 30, 90, 3600, true];
       const address = await shepherdFactory.createShepherd.staticCall(config, ethers.ZeroHash);
       await shepherdFactory.createShepherd(config, ethers.ZeroHash);
@@ -59,9 +59,9 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     return f;
   }
 
-  async function deployAdaptor(f, { skew = 600, decimals = [18, 6, 18, 18], ids = f.ids } = {}) {
+  async function deployAdaptor(f, { skew = 600, decimals = [18, 6, 18, 18] } = {}) {
     return f.Adaptor.deploy(f.shepherdFactory.target, f.shepherds[0].target, f.shepherds[1].target,
-      skew, "Local Shepherd WETH/USDC", ...ids, ...decimals);
+      skew, "Local Shepherd WETH/USDC", ...decimals);
   }
 
   async function relay(f, leg, value, timestamp, bank = f.bank) {
@@ -116,14 +116,12 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
     });
   }
 
-  it("validates immutable Shepherd feed identities", async function () {
+  it("binds Shepherd addresses without requiring query IDs", async function () {
     const f = await loadFixture(primaryFixture);
-    await expect(deployAdaptor(f, { ids: [f.ids[1], f.ids[0]] }))
-      .to.be.revertedWithCustomError(f.oracle, "InvalidConfiguration");
     expect(await f.oracle.collateralShepherd()).to.equal(f.shepherds[0].target);
     expect(await f.oracle.loanShepherd()).to.equal(f.shepherds[1].target);
-    expect(await f.oracle.collateralQueryId()).to.equal(f.ids[0]);
-    expect(await f.oracle.loanQueryId()).to.equal(f.ids[1]);
+    for (const shepherd of f.shepherds) expect(shepherd.interface.hasFunction("queryId()")).to.equal(false);
+    expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
   });
 
   it("rejects genuine Shepherds registered only in a different factory", async function () {

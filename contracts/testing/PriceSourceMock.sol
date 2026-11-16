@@ -9,7 +9,7 @@ import {IPriceSource} from "../interfaces/IPriceSource.sol";
  * test migration rechecks. No setter authenticates prices or proves source quality.
  */
 contract PriceSourceMock is IPriceSource {
-    bytes32 public override queryId;
+    bytes32 public queryId;
     uint8 public override decimals;
     uint256 public value;
     uint256 public timestampMs;

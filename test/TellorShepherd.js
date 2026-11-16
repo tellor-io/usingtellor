@@ -12,18 +12,55 @@ async function fixture() {
   await primary.configureRead(100, timestamp, 0);
   await backup.configureRead(150, timestamp + 1000n, 0);
   const Shepherd = await ethers.getContractFactory("TellorShepherdHarness");
-  const args = [queryId, 8, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90], 3600, true];
+  const args = ["ETH/USD", 8, primary.target, backup.target, admin.address, 120, 300, 2000, [30, 90], 3600, true];
   const shepherd = await Shepherd.deploy(...args);
   return { deployer, admin, pauser, outsider, Source, primary, backup, timestamp, Shepherd, args, shepherd };
 }
 
 describe("TellorShepherd - Generic configuration and reads", function () {
-  it("binds identity, precision, sources and controls without requiring prices", async function () {
+  for (const description of ["", "ETH/USD", "Vault NAV / USD — display label longer than thirty-two bytes"]) {
+    it(`stores the description verbatim: ${JSON.stringify(description)}`, async function () {
+      const f = await loadFixture(fixture), args = [...f.args];
+      args[0] = description;
+      const s = await f.Shepherd.deploy(...args);
+      expect(await s.description()).to.equal(description);
+      expect(await s.getCurrentValue()).to.deep.equal([100n, f.timestamp]);
+      expect(s.interface.hasFunction("queryId()")).to.equal(false);
+    });
+  }
+
+  it("accepts different source query IDs at deployment and reads either source", async function () {
+    const f = await loadFixture(fixture);
+    await f.primary.configureMetadata(ethers.id("NAV"), 8);
+    await f.backup.configureMetadata(ethers.id("SpotPrice"), 8);
+    const s = await f.Shepherd.deploy(...f.args);
+    expect(await s.getCurrentValue()).to.deep.equal([100n, f.timestamp]);
+    await s.setModeForTest(1);
+    expect(await s.getCurrentValue()).to.deep.equal([150n, f.timestamp + 1000n]);
+  });
+
+  it("admits sources without queryId at deployment and migration, even without available data", async function () {
+    const f = await loadFixture(fixture);
+    const Source = await ethers.getContractFactory("PriceSourceWithoutQueryIdMock");
+    const ready = await Source.deploy(8, 123, f.timestamp);
+    const empty = await Source.deploy(8, 0, 0);
+    const args = [...f.args]; args[2] = ready.target; args[3] = empty.target;
+    const s = (await f.Shepherd.deploy(...args)).connect(f.admin);
+    expect(await s.getCurrentValue()).to.deep.equal([123n, f.timestamp]);
+    await s.setModeForTest(1);
+    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
+    await s.proposeSourcesChange(empty.target, ready.target);
+    await s.pause(); await time.increase(300); await s.executeSourcesChange(); await s.unpause();
+    expect(await s.getCurrentValue()).to.deep.equal([123n, f.timestamp]);
+    expect(await s.description()).to.equal("ETH/USD");
+  });
+
+  it("binds description, precision, sources and controls without requiring prices", async function () {
     const f = await loadFixture(fixture);
     await f.primary.configureRead(0, 0, 1);
     await f.backup.configureRead(0, 0, 1);
     const s = await f.Shepherd.deploy(...f.args);
-    for (const [getter, expected] of Object.entries({ queryId, decimals: 8,
+    for (const [getter, expected] of Object.entries({ description: "ETH/USD", decimals: 8,
       primarySource: f.primary.target, backupSource: f.backup.target, admin: f.admin.address,
       minPauseDuration: 120, CONFIG_CHANGE_DELAY: 300, challengeThresholdBps: 2000,
       CHALLENGE_DELAY_SECONDS: 30, RECOVERY_DELAY_SECONDS: 90, mode: 0,
@@ -35,7 +72,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
   });
 
   for (const [index, value, error] of [
-    [0, ethers.ZeroHash, "InvalidQueryId"], [1, 78, "InvalidDecimals"],
+    [1, 78, "InvalidDecimals"],
     [2, ethers.ZeroAddress, "SourceHasNoCode"], [3, ethers.ZeroAddress, "SourceHasNoCode"],
     [4, ethers.ZeroAddress, "InvalidAdmin"],
     [6, 0, "InvalidConfigChangeDelay"], [7, 0, "InvalidChallengeThreshold"],
@@ -50,12 +87,10 @@ describe("TellorShepherd - Generic configuration and reads", function () {
   }
 
   for (const side of ["primary", "backup"]) {
-    it(`checks ${side} code, query identity, precision and metadata ABI`, async function () {
+    it(`checks ${side} code, precision and metadata ABI`, async function () {
       const f = await loadFixture(fixture);
       const args = [...f.args]; args[side === "primary" ? 2 : 3] = f.outsider.address;
       await expect(f.Shepherd.deploy(...args)).to.be.revertedWithCustomError(f.Shepherd, "SourceHasNoCode");
-      await f[side].configureMetadata(ethers.id("other"), 8);
-      await expect(f.Shepherd.deploy(...f.args)).to.be.revertedWithCustomError(f.Shepherd, "SourceQueryIdMismatch");
       await f[side].configureMetadata(queryId, 18);
       await expect(f.Shepherd.deploy(...f.args)).to.be.revertedWithCustomError(f.Shepherd, "SourceDecimalsMismatch");
       await setCode(f[side].target, "0x60016000f3");
@@ -637,8 +672,21 @@ describe("TellorShepherd - Source pair migration", function () {
 });
 
 describe("TellorShepherd - Atomic source metadata checks", function () {
+  it("accepts unrelated query IDs at proposal and execution while preserving the description", async function () {
+    const f = await loadFixture(fixture), s = f.shepherd.connect(f.admin);
+    const primary = await f.Source.deploy(ethers.id("NAV"), 8);
+    const backup = await f.Source.deploy(ethers.id("SpotPrice"), 8);
+    await s.proposeSourcesChange(primary.target, backup.target);
+    await primary.configureMetadata(ethers.id("another query"), 8);
+    await backup.configureMetadata(ethers.ZeroHash, 8);
+    await s.pause(); await time.increase(300); await s.executeSourcesChange();
+    expect(await s.primarySource()).to.equal(primary.target);
+    expect(await s.backupSource()).to.equal(backup.target);
+    expect(await s.description()).to.equal("ETH/USD");
+  });
+
   for (const side of ["primary", "backup"]) {
-    for (const fault of ["query", "decimals", "no code"]) {
+    for (const fault of ["decimals", "no code"]) {
       it(`rechecks ${side} ${fault} at proposal and execution without partially replacing the pair`, async function () {
         const f = await loadFixture(fixture), s = f.shepherd.connect(f.admin);
         const a = await f.Source.deploy(queryId, 8), b = await f.Source.deploy(queryId, 8);
@@ -646,9 +694,9 @@ describe("TellorShepherd - Atomic source metadata checks", function () {
         const code = await ethers.provider.getCode(bad.target);
         async function breakMetadata() {
           if (fault === "no code") await setCode(bad.target, "0x");
-          else await bad.configureMetadata(fault === "query" ? ethers.id("wrong") : queryId, fault === "decimals" ? 9 : 8);
+          else await bad.configureMetadata(queryId, 9);
         }
-        const error = fault === "no code" ? "SourceHasNoCode" : fault === "query" ? "SourceQueryIdMismatch" : "SourceDecimalsMismatch";
+        const error = fault === "no code" ? "SourceHasNoCode" : "SourceDecimalsMismatch";
         await breakMetadata();
         await expect(s.proposeSourcesChange(a.target, b.target)).to.be.revertedWithCustomError(s, error);
         expect(await s.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
@@ -667,7 +715,7 @@ describe("TellorShepherd - Atomic source metadata checks", function () {
     }
   }
 
-  it("can replace only backup, then primary without reading prices, retaining immutable delays/identity and mode", async function () {
+  it("can replace only backup, then primary without reading prices, retaining delays, description and mode", async function () {
     const f = await loadFixture(fixture), s = f.shepherd.connect(f.admin);
     const nextBackup = await f.Source.deploy(queryId, 8);
     await s.proposeSourcesChange(f.primary.target, nextBackup.target);
@@ -682,7 +730,7 @@ describe("TellorShepherd - Atomic source metadata checks", function () {
     await s.executeSourcesChange();
     expect(await s.primarySource()).to.equal(nextPrimary.target);
     expect(await s.backupSource()).to.equal(f.backup.target);
-    expect(await s.queryId()).to.equal(queryId); expect(await s.decimals()).to.equal(8);
+    expect(await s.description()).to.equal("ETH/USD"); expect(await s.decimals()).to.equal(8);
     expect(await s.CHALLENGE_DELAY_SECONDS()).to.equal(30); expect(await s.RECOVERY_DELAY_SECONDS()).to.equal(90);
     expect(await s.mode()).to.equal(0); expect(await s.pausedAt()).to.equal(pauseClock);
     expect(await s.pendingPrimarySource()).to.equal(ethers.ZeroAddress);

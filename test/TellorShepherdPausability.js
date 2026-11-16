@@ -14,7 +14,7 @@ async function fixture() {
   await nextPrimary.configureRead(200, timestamp + 1000n, 0);
   await nextBackup.configureRead(300, timestamp + 2000n, 0);
   const s = await (await ethers.getContractFactory("TellorShepherd")).deploy(
-    queryId, 8, primary.target, backup.target, admin.address, 120, 20, 2000, [5, 7], 3600, false);
+    "ETH/USD", 8, primary.target, backup.target, admin.address, 120, 20, 2000, [5, 7], 3600, false);
   await s.addPauser(pauser.address);
   return { admin, pauser, nextAdmin, outsider, queryId, primary, backup, nextPrimary, nextBackup, timestamp, s };
 }
@@ -146,17 +146,14 @@ describe("TellorShepherd - Immutable pausability", function () {
   }
 
   for (const side of ["nextPrimary", "nextBackup"]) {
-    for (const fault of ["query", "decimals", "code"]) {
+    for (const fault of ["decimals", "code"]) {
       it(`rechecks ${side} ${fault} and preserves the live pair, proposal and timers on failure`, async function () {
         const f = await loadFixture(fixture), s = f.s;
         await s.requestChallenge();
         await s.proposeSourcesChange(f.nextPrimary.target, f.nextBackup.target);
         const before = await migrationState(s);
         let error;
-        if (fault === "query") {
-          await f[side].configureMetadata(ethers.id("wrong-feed"), 8);
-          error = "SourceQueryIdMismatch";
-        } else if (fault === "decimals") {
+        if (fault === "decimals") {
           await f[side].configureMetadata(f.queryId, 18);
           error = "SourceDecimalsMismatch";
         } else {

@@ -16,7 +16,7 @@ describe("TellorShepherdFactory", function () {
     // One challenge second is permitted despite the 30001ms TWAP window.
     // Timing suitability is deliberately the deployer/admin responsibility.
     const configuration = {
-      queryId, decimals: 8, primarySource: primary.target, backupSource: backup.target, admin: admin.address,
+      description: "ETH/USD", decimals: 8, primarySource: primary.target, backupSource: backup.target, admin: admin.address,
       minPauseDuration: 122n, configChangeDelay: 303n,
       challengeThresholdBps: 2005n,
       challengeDelaySeconds: 1n, recoveryDelaySeconds: 97n,
@@ -26,7 +26,7 @@ describe("TellorShepherdFactory", function () {
   }
 
   function constructorArgs(c) {
-    return [c.queryId, c.decimals, c.primarySource, c.backupSource, c.admin,
+    return [c.description, c.decimals, c.primarySource, c.backupSource, c.admin,
       c.minPauseDuration, c.configChangeDelay, c.challengeThresholdBps,
       [c.challengeDelaySeconds, c.recoveryDelaySeconds], c.maxDataAge, c.isPausable];
   }
@@ -52,7 +52,7 @@ describe("TellorShepherdFactory", function () {
     const c = f.configuration;
     const shepherd = await create(f.factory, f.caller, c);
     const getters = {
-      queryId: "queryId", decimals: "decimals", primarySource: "primarySource", backupSource: "backupSource", admin: "admin",
+      description: "description", decimals: "decimals", primarySource: "primarySource", backupSource: "backupSource", admin: "admin",
       minPauseDuration: "minPauseDuration", isPausable: "isPausable",
       configChangeDelay: "CONFIG_CHANGE_DELAY",
       challengeThresholdBps: "challengeThresholdBps",
@@ -69,6 +69,19 @@ describe("TellorShepherdFactory", function () {
     expect(await shepherd.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     // Empty sources are allowed by the existing constructor policy.
     await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
+  });
+
+  it("forwards empty and long descriptions and binds them into CREATE2 deployments", async function () {
+    const f = await loadFixture(deployFixture);
+    const addresses = [];
+    for (const description of ["", "Vault NAV / USD — display label longer than thirty-two bytes"]) {
+      const c = { ...f.configuration, description };
+      const s = await create(f.factory, f.caller, c);
+      expect(await s.description()).to.equal(description);
+      expect(s.target).to.equal(await predict(f, c));
+      addresses.push(s.target);
+    }
+    expect(addresses[0]).not.to.equal(addresses[1]);
   });
 
   it("deploys and records a non-pausable instance at the address bound to its flag", async function () {
@@ -131,7 +144,7 @@ describe("TellorShepherdFactory", function () {
     const f = await loadFixture(deployFixture);
     const predicted = await predict(f, f.configuration);
     const mutations = {
-      queryId: ethers.id("other-feed"), decimals: 9, primarySource: f.backup.target,
+      description: "BTC/USD", decimals: 9, primarySource: f.backup.target,
       backupSource: f.primary.target, admin: f.otherAdmin.address, minPauseDuration: 123n,
       configChangeDelay: 304n, challengeThresholdBps: 2006n, challengeDelaySeconds: 2n,
       recoveryDelaySeconds: 98n, maxDataAge: 3601n, isPausable: false,
@@ -173,7 +186,6 @@ describe("TellorShepherdFactory", function () {
   }
 
   const invalidCases = [
-    ["queryId", ethers.ZeroHash, "InvalidQueryId"],
     ["primarySource", ethers.ZeroAddress, "SourceHasNoCode"],
     ["backupSource", ethers.ZeroAddress, "SourceHasNoCode"],
     ["decimals", 78, "InvalidDecimals"],
