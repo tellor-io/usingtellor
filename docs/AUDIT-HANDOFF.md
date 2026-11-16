@@ -1,5 +1,11 @@
 # Shepherd audit handoff
 
+## Source usability transitions — 2026-11-14
+
+Reviewed and completed the human's tuple-based changes on `shepherd4`: `_readSource` reports usability, `_readDeviation` compares only usable pairs, and each direction shares one request/execute/cancel predicate. An unusable destination blocks switching and permits cancellation; a usable destination can be selected after the existing delay when the active source is unusable. Consumer reads retain selected-only refusal with `SourceNotUsable`. The human explicitly deferred malformed-return handling and gas-starvation protection; see the [current limitations](DESIGN.md#explicitly-unresolved-external-call-protections). These are unresolved risks, not audited protections.
+
+Validation: forced compilation of 19 Solidity files; 169 focused tests; final `npx hardhat test --no-compile` passed 427 tests. `npx hardhat test integration/UpstreamConsumers.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 96 tests, including freshly built pinned consumers. Existing Foundry dependency/submodule/cache/lint warnings remain. Sibling source checkouts are unchanged. Generated tracked artifacts are restored to the pre-edit snapshot, with the Solidity cache invalidated for the next build; release rebuilding/retracking remains required. No commit, push or deployment. Human review/comprehension and commit remain pending.
+
 ## Immutable deployment pausability — 2026-11-13
 
 Implemented on `shepherd4` at base `ac2c70e`; this increment remains uncommitted. A required final `isPausable` bool is appended to the constructor and factory configuration/event. False permanently rejects authorized pauses while allowing delayed, admin-only atomic source replacement without pausing. Membership and pause-duration management remain available but inert. Price validation and source readiness assumptions are unchanged.

@@ -68,7 +68,7 @@ describe("TellorShepherdFactory", function () {
     expect(await shepherd.recoveryPending()).to.equal(false);
     expect(await shepherd.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     // Empty sources are allowed by the existing constructor policy.
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "NoTwapData");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
   });
 
   it("deploys and records a non-pausable instance at the address bound to its flag", async function () {

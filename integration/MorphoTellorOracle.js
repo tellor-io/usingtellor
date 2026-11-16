@@ -143,7 +143,7 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
           await relayWindow(f, index, index === 0 ? collateralPrice : loanPrice, baseMs - (index === leg ? delta : 0));
         }
         await time.increaseTo(baseMs / 1000 + 3600);
-        if (delta > 0) await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
+        if (delta > 0) await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
         else expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
       });
     }
@@ -152,11 +152,11 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       const stamp = (await time.latest() - 120) * 1000;
       await relayWindow(f, 1 - leg, leg === 0 ? loanPrice : collateralPrice, stamp);
       await time.increase(61);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.sourcePairs[leg].primary, "NoTwapData");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
       await relayWindow(f, leg, leg === 0 ? collateralPrice : loanPrice, stamp);
       const relayAt = BigInt(await time.latest());
       await time.increaseTo(relayAt + 60n);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.sourcePairs[leg].primary, "NoTwapData");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
       await time.increase(1);
       expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
       await f.shepherds[leg].pause();
@@ -182,8 +182,8 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       expect(await f.shepherds[leg].getCurrentValue()).to.deep.equal(pair);
       expect(await f.oracle.price()).to.equal(3000n * 10n ** 24n);
       await time.increase(1);
-      await expect(f.shepherds[leg].getCurrentValue()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "StalePrice");
+      await expect(f.shepherds[leg].getCurrentValue()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
     });
   }
 
@@ -227,13 +227,13 @@ describe("Morpho adaptor - Real Shepherd integration", function () {
       // Fault injection at the common source boundary, without bypassing Shepherd.
       const uncheckedAgeOracle = await deployAdaptor(f, { skew: ethers.MaxUint256 / 1000n });
       await mock.configureRead(value, 0, 0);
-      await expect(uncheckedAgeOracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "InvalidTimestamp");
+      await expect(uncheckedAgeOracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
       await mock.configureRead(value, (BigInt(await time.latest()) + 10n) * 1000n, 0);
-      await expect(uncheckedAgeOracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "InvalidTimestamp");
+      await expect(uncheckedAgeOracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
       await mock.configureRead(0, f.startMs + 30000, 0);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "ZeroValue");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
       await mock.configureRead(value, f.startMs + 30000, 1);
-      await expect(f.oracle.price()).to.be.revertedWithCustomError(mock, "ReadUnavailable");
+      await expect(f.oracle.price()).to.be.revertedWithCustomError(f.shepherds[leg], "SourceNotUsable");
       for (const code of ["0x60006000fd", "0x60016000f3"]) {
         await setCode(mock.target, code);
         await expect(f.oracle.price()).to.be.reverted;

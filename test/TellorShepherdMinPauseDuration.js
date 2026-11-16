@@ -176,7 +176,7 @@ describe("TellorShepherd - Mutable minimum pause duration", function () {
     await expect(s.unpause()).to.be.revertedWithCustomError(s, "PauseDurationNotElapsed");
     await s.proposeMinPauseDurationChange(0); await time.increase(100); await s.executeMinPauseDurationChange();
     expect(await s.pausedAt()).to.equal(start); await s.unpause();
-    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "ReadUnavailable");
+    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
   });
 
   for (const adminFirst of [false, true]) {

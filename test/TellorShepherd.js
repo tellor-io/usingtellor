@@ -31,7 +31,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
       pendingBackupSource: ethers.ZeroAddress, sourcesProposedAt: 0 })) {
       expect(await s[getter](), getter).to.equal(expected);
     }
-    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "ReadUnavailable");
+    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
   });
 
   for (const [index, value, error] of [
@@ -91,7 +91,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
       expect(await f.shepherd.getCurrentValue()).to.deep.equal(pair);
       await other.configureRead(999, f.timestamp, 0);
       await selected.configureRead(0, 0, 1);
-      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(selected, "ReadUnavailable");
+      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
       expect(await f.shepherd.mode()).to.equal(mode);
       await selected.configureRead(1, f.timestamp, 2);
       await expect(f.shepherd.getCurrentValue()).to.be.reverted;
@@ -101,12 +101,12 @@ describe("TellorShepherd - Generic configuration and reads", function () {
       await f.shepherd.setModeForTest(mode);
       const source = mode ? f.backup : f.primary;
       await source.configureRead(0, f.timestamp, 0);
-      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "ZeroValue");
+      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
       for (const offset of [null, 1, 1000]) {
         const readTime = await time.latest() + 10;
         await source.configureRead(100, offset === null ? 0 : readTime * 1000 + offset, 0);
         await time.increaseTo(readTime);
-        await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "InvalidTimestamp");
+        await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
       }
       const readTime = await time.latest() + 10;
       await source.configureRead(100, readTime * 1000, 0);
@@ -307,7 +307,7 @@ describe("TellorShepherd - Two-source transitions", function () {
           if (value <= 0n || value > ethers.MaxUint256) continue;
           await f.backup.configureRead(value, f.timestamp, 0);
           const difference = value > reference ? value - reference : reference - value;
-          expect(await s.readDeviation()).to.equal(difference * 10000n > reference * threshold);
+          expect(await s.readDeviation()).to.deep.equal([difference * 10000n > reference * threshold, true, true]);
         }
       }
     }
@@ -321,8 +321,8 @@ describe("TellorShepherd - Two-source transitions", function () {
     const request = `request${kind}`, execute = `execute${kind}`, cancel = `cancel${kind}`;
     const eligible = mode ? 100 : 150;
     const ineligible = mode ? 150 : 100;
-    const conditionError = mode ? "RecoveryNotAllowed" : "NotDeviating";
-    const cancelError = mode ? "RecoveryStillAllowed" : "StillDeviating";
+    const conditionError = mode ? "RecoveryNotAllowed" : "ChallengeNotAllowed";
+    const cancelError = mode ? "RecoveryStillAllowed" : "ChallengeStillAllowed";
     async function ready() {
       const f = await fixture();
       await f.shepherd.setModeForTest(mode);
@@ -393,37 +393,113 @@ describe("TellorShepherd - Two-source transitions", function () {
         if (mode) {
           await s[request](); await time.increase(delay); await s[execute]();
         } else {
-          await expect(s[request]()).to.be.revertedWithCustomError(s, "NotDeviating");
+          await expect(s[request]()).to.be.revertedWithCustomError(s, "ChallengeNotAllowed");
           await set(f, 121); await s[request](); await set(f, value); await s[cancel]();
         }
       });
     }
 
     for (const side of ["primary", "backup"]) {
-      for (const fault of ["revert", "malformed", "zero price", "zero timestamp", "future timestamp"]) {
-        it(`${kind}: ${side} ${fault} refuses requests/cancellation/execution without changing timers`, async function () {
+      for (const fault of ["revert", "zero price", "zero timestamp", "future timestamp"]) {
+        it(`${kind}: ${side} ${fault} permits leaving an unusable source but never selecting it`, async function () {
           const f = await loadFixture(ready), s = f.shepherd.connect(f.admin);
           const pair = await f[side].getCurrentValue();
           async function breakSource() {
             await f[side].configureRead(fault === "zero price" ? 0 : pair[0],
               fault === "zero timestamp" ? 0 : fault === "future timestamp" ? ethers.MaxUint256 : pair[1],
-              fault === "revert" ? 1 : fault === "malformed" ? 2 : 0);
+              fault === "revert" ? 1 : 0);
           }
-          async function refusal(call) {
-            if (fault === "revert") await expect(call).to.be.revertedWithCustomError(f[side], "ReadUnavailable");
-            else if (fault === "malformed") await expect(call).to.be.reverted;
-            else await expect(call).to.be.revertedWithCustomError(s, fault === "zero price" ? "ZeroValue" : "InvalidTimestamp");
+          const activeFails = side === (mode ? "backup" : "primary");
+          await breakSource();
+          expect(await s.readDeviation()).to.deep.equal([false, side !== "primary", side !== "backup"]);
+          if (activeFails) {
+            await s.connect(f.outsider)[request]();
+            const start = await s[clock]();
+            await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
+            await expect(s[request]()).to.be.revertedWithCustomError(s, `${kind}AlreadyPending`);
+            await expect(s[cancel]()).to.be.revertedWithCustomError(s, cancelError);
+            await expect(s[execute]()).to.be.revertedWithCustomError(s, `${kind}DelayNotElapsed`);
+            await s.pause(); const pauseClock = await s.pausedAt();
+            await time.setNextBlockTimestamp(start + delay);
+            await expect(s.connect(f.outsider)[execute]()).to.emit(s, `${kind}Executed`);
+            expect(await s.mode()).to.equal(1 - mode);
+            expect(await s[pending]()).to.equal(false); expect(await s[clock]()).to.equal(0);
+            expect(await s.paused()).to.equal(true); expect(await s.pausedAt()).to.equal(pauseClock);
+          } else {
+            await expect(s[request]()).to.be.revertedWithCustomError(s, conditionError);
+            expect(await s[pending]()).to.equal(false); expect(await s[clock]()).to.equal(0);
+            await f[side].configureRead(...pair, 0); await s[request]();
+            const start = await s[clock](); await s.pause(); const pauseClock = await s.pausedAt();
+            await breakSource(); await time.increase(delay);
+            await expect(s[execute]()).to.be.revertedWithCustomError(s, conditionError);
+            expect(await s[pending]()).to.equal(true); expect(await s[clock]()).to.equal(start);
+            await expect(s.connect(f.outsider)[cancel]()).to.emit(s, `${kind}Cancelled`);
+            expect(await s[pending]()).to.equal(false); expect(await s[clock]()).to.equal(0);
+            expect(await s.mode()).to.equal(mode); expect(await s.pausedAt()).to.equal(pauseClock);
           }
-          await breakSource(); await refusal(s[request]());
-          expect(await s[pending]()).to.equal(false); expect(await s[clock]()).to.equal(0);
-          await f[side].configureRead(...pair, 0); await s[request]();
-          const start = await s[clock](); await s.pause(); const pauseClock = await s.pausedAt();
-          await breakSource(); await refusal(s[cancel]()); await time.increase(delay); await refusal(s[execute]());
-          expect(await s[pending]()).to.equal(true); expect(await s[clock]()).to.equal(start);
-          expect(await s.mode()).to.equal(mode); expect(await s.pausedAt()).to.equal(pauseClock);
         });
       }
+
+      it(`${kind}: ${side} malformed ABI remains an uncaught assessment failure`, async function () {
+        const f = await loadFixture(ready), s = f.shepherd;
+        const pair = await f[side].getCurrentValue();
+        await f[side].configureRead(...pair, 2);
+        await expect(s[request]()).to.be.reverted;
+        expect(await s[pending]()).to.equal(false);
+        await f[side].configureRead(...pair, 0); await s[request]();
+        const start = await s[clock]();
+        await f[side].configureRead(...pair, 2); await time.increase(delay);
+        await expect(s[execute]()).to.be.reverted;
+        await expect(s[cancel]()).to.be.reverted;
+        expect(await s[pending]()).to.equal(true); expect(await s[clock]()).to.equal(start);
+        expect(await s.mode()).to.equal(mode);
+      });
     }
+
+    it(`${kind}: both unavailable blocks switching but allows cancellation`, async function () {
+      const f = await loadFixture(ready), s = f.shepherd;
+      await s[request]();
+      const start = await s[clock]();
+      await f.primary.configureRead(0, 0, 1); await f.backup.configureRead(0, 0, 1);
+      expect(await s.readDeviation()).to.deep.equal([false, false, false]);
+      await time.increase(delay);
+      await expect(s[execute]()).to.be.revertedWithCustomError(s, conditionError);
+      expect(await s[clock]()).to.equal(start);
+      await s[cancel]();
+      await expect(s[request]()).to.be.revertedWithCustomError(s, conditionError);
+      expect(await s[pending]()).to.equal(false); expect(await s[clock]()).to.equal(0);
+      expect(await s.mode()).to.equal(mode);
+    });
+
+    for (const startsUnavailable of [false, true]) {
+      it(`${kind}: changing eligibility reason retains the original timer; startsUnavailable=${startsUnavailable}`, async function () {
+        const f = await loadFixture(ready), s = f.shepherd;
+        const active = mode ? f.backup : f.primary;
+        const pair = await active.getCurrentValue();
+        if (startsUnavailable) await active.configureRead(0, 0, 1);
+        await s[request](); const start = await s[clock]();
+        await active.configureRead(...pair, startsUnavailable ? 0 : 1);
+        await expect(s[cancel]()).to.be.revertedWithCustomError(s, cancelError);
+        await time.setNextBlockTimestamp(start + delay - 1n);
+        await expect(s[execute]()).to.be.revertedWithCustomError(s, `${kind}DelayNotElapsed`);
+        expect(await s[clock]()).to.equal(start);
+        await time.setNextBlockTimestamp(start + delay);
+        await s[execute]();
+        expect(await s.mode()).to.equal(1 - mode);
+      });
+    }
+
+    it(`${kind}: restored active source can make the request ineligible`, async function () {
+      const f = await loadFixture(ready), s = f.shepherd;
+      const active = mode ? f.backup : f.primary;
+      const pair = await active.getCurrentValue();
+      await active.configureRead(0, 0, 1); await s[request]();
+      await active.configureRead(...pair, 0); await set(f, ineligible);
+      await time.increase(delay);
+      await expect(s[execute]()).to.be.revertedWithCustomError(s, conditionError);
+      await s[cancel]();
+      expect(await s.mode()).to.equal(mode); expect(await s[pending]()).to.equal(false);
+    });
   }
 });
 
@@ -515,7 +591,7 @@ describe("TellorShepherd - Source pair migration", function () {
     await expect(shepherd.connect(admin).unpause()).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
     await time.setNextBlockTimestamp(Number(pausedAt) + 120);
     await shepherd.connect(admin).unpause();
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(replacement, "ReadUnavailable");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
   });
 
   it("requires pause for execution and blocks unpause until cancellation or execution", async function () {
@@ -612,6 +688,6 @@ describe("TellorShepherd - Atomic source metadata checks", function () {
     expect(await s.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     expect(await s.pendingBackupSource()).to.equal(ethers.ZeroAddress);
     await s.unpause();
-    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(nextPrimary, "ReadUnavailable");
+    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
   });
 });

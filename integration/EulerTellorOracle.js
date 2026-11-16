@@ -153,13 +153,13 @@ describe("Euler adaptor - Real Shepherd integration", function () {
 
   it("requires mature TWAP coverage and excludes the endpoint price", async function () {
     const f = await loadFixture(fixture);
-    await expectRefusal(f, f.primary, "NoTwapData");
+    await expectRefusal(f, f.shepherd, "SourceNotUsable");
     const first = await relay(f, primaryPrice, f.startMs);
     await time.increaseTo(first + 61n);
-    await expectRefusal(f, f.primary, "NoTwapData");
+    await expectRefusal(f, f.shepherd, "SourceNotUsable");
     const end = await relay(f, primaryPrice * 2n, f.startMs + 30000);
     await time.increaseTo(end + 60n);
-    await expectRefusal(f, f.primary, "NoTwapData");
+    await expectRefusal(f, f.shepherd, "SourceNotUsable");
     await time.increase(1);
     await expectQuotes(f, primaryPrice);
     await relay(f, primaryPrice * 3n, f.startMs + 40000);
@@ -170,7 +170,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     const f = await loadFixture(primaryFixture);
     const relayAt = await relay(f, backupPrice, f.startMs + 40000);
     await time.setNextBlockTimestamp(relayAt + 60n);
-    await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotDeviating");
+    await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "ChallengeNotAllowed");
     await time.setNextBlockTimestamp(relayAt + 61n);
     await f.shepherd.requestChallenge();
     const requestedAt = await f.shepherd.challengeRequestedAt();
@@ -188,8 +188,8 @@ describe("Euler adaptor - Real Shepherd integration", function () {
       await relayWindow(f, primaryPrice, stamp);
       await time.increaseTo(BigInt(anchor) + maxAge);
       if (excessMs > 0) {
-        await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "StalePrice");
-        await expectRefusal(f, f.shepherd, "StalePrice");
+        await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
+        await expectRefusal(f, f.shepherd, "SourceNotUsable");
       } else {
         expect(await f.shepherd.getCurrentValue()).to.deep.equal([primaryPrice, BigInt(stamp)]);
         await expectQuotes(f, primaryPrice);
@@ -203,8 +203,8 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await time.increaseTo(f.report.pair[1] / 1000n + maxAge);
     await expectQuotes(f, backupPrice);
     await time.increase(1);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "StalePrice");
-    await expectRefusal(f, f.shepherd, "StalePrice");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
+    await expectRefusal(f, f.shepherd, "SourceNotUsable");
   });
 
   for (const example of [
@@ -313,13 +313,13 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await expectQuotes(f, backupPrice);
     // Only the source is a fault double; all reads traverse the production Shepherd.
     await mock.configureRead(backupPrice, 0, 0);
-    await expectRefusal(f, f.shepherd, "InvalidTimestamp");
+    await expectRefusal(f, f.shepherd, "SourceNotUsable");
     await mock.configureRead(backupPrice, (BigInt(await time.latest()) + 10n) * 1000n, 0);
-    await expectRefusal(f, f.shepherd, "InvalidTimestamp");
+    await expectRefusal(f, f.shepherd, "SourceNotUsable");
     await mock.configureRead(0, f.report.pair[1], 0);
-    await expectRefusal(f, f.shepherd, "ZeroValue");
+    await expectRefusal(f, f.shepherd, "SourceNotUsable");
     await mock.configureRead(backupPrice, f.report.pair[1], 1);
-    await expectRefusal(f, mock, "ReadUnavailable");
+    await expectRefusal(f, f.shepherd, "SourceNotUsable");
     for (const code of ["0x60006000fd", "0x60016000f3"]) {
       await setCode(mock.target, code);
       await expectRefusal(f);

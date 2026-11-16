@@ -57,14 +57,14 @@ describe("TellorShepherd - Real DataBank integration", function () {
 
   it("returns a floored TWAP and its endpoint, refusing insufficient or immature history", async function () {
     const f = await loadFixture(fixture);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "NoTwapData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
     const first = await relay(f, 0, 100);
     await time.increaseTo(first + 61n);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "NoTwapData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
     await relay(f, 10001, 120);
     const end = await relay(f, 30003, 900);
     await time.increaseTo(end + 60n);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "NoTwapData");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
     await time.increase(1);
     // floor((100*10001 + 120*20002)/30003) = 113; the endpoint price has zero weight.
     const pair = [113n, BigInt(f.start + 30003)];
@@ -72,6 +72,25 @@ describe("TellorShepherd - Real DataBank integration", function () {
     await relay(f, 40000, 1000);
     expect(await f.shepherd.getCurrentValue()).to.deep.equal(pair);
     expect(await f.shepherd.mode()).to.equal(0);
+  });
+
+  it("can challenge an unavailable TWAP using a mature spot backup without automatic fallback", async function () {
+    const f = await loadFixture(fixture);
+    const first = await relay(f, 0, 100);
+    await time.increaseTo(first + 61n);
+    // One record is sufficient for spot, but cannot form the primary's TWAP interval.
+    await expect(f.primary.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "NoTwapData");
+    const pair = await f.backup.getCurrentValue();
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
+    await f.shepherd.connect(f.requester).requestChallenge();
+    const start = await f.shepherd.challengeRequestedAt();
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
+    await time.setNextBlockTimestamp(start + 29n);
+    await expect(f.shepherd.executeChallenge()).to.be.revertedWithCustomError(f.shepherd, "ChallengeDelayNotElapsed");
+    await time.setNextBlockTimestamp(start + 30n);
+    await f.shepherd.connect(f.executor).executeChallenge();
+    expect(await f.shepherd.mode()).to.equal(1);
+    expect(await f.shepherd.getCurrentValue()).to.deep.equal(pair);
   });
 
   it("accepts a recent TWAP endpoint even when its sole contributor is hours old", async function () {
@@ -86,7 +105,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
     expect(await f.shepherd.getCurrentValue()).to.deep.equal([100n, BigInt(endMs)]);
     await time.increaseTo(BigInt(endMs) / 1000n + 3601n);
     expect(await f.primary.getCurrentValue()).to.deep.equal([100n, BigInt(endMs)]);
-    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "StalePrice");
+    await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
   });
 
   it("waits for the delayed backup observation before detecting a new deviation", async function () {
@@ -95,9 +114,9 @@ describe("TellorShepherd - Real DataBank integration", function () {
     const first = await relay(f, 30000, 100);
     await time.increaseTo(first + 61n);
     const fresh = await relay(f, 40000, 150);
-    await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotDeviating");
+    await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "ChallengeNotAllowed");
     await time.setNextBlockTimestamp(fresh + 60n);
-    await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "NotDeviating");
+    await expect(f.shepherd.requestChallenge()).to.be.revertedWithCustomError(f.shepherd, "ChallengeNotAllowed");
     await time.setNextBlockTimestamp(fresh + 61n);
     await f.shepherd.requestChallenge();
     expect(await f.shepherd.challengePending()).to.equal(true);
@@ -126,7 +145,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
     const otherShepherd = await f.Shepherd.deploy(otherId, 18, otherSources.primary.target, otherSources.backup.target, f.admin.address,
       120, 300, 2000, [30, 90], 3600, true);
     const other = { ...f, queryId: otherId, shepherd: otherShepherd };
-    await expect(otherShepherd.getCurrentValue()).to.be.revertedWithCustomError(otherSources.primary, "NoTwapData");
+    await expect(otherShepherd.getCurrentValue()).to.be.revertedWithCustomError(otherShepherd, "SourceNotUsable");
     await relay(other, 0, 200);
     const end = await relay(other, 30000, 200);
     await time.increaseTo(end + 61n);
@@ -136,7 +155,7 @@ describe("TellorShepherd - Real DataBank integration", function () {
     expect(await f.shepherd.mode()).to.equal(1);
     expect(await otherShepherd.mode()).to.equal(0);
     expect((await otherShepherd.getCurrentValue())[0]).to.equal(200);
-    await expect(otherShepherd.requestChallenge()).to.be.revertedWithCustomError(otherShepherd, "NotDeviating");
+    await expect(otherShepherd.requestChallenge()).to.be.revertedWithCustomError(otherShepherd, "ChallengeNotAllowed");
   });
 
   it("preserves pause through both switches while all clocks continue", async function () {

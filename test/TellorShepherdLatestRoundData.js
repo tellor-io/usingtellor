@@ -92,9 +92,7 @@ describe("TellorShepherd - Chainlink latest-read subset", function () {
           fault === "zero timestamp" ? 0 : fault === "future" ? ethers.MaxUint256 :
             fault === "stale" ? f.timestamp - 3600000n : f.timestamp,
           fault === "revert" ? 1 : fault === "malformed" ? 2 : 0);
-        const error = { "zero price": "ZeroValue", "zero timestamp": "InvalidTimestamp",
-          future: "InvalidTimestamp", stale: "StalePrice", revert: "ReadUnavailable" }[fault];
-        await refusal(f.s, error, fault === "revert" ? f.sources[mode] : f.s);
+        await refusal(f.s, fault === "malformed" ? undefined : "SourceNotUsable");
       });
     }
     it(`mode ${mode}: pause precedes source and signed-range failures`, async function () {
@@ -122,7 +120,7 @@ describe("TellorShepherd - Chainlink latest-read subset", function () {
         const stamp = BigInt(at * 1000 - 3600000 - excess);
         await f.sources[mode].configureRead(100, stamp, 0);
         await time.increaseTo(at);
-        if (excess > 0) await refusal(f.s, "StalePrice");
+        if (excess > 0) await refusal(f.s, "SourceNotUsable");
         else await parity(f.s, 100n, stamp);
       });
     }
@@ -133,7 +131,7 @@ describe("TellorShepherd - Chainlink latest-read subset", function () {
       await f.sources[mode].configureRead(ethers.MaxUint256, at * 1000 + 1, 0);
       await time.increaseTo(at);
       // Flooring first would turn this invalid timestamp into the current second.
-      await refusal(f.s, "InvalidTimestamp");
+      await refusal(f.s, "SourceNotUsable");
     });
     it(`mode ${mode}: source migration preserves selected timestamp and scale`, async function () {
       const f = await loadFixture(fixture);
