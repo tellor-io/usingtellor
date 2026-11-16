@@ -1,5 +1,14 @@
 # Shepherd audit handoff
 
+## Manual source validation — 2026-11-16
+
+Added permissionless `validateSource(address) external view returns (uint256 value, uint256 timestampMs)` to Shepherd and its interface. It checks code/decimals and current native-read usability against this instance's maximum age, including while paused. It accepts unconfigured candidates, preserves original price/timestamp, and changes no state or source selection. Existing errors/ABI-failure behavior applies. Construction and migration remain metadata-only; success does not authenticate the asset, price or future availability.
+
+The initial addition exceeded the factory code-size limit. Sharing the usability-to-revert helper and combining identical timestamp/age rejection branches preserved behavior while reducing size. Short-circuit validity still precedes age subtraction. Final current-compiler runtime sizes: Shepherd 17,741 bytes; factory 24,568 bytes (8 bytes below the 24,576-byte limit). No compiler or network-limit relaxation. The narrow remaining margin is a constraint for subsequent work.
+
+Final checks in disposable copies with bundled Node.js v24.22.1: Hardhat `test` passed 457 tests, including 18 new diagnostic cases and successful factory deployment; `test --no-compile integration/UpstreamConsumers.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 103. Existing consumer, transition, metadata-only migration and ABI-error behavior remains covered. Self-review and diff checks passed. Existing Foundry warnings remain; no live deployment/clean-install claim. Workspace artifacts and sibling sources are preserved; release artifact rebuilding/retracking remains required. Human review/comprehension and commit are pending.
+
+
 ## R05: reject identical Morpho Shepherds — 2026-11-16
 
 The approved constructor check rejects identical collateral/loan Shepherd addresses with `InvalidConfiguration` on direct deployment and both factory overloads. Existing Euler/Morpho registry-membership checks remain. Different addresses do not prove independent data, correct asset wiring or safe policy. No ABI, scaling or skew changes. Existing deployments/factories retain old behavior; new bytecode changes CREATE2 predictions. NatSpec, adapter README, design notes and the R05 CSV row are updated.
