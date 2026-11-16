@@ -68,14 +68,18 @@ describe("TellorSpotSource", function () {
       }
     });
 
-    it("reads the newest report in its relay block when delay is zero", async function () {
+    it("excludes current-block relays when delay is zero and includes them one second later", async function () {
       const f = await loadFixture(fixture);
-      await relay(f, encode(100));
+      const first = await relay(f, encode(100));
+      expect(await time.latest()).to.equal(first.relayTime);
+      await expect(f.latest.getCurrentValue()).to.be.revertedWithCustomError(f.latest, "NoData");
+      await time.increaseTo(first.relayTime + 1);
+      expect(await f.latest.getCurrentValue()).to.deep.equal([100n, first.timestampMs]);
       const timestampMs = (await time.latest() - 1) * 1000 + 123;
       const record = await relay(f, encode(250), { aggregateTimestamp: timestampMs });
       expect(await time.latest()).to.equal(record.relayTime);
-      expect(await f.latest.getCurrentValue()).to.deep.equal([250n, BigInt(timestampMs)]);
-      await time.increase(30);
+      expect(await f.latest.getCurrentValue()).to.deep.equal([100n, first.timestampMs]);
+      await time.increaseTo(record.relayTime + 1);
       expect(await f.latest.getCurrentValue()).to.deep.equal([250n, BigInt(timestampMs)]);
     });
 
@@ -129,14 +133,14 @@ describe("TellorSpotSource", function () {
       }
     });
 
-    it("rejects a subsecond future timestamp admitted by the bank's flooring", async function () {
+    it("excludes a subsecond future report admitted by the bank until its relay is eligible", async function () {
       const f = await loadFixture(fixture);
       const relayTime = (await time.latest()) + 10;
       const timestampMs = relayTime * 1000 + 1;
       await time.setNextBlockTimestamp(relayTime);
       await relay(f, encode(100), { aggregateTimestamp: timestampMs, attestationTimestamp: timestampMs });
       expect((await f.bank.getCurrentAggregateData(queryId)).aggregateTimestamp).to.equal(timestampMs);
-      await expect(f.latest.getCurrentValue()).to.be.revertedWithCustomError(f.latest, "InvalidTimestamp");
+      await expect(f.latest.getCurrentValue()).to.be.revertedWithCustomError(f.latest, "NoData");
       await time.increase(1);
       expect(await f.latest.getCurrentValue()).to.deep.equal([100n, BigInt(timestampMs)]);
     });
@@ -157,12 +161,22 @@ describe("TellorSpotSource", function () {
       await f.bank.configureEnd(true, record);
     }
 
+    it("reports no data when lookup is not found even if the returned payload is populated", async function () {
+      const f = await loadFixture(faultFixture);
+      const timestampMs = (await time.latest()) * 1000;
+      await configure(f, encode(100), timestampMs);
+      await f.bank.configureEnd(false, [encode(100), 1, timestampMs, timestampMs, 1]);
+      for (const source of [f.latest, f.delayed]) {
+        await expect(source.getCurrentValue()).to.be.revertedWithCustomError(source, "NoData");
+      }
+    });
+
     for (const length of [0, 1, 31]) {
       it(`refuses a selected ${length}-byte payload`, async function () {
         const f = await loadFixture(faultFixture);
         await configure(f, "0x" + "ab".repeat(length), (await time.latest()) * 1000);
         await expect(f.latest.getCurrentValue())
-          .to.be.revertedWithCustomError(f.latest, length === 0 ? "NoData" : "InvalidValueLength");
+          .to.be.revertedWithCustomError(f.latest, "InvalidValueLength");
         await expect(f.delayed.getCurrentValue()).to.be.revertedWithCustomError(f.delayed, "InvalidValueLength");
       });
     }

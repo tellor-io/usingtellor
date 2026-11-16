@@ -35,6 +35,16 @@
     },
     {
       "inputs": [],
+      "name": "ChallengeNotAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ChallengeStillAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "ChallengeThresholdChangePending",
       "type": "error"
     },
@@ -81,11 +91,6 @@
     {
       "inputs": [],
       "name": "InvalidPauser",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "InvalidQueryId",
       "type": "error"
     },
     {
@@ -155,7 +160,7 @@
     },
     {
       "inputs": [],
-      "name": "NotDeviating",
+      "name": "NotPausable",
       "type": "error"
     },
     {
@@ -220,7 +225,7 @@
     },
     {
       "inputs": [],
-      "name": "SourceQueryIdMismatch",
+      "name": "SourceNotUsable",
       "type": "error"
     },
     {
@@ -236,11 +241,6 @@
     {
       "inputs": [],
       "name": "StalePrice",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "StillDeviating",
       "type": "error"
     },
     {
@@ -671,6 +671,19 @@
     },
     {
       "inputs": [],
+      "name": "description",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "getCurrentValue",
       "outputs": [
         {
@@ -682,6 +695,19 @@
           "internalType": "uint256",
           "name": "aggregateTimestamp",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "isPausable",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -728,19 +754,6 @@
           "internalType": "contract IPriceSource",
           "name": "",
           "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "queryId",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
         }
       ],
       "stateMutability": "view",
