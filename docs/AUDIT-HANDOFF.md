@@ -1,10 +1,18 @@
 # Shepherd audit handoff
 
+## Optimizer and factory size budget — 2026-11-16
+
+The approved build-only increment enables the optimizer at 200 runs for all core contracts, retains Solidity 0.8.19, explicitly targets Paris, and leaves via-IR disabled. No Solidity source or factory deployment/registration logic changes. Factory runtime falls from 24,568 to 12,845 bytes; Shepherd runtime falls from 17,741 to 9,355 bytes. The factory suite checks deployed runtime against a 20,000-byte project budget, leaving room below the 24,576-byte deployment limit. Compiler settings change creation bytecode and CREATE2 predictions; derive predictions and verification inputs from the matching build. Existing deployed contracts are unaffected.
+
+Validation in a disposable copy: the new budget test failed against the original unoptimized build at 24,568 bytes. The optimized build compiled all 20 Solidity files; all 21 compiled contract ABIs match the fresh unoptimized baseline. With explicit Node.js v22.23.2, the core suite passed 458 tests and combined pinned-upstream/custom Morpho/custom Euler integrations passed 103 tests. Existing CREATE2 prediction, caller/configuration binding, registration, constructor rejection, governance and consumer behavior tests pass. An initial core run under the temporary directory's default older Node hit the previously documented `findLastIndex` incompatibility; no test logic was changed to accommodate it.
+
+Workspace artifacts/cache and all Solidity sources are preserved; release artifact rebuilding/retracking and packed-package verification remain deferred. Existing Foundry environment warnings remain; these results use installed dependencies and do not establish clean-install or live-deployment readiness. No commit, deployment or publication performed. Human diff review/comprehension and commit remain pending. Historical size/build records below describe earlier checkpoints.
+
 ## Manual source validation — 2026-11-16
 
 Added permissionless `validateSource(address) external view returns (uint256 value, uint256 timestampMs)` to Shepherd and its interface. It checks code/decimals and current native-read usability against this instance's maximum age, including while paused. It accepts unconfigured candidates, preserves original price/timestamp, and changes no state or source selection. Existing errors/ABI-failure behavior applies. Construction and migration remain metadata-only; success does not authenticate the asset, price or future availability.
 
-The initial addition exceeded the factory code-size limit. Sharing the usability-to-revert helper and combining identical timestamp/age rejection branches preserved behavior while reducing size. Short-circuit validity still precedes age subtraction. Final current-compiler runtime sizes: Shepherd 17,741 bytes; factory 24,568 bytes (8 bytes below the 24,576-byte limit). No compiler or network-limit relaxation. The narrow remaining margin is a constraint for subsequent work.
+The initial addition exceeded the factory code-size limit. Sharing the usability-to-revert helper and combining identical timestamp/age rejection branches preserved behavior while reducing size. Short-circuit validity still precedes age subtraction. At that unoptimized checkpoint, runtime sizes were Shepherd 17,741 bytes and factory 24,568 bytes (8 bytes below the 24,576-byte limit). The optimizer increment above supersedes those sizes; the network limit remains unchanged.
 
 Final checks in disposable copies with bundled Node.js v24.22.1: Hardhat `test` passed 457 tests, including 18 new diagnostic cases and successful factory deployment; `test --no-compile integration/UpstreamConsumers.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 103. Existing consumer, transition, metadata-only migration and ABI-error behavior remains covered. Self-review and diff checks passed. Existing Foundry warnings remain; no live deployment/clean-install claim. Workspace artifacts and sibling sources are preserved; release artifact rebuilding/retracking remains required. Human review/comprehension and commit are pending.
 
@@ -95,7 +103,7 @@ Euler scope is a single feed with direct/inverse quotes and equal bid/ask. Integ
 
 The main and pinned-upstream suites require Node.js/npm; first acquisition of upstream pins also requires Git/network access. Only the older custom-adapter suites require Foundry (`forge`) and sibling repositories (or `MORPHO_ADAPTER_ROOT` / `EULER_ADAPTER_ROOT`).
 
-- Shepherd: Solidity 0.8.19, optimizer disabled, no via-IR (`hardhat.config.js`).
+- Shepherd/core: Solidity 0.8.19, optimizer enabled with 200 runs, Paris target, no via-IR (`hardhat.config.js`). The factory test enforces a 20,000-byte runtime budget below the 24,576-byte deployment limit. Rebuild matching artifacts and regenerate CREATE2 predictions when changing compiler settings.
 - Custom Morpho adapter: Solidity 0.8.20, optimizer enabled with 200 runs, via-IR enabled.
 - Custom Euler adapter: Solidity 0.8.20, optimizer enabled with 200 runs, no via-IR.
 
