@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {IPriceSource} from "../interfaces/IPriceSource.sol";
-import {ITellorDataBank} from "../interfaces/ITellorDataBank.sol";
+import { IPriceSource } from "../interfaces/IPriceSource.sol";
+import { ITellorDataBank } from "../interfaces/ITellorDataBank.sol";
 
 /**
+ * @author Tellor Inc.
  * @title TellorSpotSource
  * @notice Per-feed Tellor spot reader with an immutable optional relay delay.
  * @dev Returns the bank's raw price without rescaling. The deployer must bind the
@@ -20,12 +21,12 @@ contract TellorSpotSource is IPriceSource {
 
     // Errors
     error DataBankHasNoCode();
-    error InvalidQueryId();
     error InvalidDecimals();
-    error NoData();
-    error InvalidValueLength();
-    error ZeroValue();
+    error InvalidQueryId();
     error InvalidTimestamp();
+    error InvalidValueLength();
+    error NoData();
+    error ZeroValue();
 
     /**
      * @notice Binds the source configuration without requiring populated history.
@@ -52,19 +53,19 @@ contract TellorSpotSource is IPriceSource {
      * Zero delay selects the newest relay strictly before the current block's timestamp.
      * Missing/invalid data reverts without searching for an older valid price; dependency
      * failures propagate. Trailing payload bytes are accepted. No maximum age is enforced.
-     * @return value Raw quote units per whole base unit, scaled by decimals().
-     * @return timestampMs Original spot aggregate time, never relay time or read time.
+     * @return _value Raw quote units per whole base unit, scaled by decimals().
+     * @return _timestampMs Original spot aggregate time, never relay time or read time.
      */
-    function getCurrentValue() external view override returns (uint256 value, uint256 timestampMs) {
-        ITellorDataBank.AggregateData memory record;
+    function getCurrentValue() external view override returns (uint256 _value, uint256 _timestampMs) {
+        ITellorDataBank.AggregateData memory _record;
         if (block.timestamp <= RELAY_READ_DELAY) revert NoData();
-        bool found;
-        (found, record) = dataBank.getRelayBefore(queryId, block.timestamp - RELAY_READ_DELAY);
-        if (!found) revert NoData();
-        if (record.value.length < 32) revert InvalidValueLength();
-        value = abi.decode(record.value, (uint256));
-        if (value == 0) revert ZeroValue();
-        timestampMs = record.aggregateTimestamp;
-        if (timestampMs == 0 || timestampMs > block.timestamp * 1000) revert InvalidTimestamp();
+        bool _found;
+        (_found, _record) = dataBank.getRelayBefore(queryId, block.timestamp - RELAY_READ_DELAY);
+        if (!_found) revert NoData();
+        if (_record.value.length < 32) revert InvalidValueLength();
+        _value = abi.decode(_record.value, (uint256));
+        if (_value == 0) revert ZeroValue();
+        _timestampMs = _record.aggregateTimestamp;
+        if (_timestampMs == 0 || _timestampMs > block.timestamp * 1000) revert InvalidTimestamp();
     }
 }

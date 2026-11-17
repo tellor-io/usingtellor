@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {TellorShepherd} from "./TellorShepherd.sol";
+import { TellorShepherd } from "./TellorShepherd.sol";
 
 /**
+ * @author Tellor Inc.
  * @title TellorShepherdFactory
  * @notice Permissionless deployment and provenance tracking for Shepherd instances.
  * @dev Registration proves deployment by this factory, not safe configuration or
@@ -39,29 +40,34 @@ contract TellorShepherdFactory {
      * @dev Shepherd's constructor owns validation. Reverts leave no registration
      * or creation event. Duplicate configurations require distinct caller salts. The event records initial
      * configuration; read Shepherd getters for current sources, authority and mutable policies.
-     * @param configuration Initial sources, authority, pause duration, threshold, and immutable settings.
+     * @param _configuration Initial sources, authority, pause duration, threshold, and immutable settings.
      * All durations are seconds; minPauseDuration may be zero. Threshold is basis points.
      * isPausable permanently enables or disables explicit pausing; false permits live source replacement.
      * Source timing calibration remains the deployer/admin responsibility, including after replacement.
-     * @param userSalt Caller-scoped salt; the address also commits to all constructor arguments.
-     * @return shepherd Address of the newly deployed and registered instance.
+     * @param _userSalt Caller-scoped salt; the address also commits to all constructor arguments.
+     * @return _shepherd Address of the newly deployed and registered instance.
      */
-    function createShepherd(Configuration memory configuration, bytes32 userSalt) external returns (address shepherd) {
-        shepherd = address(new TellorShepherd{salt: keccak256(abi.encode(msg.sender, userSalt))}(
-            configuration.description,
-            configuration.decimals,
-            configuration.primarySource,
-            configuration.backupSource,
-            configuration.admin,
-            configuration.minPauseDuration,
-            configuration.configChangeDelay,
-            configuration.challengeThresholdBps,
-            [configuration.challengeDelaySeconds, configuration.recoveryDelaySeconds],
-            configuration.maxDataAge,
-            configuration.isPausable
-        ));
+    function createShepherd(
+        Configuration memory _configuration,
+        bytes32 _userSalt
+    ) external returns (address _shepherd) {
+        _shepherd = address(
+            new TellorShepherd{ salt: keccak256(abi.encode(msg.sender, _userSalt)) }(
+                _configuration.description,
+                _configuration.decimals,
+                _configuration.primarySource,
+                _configuration.backupSource,
+                _configuration.admin,
+                _configuration.minPauseDuration,
+                _configuration.configChangeDelay,
+                _configuration.challengeThresholdBps,
+                [_configuration.challengeDelaySeconds, _configuration.recoveryDelaySeconds],
+                _configuration.maxDataAge,
+                _configuration.isPausable
+            )
+        );
 
-        isShepherd[shepherd] = true;
-        emit ShepherdCreated(shepherd, msg.sender, configuration);
+        isShepherd[_shepherd] = true;
+        emit ShepherdCreated(_shepherd, msg.sender, _configuration);
     }
 }

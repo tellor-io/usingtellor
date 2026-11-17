@@ -245,6 +245,11 @@
     },
     {
       "inputs": [],
+      "name": "UnexpectedState",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "ZeroValue",
       "type": "error"
     },
@@ -688,12 +693,12 @@
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "value",
+          "name": "_value",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "aggregateTimestamp",
+          "name": "_aggregateTimestamp",
           "type": "uint256"
         }
       ],
@@ -754,6 +759,30 @@
           "internalType": "contract IPriceSource",
           "name": "",
           "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_source",
+          "type": "address"
+        }
+      ],
+      "name": "validateSource",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "_value",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestampMs",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
