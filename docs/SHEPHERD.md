@@ -50,7 +50,7 @@ All request, execute, and cancel functions are permissionless and work while pau
 | Challenge | Backup usable, and primary unusable or prices deviating. |
 | Recovery | Primary usable, and backup unusable or prices agreeing. |
 
-When both sources are usable, deviation means `abs(backup - primary) * 10000 > primary * challengeThresholdBps`, implemented with overflow-safe arithmetic. Exact threshold equality counts as agreement. If either source is unusable, the eligibility rules above apply without comparing prices.
+When both sources are usable, deviation means `abs(backup - primary) * 10000 > min(primary, backup) * challengeThresholdBps`, implemented with overflow-safe arithmetic. Measuring against the lower price makes the result independent of which source is primary: prices agree while the higher is at most `1 + challengeThresholdBps / 10000` times the lower. For example, 2000 bps accepts up to a 20% rise or a 16.67% fall relative to the other price. Exact threshold equality counts as agreement. If either source is unusable, the eligibility rules above apply without comparing prices.
 
 Execution requires the full direction-specific delay; equality passes. These are checks at request and execution, not proof that the condition held continuously. A change in the reason for eligibility does not restart the timer. A request cannot overwrite an existing request; cancel and request again to start a fresh wait. Cancellation requires that direction's eligibility to be false.
 

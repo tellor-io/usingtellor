@@ -17,7 +17,7 @@ interface ITellorDataBank {
     }
 
     /**
-     * @dev A historical average used as Shepherd's primary and deviation reference. All times are milliseconds.
+     * @dev A historical time-weighted average of relayed prices. All times are milliseconds.
      * Prices are held from each observation until the next; the end observation has zero weight.
      * Only stored observations contribute; signed predecessor links do not define intervals.
      * Relayers may omit reports, so this reference does not reconstruct all Layer history.

@@ -69,7 +69,7 @@ contract TellorShepherd is ITellorShepherd {
      * @param _admin Nonzero administrator, independent of the deployment caller.
      * @param _minPauseDuration Initial minimum uninterrupted pause duration in seconds; zero is allowed.
      * @param _configChangeDelay Positive shared notice period for source-pair, admin, pause-duration and threshold changes, in seconds.
-     * @param _challengeThresholdBps Initial strict absolute deviation relative to primary, from 1 to 9999 bps.
+     * @param _challengeThresholdBps Initial strict absolute deviation relative to the lower price, from 1 to 9999 bps.
      * @param _transitionDelaysSeconds Positive challenge and recovery waits in seconds, respectively.
      * @param _maxDataAge Positive maximum observation age in seconds, shared by both sources.
      * @param _isPausable Whether this instance can ever be paused; fixed at deployment.
@@ -563,7 +563,7 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @dev Reads both sources independent of pause. Deviation is meaningful only when both are usable.
      * An unusable source returns false for deviation; callers must also inspect the usability flags.
-     * @return _isDeviating Whether two usable prices exceed the strict primary-relative threshold; false if either is unusable.
+     * @return _isDeviating Whether two usable prices exceed the strict lower-price-relative threshold; false if either is unusable.
      * @return _primaryUsable Whether the primary read succeeds and passes price, timestamp and age checks.
      * @return _backupUsable Whether the backup read succeeds and passes price, timestamp and age checks.
      */
@@ -576,11 +576,13 @@ contract TellorShepherd is ITellorShepherd {
         uint256 _difference = _backupValue > _primaryValue
             ? _backupValue - _primaryValue
             : _primaryValue - _backupValue;
-        // Exactly floor(reference * threshold / 10000), without an overflowing product.
+        // The lower price is the reference, so swapping the two sources cannot change the result.
+        uint256 _lowerValue = _backupValue < _primaryValue ? _backupValue : _primaryValue;
+        // Exactly floor(lower * threshold / 10000), without an overflowing product.
         // Integer difference > this floor is equivalent to the strict rational comparison.
-        uint256 _allowedDifference = (_primaryValue / 10000) *
+        uint256 _allowedDifference = (_lowerValue / 10000) *
             challengeThresholdBps +
-            ((_primaryValue % 10000) * challengeThresholdBps) /
+            ((_lowerValue % 10000) * challengeThresholdBps) /
             10000;
         return (_difference > _allowedDifference, _primaryUsable, _backupUsable);
     }

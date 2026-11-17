@@ -168,17 +168,16 @@ describe("TellorShepherd - Mutable deviation threshold", function () {
     });
   }
   for (const threshold of [1n, 3000n, 9999n]) {
-    it(`updated ${threshold} bps keeps strict primary-relative equality and just-over behavior in both directions`, async function () {
+    it(`updated ${threshold} bps keeps strict lower-price-relative equality and just-over behavior in both directions`, async function () {
       const f = await loadFixture(fixture), s = f.s;
       await executeUpdate(s, threshold);
-      for (const sign of [-1n, 1n]) {
-        await f.backup.configureRead(10000n + sign * threshold, f.timestamp, 0);
+      for (const [lower, higher] of [[f.primary, f.backup], [f.backup, f.primary]]) {
+        await lower.configureRead(10000, f.timestamp, 0);
+        await higher.configureRead(10000n + threshold, f.timestamp, 0);
         await expect(s.requestChallenge()).to.be.revertedWithCustomError(s, "ChallengeNotAllowed");
-        const beyond = 10000n + sign * (threshold + 1n);
-        if (beyond === 0n) continue; // Zero-price refusal is tested by the existing source-validation suite.
-        await f.backup.configureRead(beyond, f.timestamp, 0); await s.requestChallenge();
+        await higher.configureRead(10000n + threshold + 1n, f.timestamp, 0); await s.requestChallenge();
         const start = await s.challengeRequestedAt();
-        await f.backup.configureRead(10000n + sign * threshold, f.timestamp, 0); await time.increase(5);
+        await higher.configureRead(10000n + threshold, f.timestamp, 0); await time.increase(5);
         await expect(s.executeChallenge()).to.be.revertedWithCustomError(s, "ChallengeNotAllowed");
         expect(await s.challengeRequestedAt()).to.equal(start);
         await s.cancelChallenge();

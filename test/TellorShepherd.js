@@ -330,20 +330,24 @@ describe("TellorShepherd - Pause and unpause", function () {
 
 
 describe("TellorShepherd - Two-source transitions", function () {
-  it("matches independent rational comparisons at equality, fractional boundaries and uint256 extremes", async function () {
+  it("matches independent lower-price rational comparisons at boundaries and uint256 extremes, for either source order", async function () {
     const f = await loadFixture(fixture);
     for (const threshold of [1n, 2000n, 9999n]) {
       const args = [...f.args]; args[7] = threshold;
       const s = await f.Shepherd.deploy(...args);
-      for (const reference of [1n, 100n, 10001n, (1n << 192n) - 1n, ethers.MaxUint256]) {
-        await f.primary.configureRead(reference, f.timestamp, 0);
-        const boundary = reference * threshold / 10000n;
-        for (const value of new Set([1n, ethers.MaxUint256, reference,
-          reference - boundary, reference - boundary - 1n, reference + boundary, reference + boundary + 1n])) {
+      for (const price of [1n, 100n, 10001n, (1n << 192n) - 1n, ethers.MaxUint256]) {
+        const rise = price * threshold / 10000n; // Largest agreeing rise above price.
+        const least = (price * 10000n + 10000n + threshold - 1n) / (10000n + threshold); // Least agreeing value below price.
+        for (const value of new Set([1n, ethers.MaxUint256, price,
+          price + rise, price + rise + 1n, least, least - 1n, price - rise, price - rise - 1n])) {
           if (value <= 0n || value > ethers.MaxUint256) continue;
-          await f.backup.configureRead(value, f.timestamp, 0);
-          const difference = value > reference ? value - reference : reference - value;
-          expect(await s.readDeviation()).to.deep.equal([difference * 10000n > reference * threshold, true, true]);
+          const lower = value < price ? value : price;
+          const difference = value > price ? value - price : price - value;
+          for (const [primary, backup] of [[price, value], [value, price]]) {
+            await f.primary.configureRead(primary, f.timestamp, 0);
+            await f.backup.configureRead(backup, f.timestamp, 0);
+            expect(await s.readDeviation()).to.deep.equal([difference * 10000n > lower * threshold, true, true]);
+          }
         }
       }
     }
@@ -422,15 +426,15 @@ describe("TellorShepherd - Two-source transitions", function () {
       });
     }
 
-    for (const value of [80, 120]) {
-      it(`${kind}: exact deviation threshold ${value} is in-band`, async function () {
+    for (const [primary, value] of [[100, 120], [120, 100]]) {
+      it(`${kind}: exact deviation threshold is in-band; primary=${primary}, backup=${value}`, async function () {
         const f = await loadFixture(ready), s = f.shepherd;
-        await set(f, value);
+        await f.primary.configureRead(primary, f.timestamp, 0); await set(f, value);
         if (mode) {
           await s[request](); await time.increase(delay); await s[execute]();
         } else {
           await expect(s[request]()).to.be.revertedWithCustomError(s, "ChallengeNotAllowed");
-          await set(f, 121); await s[request](); await set(f, value); await s[cancel]();
+          await set(f, value > primary ? 121 : 99); await s[request](); await set(f, value); await s[cancel]();
         }
       });
     }
