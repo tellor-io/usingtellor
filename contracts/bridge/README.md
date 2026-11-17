@@ -1,52 +1,30 @@
-# Tellor Data Bridge
+# Tellor DataBridge
 
-## Overview
+[TellorDataBridge.sol](TellorDataBridge.sol) verifies signed oracle attestations against a stored validator checkpoint. It proves that enough voting power from that checkpoint signed the supplied data. It does not prove the reported price is true or enforce Shepherd's freshness policy.
 
-The Tellor Data Bridge enables secure relay of oracle data from Tellor Layer to EVM-compatible chains. The bridge operates using validator attestations to prove data existence and authenticity.
+## Deploy and initialize
 
-### How It Works
+The constructor takes `(guardian, validatorSetHashDomainSeparator)`. The guardian must be nonzero. The deploying address then calls `init` once:
 
-The bridge contract is initialized with an initial validator set (addresses and powers). When reports are aggregated on the Tellor chain, validators collectively sign this data. These signatures serve as cryptographic proofs that can be verified on-chain to confirm a report's validity.
-
-To optimize gas costs, validator set updates occur only when the validator set changes by a significant threshold (typically 5% or more). When such changes occur, validators attest to the new validator set, and these signatures are relayed to update the bridge contract.
-
-### Key Features
-
-- **Validator-based Security**: Relies on at least 2/3 of validator voting power for attestations
-- **Guardian Safety Mechanism**: Includes a guardian role that can reset stale validator sets
-- **Gas Optimization**: Validator updates only occur on significant changes
-- **Comprehensive Data Proofs**: Includes multiple timestamps and power metrics for full verification 
-
-## Validator Set Management
-
-### Data Structures
-
-The bridge contract tracks the Tellor validator set using these key components:
-
-```solidity
-struct Validator {
-    address addr;    // validator address
-    uint256 power;   // validator voting power
-}
+```text
+init(powerThreshold, validatorTimestamp, unbondingPeriod, validatorSetCheckpoint)
 ```
 
-**Core Variables:**
-- `validatorSet` - Array of all validator addresses and their powers
-- `validatorSetHash` - `keccak256(abi.encode(validatorSet))`
-- `lastValidatorSetCheckpoint` - Domain-separated hash containing:
-  - Validator set hash
-  - Validator timestamp (when set was last updated)
-  - Power threshold (2/3 of total power for efficient on-chain verification)
+The threshold and unbonding period must be positive. The validator timestamp uses Unix milliseconds and cannot be in the future; the unbonding period uses seconds. The deployer is responsible for a correct checkpoint and safe threshold.
 
-### Domain Separation
+The bridge stores `lastValidatorSetCheckpoint`, `powerThreshold`, `validatorTimestamp`, and `unbondingPeriod`. It does **not** store the validator array. Callers supply validators and aligned signatures; the bridge hashes the array and checks it against the stored checkpoint.
 
-The contract uses `VALIDATOR_SET_HASH_DOMAIN_SEPARATOR` to prevent cross-network signature reuse:
-- **Tellor Mainnet**: `0x636865636b706f696e7400000000000000000000000000000000000000000000` (bytes32 encoding of "checkpoint")
-- **Other Networks**: `keccak256(abi.encode("checkpoint", tellorChainId))`
+## Checkpoints and signatures
 
-### Validator Set Updates
+A checkpoint is the Keccak-256 hash of ABI-encoded domain separator, voting-power threshold, validator timestamp, and validator-set hash. The validator-set hash is `keccak256(abi.encode(validators))`, where each validator contains an address and uint256 power.
 
-Normal validator set updates occur through the `updateValidatorSet` function:
+The constructor supplies the checkpoint domain separator; the contract does not derive it from the EVM chain ID. The repository's helper uses the bytes32 encoding of `"checkpoint"` for `tellor-1` and `keccak256(abi.encode("checkpoint", tellorChainId))` for other Layer chain IDs. Choose the separator to match the signing chain.
+
+Signatures authenticate the **SHA-256 hash** of the relevant Keccak-256 digest. Verification skips empty signatures and stops once accumulated signed power reaches the configured threshold. Validator and signature order must match. The contract enforces that threshold; it does not independently calculate a two-thirds ratio or require a five-percent validator-set change.
+
+## Update validators
+
+Anyone may submit an update authorized by the current validator set:
 
 ```solidity
 function updateValidatorSet(
@@ -58,70 +36,20 @@ function updateValidatorSet(
 ) external;
 ```
 
-### Staleness Protection
+The current threshold authorizes the proposed checkpoint; the new positive threshold applies after success. The timestamp may equal the current timestamp, but cannot go backward or exceed current block time in milliseconds.
 
-A validator set becomes **stale** if the unbonding period has elapsed since the last update. When this occurs, the guardian can reset the validator set using `guardianResetValidatorSet`, providing a crucial safety mechanism for validator set recovery.
+## Verify reports
 
-## Report Attestations
+`verifyOracleData(attestData, currentValidatorSet, sigs)` is an external view call. It returns no value on success and reverts on failed verification. It does not store the report.
 
-### Attestation Data Structure
+The signed digest includes the fixed `"tellorCurrentAttestation"` domain, query ID, raw value, report timestamp, aggregate power, previous/next timestamps, current validator checkpoint, attestation timestamp, and last consensus timestamp. See [ITellorDataBridge](../interfaces/ITellorDataBridge.sol) for the complete structs.
 
-Each report attestation contains comprehensive verification data:
+The bridge authenticates these fields; DataBank and consumers apply their own admission, timing, and price policies. This contract does not query Layer for a report's current dispute status or automatically revoke an already signed attestation.
 
-```solidity
-struct OracleAttestationData {
-    bytes32 queryId;              // unique identifier for the data request
-    ReportData report;            // the actual report data
-    uint256 attestationTimestamp; // when validators signed the attestation
-}
+## Staleness and guardian reset
 
-struct ReportData {
-    bytes value;                    // the actual data value being reported
-    uint256 timestamp;              // when the report was aggregated
-    uint256 aggregatePower;         // total reporter power for this report
-    uint256 previousTimestamp;      // timestamp of the previous report
-    uint256 nextTimestamp;          // timestamp of the next report
-    uint256 lastConsensusTimestamp; // timestamp of latest consensus report for this queryId
-}
-```
+Signature verification accepts elapsed whole seconds **up to and including** `unbondingPeriod`; greater age reverts. Elapsed time is `block.timestamp - validatorTimestamp / 1000`.
 
-### Domain Separation for Attestations
+The guardian can call `guardianResetValidatorSet` once that elapsed time is **at least** the unbonding period. At exact equality, both signature verification and guardian reset are allowed. Reset requires a positive threshold and a strictly newer, nonfuture validator timestamp. It installs the supplied checkpoint without validator signatures, so the guardian is a trusted recovery authority.
 
-Report attestations use `NEW_REPORT_ATTESTATION_DOMAIN_SEPARATOR` (bytes32 encoding of "tellorCurrentAttestation") to prevent signature reuse. The attestation includes the validator checkpoint to ensure the correct validator set is being used in the bridge contract.
-
-### Data Verification
-
-The contract provides a `verifyOracleData` function for external verification of oracle attestations without executing state changes. This enables off-chain verification and integration with other systems.
-
-## Contract Architecture
-
-### Guardian Role
-The bridge contract includes a guardian role that can reset the validator set if it becomes stale. A validator set is considered stale if the unbonding period has elapsed since the last update. This provides a safety mechanism in case the normal validator set update process fails.
-
-### Unbonding Period
-The unbonding period is a configurable time period after which a validator set is considered stale and can be reset by the guardian. This prevents indefinite reliance on outdated validator sets while providing sufficient time for normal update processes to complete.
-
-### Signature Verification Process
-The contract uses SHA256 hashing combined with ECDSA signature verification. Tellor validators sign the SHA256 hash of domain-separated bridge data, so verifying any bridge data signatures requires hashing the data with SHA256 before signature verification.
-
-### Time Handling
-The Tellor chain represents time in milliseconds, while EVM chains use seconds. The bridge contract handles conversions using the `MS_PER_SECOND` constant (1000). This is important when working with timestamps relayed from Tellor chain.
-
-## Tellor Chain Integration
-
-### Validator Set Concepts
-On the Tellor chain side, there are two distinct validator sets:
-- **Actual Validator Set**: The current active validators on Tellor Layer
-- **Bridge Validator Set**: The validator set recognized by the bridge contract
-
-The bridge validator set is updated only when the actual validator set changes by 5% or more. When such changes occur, validators collectively endorse the new set with signatures.
-
-### Oracle Data Attestations
-Validators provide attestations for oracle reports in two scenarios:
-1. **New Reports**: Automatically attested when aggregated on Tellor Layer  
-2. **Historical Reports**: Attested on-demand when requested (beneficial for optimistic oracle applications)
-
-**Important**: Once a value is contested on Tellor Layer, validators cease attestations for that value. Post-dispute, users cannot request or execute new attestation proofs for contested values.
-
-### Gas Optimization Strategy
-The official bridge validator set is sorted by validator power in descending order. This minimizes gas costs for attestation verification, as signature checking can stop once 2/3 of total validator power is reached. This sorting is enforced by the Tellor chain.
+For the surrounding reader and consumer policies, see the [Shepherd guide](../../docs/SHEPHERD.md) and [audit handoff](../../docs/AUDIT-HANDOFF.md).

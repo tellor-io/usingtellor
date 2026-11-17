@@ -1,178 +1,82 @@
 # Shepherd audit handoff
 
-## Optimizer and factory size budget — 2026-11-16
+This is the current review and release summary. The [Shepherd guide](SHEPHERD.md) describes behavior; [audit history](reference/AUDIT-HISTORY.md) preserves earlier decisions and validation records. Historical “pending” and “uncommitted” statements there apply only to their original checkpoints.
 
-The approved build-only increment enables the optimizer at 200 runs for all core contracts, retains Solidity 0.8.19, explicitly targets Paris, and leaves via-IR disabled. No Solidity source or factory deployment/registration logic changes. Factory runtime falls from 24,568 to 12,845 bytes; Shepherd runtime falls from 17,741 to 9,355 bytes. The factory suite checks deployed runtime against a 20,000-byte project budget, leaving room below the 24,576-byte deployment limit. Compiler settings change creation bytecode and CREATE2 predictions; derive predictions and verification inputs from the matching build. Existing deployed contracts are unaffected.
-
-Validation in a disposable copy: the new budget test failed against the original unoptimized build at 24,568 bytes. The optimized build compiled all 20 Solidity files; all 21 compiled contract ABIs match the fresh unoptimized baseline. With explicit Node.js v22.23.2, the core suite passed 458 tests and combined pinned-upstream/custom Morpho/custom Euler integrations passed 103 tests. Existing CREATE2 prediction, caller/configuration binding, registration, constructor rejection, governance and consumer behavior tests pass. An initial core run under the temporary directory's default older Node hit the previously documented `findLastIndex` incompatibility; no test logic was changed to accommodate it.
-
-Workspace artifacts/cache and all Solidity sources are preserved; release artifact rebuilding/retracking and packed-package verification remain deferred. Existing Foundry environment warnings remain; these results use installed dependencies and do not establish clean-install or live-deployment readiness. No commit, deployment or publication performed. Human diff review/comprehension and commit remain pending. Historical size/build records below describe earlier checkpoints.
-
-## Manual source validation — 2026-11-16
-
-Added permissionless `validateSource(address) external view returns (uint256 value, uint256 timestampMs)` to Shepherd and its interface. It checks code/decimals and current native-read usability against this instance's maximum age, including while paused. It accepts unconfigured candidates, preserves original price/timestamp, and changes no state or source selection. Existing errors/ABI-failure behavior applies. Construction and migration remain metadata-only; success does not authenticate the asset, price or future availability.
-
-The initial addition exceeded the factory code-size limit. Sharing the usability-to-revert helper and combining identical timestamp/age rejection branches preserved behavior while reducing size. Short-circuit validity still precedes age subtraction. At that unoptimized checkpoint, runtime sizes were Shepherd 17,741 bytes and factory 24,568 bytes (8 bytes below the 24,576-byte limit). The optimizer increment above supersedes those sizes; the network limit remains unchanged.
-
-Final checks in disposable copies with bundled Node.js v24.22.1: Hardhat `test` passed 457 tests, including 18 new diagnostic cases and successful factory deployment; `test --no-compile integration/UpstreamConsumers.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 103. Existing consumer, transition, metadata-only migration and ABI-error behavior remains covered. Self-review and diff checks passed. Existing Foundry warnings remain; no live deployment/clean-install claim. Workspace artifacts and sibling sources are preserved; release artifact rebuilding/retracking remains required. Human review/comprehension and commit are pending.
-
-
-## R05: reject identical Morpho Shepherds — 2026-11-16
-
-The approved constructor check rejects identical collateral/loan Shepherd addresses with `InvalidConfiguration` on direct deployment and both factory overloads. Existing Euler/Morpho registry-membership checks remain. Different addresses do not prove independent data, correct asset wiring or safe policy. No ABI, scaling or skew changes. Existing deployments/factories retain old behavior; new bytecode changes CREATE2 predictions. NatSpec, adapter README, design notes and the R05 CSV row are updated.
-
-Three regression tests failed against the old constructor while distinct-feed controls passed. Post-fix validation in disposable copies: `forge test --offline` passed 38 native Morpho tests; Hardhat `test --no-compile integration/MorphoTellorOracle.js` passed 39 real-Shepherd cases using bundled Node.js v24.22.1. Compilation, self-review and diff checks passed. Existing Foundry nightly/dependency-revision/signature-cache/lint warnings remain; core/Euler/upstream suites were not rerun. Workspace artifacts and Euler sources were preserved. Human review/comprehension and commit remain pending; release artifact rebuilding/retracking remains required.
-
-
-## R04: expected-selection unpause — 2026-11-16
-
-Approved scope: replace `unpause()` with `unpause(expectedMode, expectedPrimary, expectedBackup)` and reject mismatches with `UnexpectedState`, after the unchanged authorization/pause/proposal/duration checks. Reverts preserve state; successful calls retain the existing pause reset/event. This binds selection only at execution, not prices, pending timers, pausers, governance or intervening history. Other state still needs review; later permissionless transitions remain allowed. Administrative callers and fresh deployments require the new ABI. README, design notes and the R04 CSV disposition record this limitation.
-
-Validation in disposable copies using bundled Node.js v24.22.1: Hardhat `test test/TellorShepherdUnpause.js` compiled 20 files and passed 10 focused cases; `test --no-compile` passed 439; `test --no-compile integration/UpstreamConsumers.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 101. Tests cover stale expectations after challenge/recovery and either source replacement, isolated mismatches, unchanged pause/transition state on failure, matching-state success and old-selector refusal. Self-review confirmed existing test edits only adapt unpause arguments via a test-only snapshot helper. Diff checks passed. Existing Foundry nightly/dependency-revision/signature-cache/lint warnings remain. Workspace artifacts and sibling sources were preserved. Human review/comprehension and commit remain pending; release rebuilding/retracking remains required.
-
-
-## L04: reject zero cross-feed skew — 2026-11-16
-
-The approved fix rejects zero in the custom Morpho oracle constructor and factory-default constructor with `InvalidConfiguration`. Both factory creation overloads enforce the oracle check. Positive skew up to `floor(type(uint256).max / 1000)` seconds remains valid; exact millisecond skew equality is accepted and +1ms is rejected in either direction. NatSpec, adapter README and the L04 CSV row are updated. Positive settings still require feed-cadence calibration. Existing instances/factories retain old behavior; new bytecode changes CREATE2 address predictions.
-
-Validation in disposable copies: three new zero-rejection tests failed on the old constructors while positive controls passed. After the fix, `forge test --offline` passed 35 tests; Hardhat `compile` compiled 20 files; `test --no-compile integration/MorphoTellorOracle.js` passed 37 tests, including genuine registered Shepherds and 1-second boundaries. Hardhat used bundled Node.js v24.22.1. Existing Foundry nightly/dependency-revision/signature-cache/lint warnings remain. No broader core/Euler/upstream rerun or live-market claim. Workspace artifacts and prior edits were preserved. Review/comprehension and commit remain pending; release artifact rebuilding/retracking remains required.
-
-## Source compatibility and description — 2026-11-15
-
-The approved change removes Shepherd's query-ID field, constructor argument, getter and compatibility checks. Its first constructor argument and factory Configuration field are now `string description`, a display-only label set at deployment with no setter; empty labels are allowed. Code presence and decimals equality remain mandatory at construction and both migration stages; live price availability is not probed. IPriceSource requires only getCurrentValue/decimals; Tellor readers retain their own query IDs. Deployers/admins must establish compatible units, direction and valuation policies independently of the label.
-
-The human explicitly included both custom adapters: expected query-ID fields/checks and deployment arguments are removed from Euler and Morpho, including the Morpho factory overloads/event and scripts. Factory registration, decimals/scaling, read refusal propagation and Morpho skew checks remain. All affected constructor/factory callers require the new ABIs and fresh deployments. The Shepherd factory takes Configuration in memory to avoid the Solidity 0.8.19 stack limit for dynamic-string constructor encoding; compiler settings remain unchanged.
-
-Validation: main Hardhat suite compiled 20 files and passed 428 tests; combined integrations passed 96 (47 pinned upstream, 49 custom adapters); native offline Foundry suites passed 32 Morpho and 28 Euler tests, including fuzz tests. New coverage includes differing/missing source query IDs, empty-history admission, unchanged code/precision rejection, verbatim empty/long/Unicode descriptions, factory event/address binding, and label preservation. Self-review confirmed unchanged read/transition logic and reader function bodies. Installed-dependency warnings remain (nightly Foundry, Morpho revision mismatch, Euler submodule registration, signature-cache permissions and lint); no clean-checkout or live-market claim is made.
-
-Tracked generated artifacts were restored to the pre-increment snapshot; compilation cache was invalidated for regeneration on the next normal build. Release still requires clean artifact rebuilding/retracking and package verification. The living DESIGN.md is updated but remains locally excluded by the existing Git exclude rule. Human diff review/comprehension and commit are pending. No commit, push, deployment or publication occurred. Earlier validation records below describe their respective checkpoints.
-
-
-## Source usability transitions — 2026-11-14
-
-Reviewed and completed the human's tuple-based changes on `shepherd4`: `_readSource` reports usability, `_readDeviation` compares only usable pairs, and each direction shares one request/execute/cancel predicate. An unusable destination blocks switching and permits cancellation; a usable destination can be selected after the existing delay when the active source is unusable. Consumer reads retain selected-only refusal with `SourceNotUsable`. The human explicitly deferred malformed-return handling and gas-starvation protection; see the [current limitations](DESIGN.md#explicitly-unresolved-external-call-protections). These are unresolved risks, not audited protections.
-
-Validation: forced compilation of 19 Solidity files; 169 focused tests; final `npx hardhat test --no-compile` passed 427 tests. `npx hardhat test integration/UpstreamConsumers.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 96 tests, including freshly built pinned consumers. Existing Foundry dependency/submodule/cache/lint warnings remain. Sibling source checkouts are unchanged. Generated tracked artifacts are restored to the pre-edit snapshot, with the Solidity cache invalidated for the next build; release rebuilding/retracking remains required. No commit, push or deployment. Human review/comprehension and commit remain pending.
-
-## Immutable deployment pausability — 2026-11-13
-
-Implemented on `shepherd4` at base `ac2c70e`; this increment remains uncommitted. A required final `isPausable` bool is appended to the constructor and factory configuration/event. False permanently rejects authorized pauses while allowing delayed, admin-only atomic source replacement without pausing. Membership and pause-duration management remain available but inert. Price validation and source readiness assumptions are unchanged.
-
-Validation: forced compilation of 19 Solidity files; 33 focused tests; 418 main tests; 47 pinned-upstream consumer tests; 49 custom-adapter integration tests. All passed. The full and integration suites used `--no-compile` against that forced build. The new tests cover both migration modes, notice equality, preserved state on metadata failures, transition invalidation and fresh waits, inert settings/admin transfer, and factory flag binding/event output. Existing pausable behavior remains covered. Foundry repeated its documented dependency/submodule warnings while both builds succeeded; this is installed-dependency evidence, not clean-checkout or live-market validation.
-
-Generated tracked artifacts were restored to their pre-step snapshot and the Solidity compilation cache invalidated. Release artifact rebuilding/retracking and package verification remain outstanding. Human diff review/comprehension and commit remain pending. Earlier sections below record historical checkpoints.
-
-## Requested audit fixes — 2026-11-13
-
-Base: `usingtellor` `2934cfd`, custom Morpho `739c904`, custom Euler `782d666`. Changes remain uncommitted.
-
-- Reviewed the human's M01 zero-threshold checks and L01 event-field rename; added the authorized full-millisecond validator timestamp checks to all three setters. Equality is accepted. R09 rejects only zero guardian and zero unbonding duration.
-- R02 validates all timestamp subtraction operands before use; DataBank retains its existing whole-second admission policy. R03 changes DataBank construction to `(bridge, optimisticDelay, maxAttestationAge, maxDataAge)`, all positive immutable seconds, with no extra optimistic minimum or upper bounds by explicit human choice.
-- L07 makes both factories use caller-scoped CREATE2 salts. The Morpho factory now registers instances and emits decimals/name with the previous fields. R05 requires configured Shepherd-factory membership in both custom adapter constructors, including direct deployments. Registry trust and safe settings remain deployment obligations.
-- R07 caps the custom Morpho scale exponent at 54 while retaining final overflow/zero refusal. Source precision limits and stock upstream consumers are unchanged.
-
-Validation used disposable copies and the installed dependencies, preserving workspace artifacts. Hardhat CLI was invoked directly using bundled Node.js `v24.22.1` (`node node_modules/hardhat/internal/cli/cli.js ...`); default shell Node 16 initially failed an existing `findLastIndex` test, and the same baseline passed with Node 24.
-
-| Command / scope | Result |
-| --- | --- |
-| Hardhat `test` | 405 passed, including 17 new bridge cases and 12 new DataBank timing cases |
-| Hardhat `test test/TellorShepherdFactory.js integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` | 69 passed: 20 factory and 49 real custom-adapter integration cases |
-| Hardhat `test integration/UpstreamConsumers.js` | 47 passed; actual pinned upstream consumers freshly rebuilt |
-| `forge test --offline` in custom Morpho | 33 passed, including fuzz cases |
-| `forge test --offline` in custom Euler | 29 passed, including deployment-script and fuzz cases |
-| `git diff --check` in all three repositories | Passed |
-
-Regression checks reject zero thresholds, unsigned reports, future validator timestamps, malformed DataBank timing, unregistered sources and unsupported exponents; CREATE2 tests verify address binding, caller isolation and duplicate behavior. Valid signatures, timing equality, price scaling, both source modes, migration/recovery and upstream composition remain covered. One fresh independent static review found stale Euler constructor examples, now corrected, and no remaining concrete issues within scope.
-
-Existing Foundry nightly/dependency-revision/signature-cache and lint warnings remain; clean-machine dependency installation was not verified. This is local oracle integration evidence, not live market validation. New constructor/factory/event ABIs are reflected in callers, scripts and READMEs. No commits, deployment, publication or release-artifact changes were performed; the artifact release work below remains required. Earlier validation sections are historical checkpoints.
+The contract-formatting change is committed as `5dabd61`; the optimizer change is committed as `46f4ec5`. The subsequent package-entry and documentation changes are awaiting review and commit. No deployment or publication is part of this work.
 
 ## Scope
 
-Paths are relative to the named repository. Include imported interfaces and libraries in review.
+| Repository | Review scope |
+| --- | --- |
+| `usingtellor` | Shepherd, factory, DataBank, source readers, imported interfaces, and the DataBridge/ECDSA attestation dependency. |
+| `morpho-tellor-adapter` | Custom Morpho oracle, factory, interfaces, and FullMath dependency. |
+| `euler-tellor-adapter` | Custom Euler oracle, interface, and imported Euler price-oracle dependencies. |
 
-| Repository | Contracts |
-|---|---|
-| `usingtellor` | `contracts/databank/{TellorShepherd,TellorShepherdFactory,TellorDataBank}.sol`; `contracts/sources/{TellorSpotSource,TellorTwapSource}.sol`; `contracts/examples/StreamBackupOracle.sol`; `contracts/interfaces/*.sol` |
-| `usingtellor` — primary attestation dependency | `contracts/bridge/{TellorDataBridge,ECDSA}.sol` |
-| `morpho-tellor-adapter` | `src/{MorphoTellorOracle,TellorOracleFactory}.sol`; `src/interfaces/*.sol`; `src/libraries/FullMath.sol` and its accompanying license |
-| `euler-tellor-adapter` | `src/TellorOracle.sol`; `src/interfaces/ITellorShepherd.sol`; imported code from `lib/euler-price-oracle` and its dependencies |
-
-Euler scope is a single feed with direct/inverse quotes and equal bid/ask. Integration tests exercise the oracle contracts, not complete Morpho market or Euler vault transactions. Test doubles and harnesses are supporting evidence, not deployable scope.
+Tests, mocks, harnesses, and `StreamBackupOracle` support the review. The streamer example is not a Shepherd dependency. Local integration tests exercise oracle reads and transitions, not lending, liquidation, or funded vault positions.
 
 ## Build and test
 
-The main and pinned-upstream suites require Node.js/npm; first acquisition of upstream pins also requires Git/network access. Only the older custom-adapter suites require Foundry (`forge`) and sibling repositories (or `MORPHO_ADAPTER_ROOT` / `EULER_ADAPTER_ROOT`).
+| Build | Compiler and settings |
+| --- | --- |
+| Core | Solidity 0.8.19; optimizer 200 runs; Paris; no via-IR. |
+| Custom Morpho | Solidity 0.8.20; optimizer 200 runs; via-IR. |
+| Custom Euler | Solidity 0.8.20; optimizer 200 runs; no via-IR. |
+| Pinned stock Morpho V2 | Solidity 0.8.21; optimizer 999999 runs; Paris; via-IR. |
+| Pinned stock Euler | Solidity 0.8.21; optimizer 100000 runs; Paris; no via-IR. |
 
-- Shepherd/core: Solidity 0.8.19, optimizer enabled with 200 runs, Paris target, no via-IR (`hardhat.config.js`). The factory test enforces a 20,000-byte runtime budget below the 24,576-byte deployment limit. Rebuild matching artifacts and regenerate CREATE2 predictions when changing compiler settings.
-- Custom Morpho adapter: Solidity 0.8.20, optimizer enabled with 200 runs, via-IR enabled.
-- Custom Euler adapter: Solidity 0.8.20, optimizer enabled with 200 runs, no via-IR.
+Core settings are in [hardhat.config.js](../hardhat.config.js). Paris preserves the previous compiler default; production compiler/EVM selection still needs to be matched to the intended chains. The factory's measured runtime is **12,845 bytes**, and Shepherd's is **9,355 bytes**. The factory test enforces a **20,000-byte budget** under the 24,576-byte network limit. Bytecode changes require new CREATE2 predictions and matching verification settings.
 
-Use the adaptor repositories' `foundry.toml` files and the npm lockfile. In a fresh Euler checkout, initialize dependencies with `git submodule update --init --recursive`.
-
-From `usingtellor`:
+Use Node.js 22 for the locally validated workflow; CI selects 24. Verify `node --version` in the actual execution directory. Run:
 
 ```sh
 npm ci
-npx --no-install hardhat test
+npm test
 npm run test:upstream
 npm run test:morpho
 npm run test:euler
 ```
 
-The custom integration commands build each adaptor before loading its bytecode. The upstream suite independently compiles pinned immutable Git source objects on every invocation; it never reads stale artifacts. Run `forge test` from each adaptor repository for its native tests.
+Only custom-adapter suites require Forge and sibling checkouts. Set `MORPHO_ADAPTER_ROOT` or `EULER_ADAPTER_ROOT` to use other locations. Their tests build those checkouts before reading artifacts. Native adapter tests run with `forge test` from each adapter repository.
 
-Prior mutable-pause-duration validation: 19 core files compiled, 140 focused tests (22 new duration cases), 352 main tests, 47 pinned actual-consumer tests and 47 existing custom-adapter tests passed. Actual same-block pause/unpause at zero succeeded. The pinned source build succeeded from an empty source cache and was recompiled by the test command; details are recorded in DESIGN.md. Earlier native `forge test` runs crashed in the installed nightly Foundry build; native suites were not rerun for this increment. The custom suites still use Morpho `e784407` and Euler `46012d5`; dependency-revision, Euler submodule-registration and cache warnings limit their clean-checkout reproducibility. Neither sibling source tree was changed.
+### Actual upstream consumer revisions and build
 
-Prior mutable-threshold validation: `npx hardhat compile --force` compiled 19 files; the focused threshold/duration/admin/core/factory command passed 163 tests (23 new threshold cases); `npx hardhat test` passed 375; `npm run test:upstream` passed 47; `npx hardhat test integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 47 (31 Morpho, 16 Euler). Exact commands and incremental self-review are recorded in DESIGN.md. Existing overflow-boundary comparison tests passed unchanged. The custom builds retained the same Foundry/dependency/submodule/signature-cache warnings and existing lint warnings; no native Foundry rerun or clean-checkout claim is made. The requested three governance features are implemented/tested, with human review/comprehension and commits still pending. Calibration and release/package work remain deferred.
+[pins.json](../integration/upstream/pins.json) is the authoritative list of the six upstream repositories and exact commits. [build.js](../integration/upstream/build.js) reads immutable Git objects and recompiles on every invocation using the lockfile-pinned `solc-upstream` 0.8.21 compiler. The cache is under `cache/protocol-consumers/`; its `build.json` is inspection output, not reused test bytecode. First acquisition requires Git/network access; cached builds need no Forge or sibling checkout.
 
-Current cleanup validation: `npx hardhat compile --force` compiled 19 files; `npx hardhat test` passed 375; `npm run test:upstream` passed 47; `npx hardhat test integration/MorphoTellorOracle.js integration/EulerTellorOracle.js` passed 47. Normalized function signatures/bodies match the pre-cleanup snapshot after the two getter renames; compiled ABI comparison confirms only those getter names change. Interface/factory ABIs, events/errors, constructor arguments and enum order are unchanged. The same custom-build warnings remain; sibling checkouts are unchanged. No new runtime tests or logic changes were added. The human committed governance work in fd7f265 before cleanup; this cleanup remains uncommitted and awaits review.
+These settings describe the test builds, not bytecode equivalence with deployed upstream contracts. The tests use real pinned Morpho V2 and Euler consumers; source-fault cases use mocks, while a composed case uses real bridge attestations, bank history, readers, and Shepherd.
 
-## Actual upstream consumer revisions and build
+## Validation evidence
 
-[The manifest](../integration/upstream/pins.json) pins every repository used by the two entry-point import closures. Supporting revisions match the corresponding upstream submodule gitlinks; unrelated submodules are not fetched.
-
-| Official repository | Exact commit |
+| Checkpoint | Evidence |
 | --- | --- |
-| morpho-org/morpho-blue-oracles | `cf5f168943ab61a2de1b289570934d5034043efa` |
-| morpho-org/morpho-blue | `55d2d99304fb3fb930c688462ae2ccabb1d533ad` |
-| OpenZeppelin/openzeppelin-contracts | `932fddf69a699a9a80fd2396fd1a2ab91cdda123` |
-| euler-xyz/euler-price-oracle | `67dfa669dade5b195cfebb25cc05441614960161` |
-| foundry-rs/forge-std (Euler IERC20 interface) | `bf6606142994b1e47e2882ce0cd477c020d77623` |
-| Vectorized/solady | `0123b4c0509ce253e41e5abd2c75a64c06389640` |
+| Optimizer (`46f4ec5`) | 20 Solidity files compiled; all 21 compiled ABIs matched an unoptimized baseline. 458 core tests and 103 combined upstream/custom integration tests passed using Node 22.23.2. |
+| Factory budget | The new test failed against the old 24,568-byte build and passed against the optimized 12,845-byte build. Existing CREATE2, registration, and failed-construction cases passed. |
+| Package entry point | Two regression tests first failed on the missing `./contracts` import, then passed with the helper-only root export. A packed tarball worked in a separate Hardhat consumer for root helpers, network calls, and explicit Solidity/artifact paths. |
+| Documentation | Local links and anchors checked; the README factory-deployment example executed successfully; its package-qualified Solidity import compiled against packed sources. |
 
-Entry points are `src/morpho-chainlink/MorphoChainlinkOracleV2.sol` and `src/adapter/chainlink/ChainlinkOracle.sol`. The lockfile pins the isolated `solc-upstream` npm alias to `0.8.21+commit.d9974bed`; both are compiled for Paris, with optimizer runs 999999/via-IR for Morpho and 100000/no via-IR for Euler. These are declared test build settings, not a bytecode-equivalence claim against deployed upstream contracts or every target in their repositories. Morpho's exact 0.8.21 pragma is preserved. The core Hardhat compiler stays 0.8.19.
+The package smoke test reused installed tooling. It did not verify a fresh dependency installation, every helper, or the consistency of every packaged artifact. The full core suite compiled 20 Solidity files and passed all 460 tests using Node 22.23.2 in a disposable copy. Consumer integration suites were not rerun for this package/documentation increment; their 103 passing results above belong to the optimizer checkpoint.
 
-`npm run build:upstream` fetches missing commits into ignored bare repositories under `cache/protocol-consumers`, reads immutable objects via `git show`, and compiles fresh ABI/bytecode. `build.json` there is for inspection only. `npm run test:upstream` calls the same build directly before deploying the actual consumers on the ephemeral Hardhat chain. The first build acquired all six repositories into an empty source cache and the test run rebuilt from the declared pins. No upstream code is vendored or edited; fetched repositories retain their licenses. No clean-machine `npm ci` or npm-package-install validation is claimed. A sandbox DNS restriction required authorized network access for acquisition; cached-object rebuilds run without network or Forge.
+Existing custom-adapter runs reported Foundry nightly, dependency-revision, Euler submodule-registration, signature-cache-permission, and lint warnings. Passing installed-dependency tests do not establish clean-machine reproducibility. A previous older-Node `findLastIndex` failure was resolved by explicitly selecting Node 22, without changing test logic.
 
-Source-fault tests use PriceSourceMock and a test-only token-decimals fixture, not simulated external consumer implementations. The real-bank case exercises attested query-isolated history, TWAP primary, mature spot backup, real Shepherd transitions, V2 price and Euler quotes. Vault conversion, lending/borrowing/liquidation, live networks, and deployed-contract equivalence are outside this evidence.
+## Known limitations
 
+- **Source-call behavior:** malformed successful ABI output can revert transition assessment outside try/catch. Caught source out-of-gas is not distinguished from unavailable data; caller-controlled gas may influence eligibility. Those protections remain unresolved.
+- **Source trust:** compatible decimals, a fresh timestamp, a display label, and factory provenance do not authenticate price truth or asset meaning. Two sources may share the same compromised data stream.
+- **Timing:** transitions recheck eligibility at request and execution, not continuously. Reader delays, TWAP windows, maximum age, and administrative notice require deployment-specific calibration.
+- **TWAP sampling:** a fresh endpoint does not establish fresh contributors or complete history. Sparse relays, long-held values, and excess interval duration remain possible.
+- **Administration:** source replacements admit unavailable sources after code/precision checks. Non-pausable instances cannot be paused. The outgoing admin executes an admin transfer; an uncontrollable recipient can permanently disable administration.
+- **Unpause review:** expected mode/source arguments bind only selection at execution. They do not bind prices, proposals, or transition timers, and do not prevent later transitions or detect changes that restore the same selection.
+- **Consumer compatibility:** `latestRoundData` has zero round sentinels and no retrievable history. Stock Morpho V2 does not check timestamps or skew; Euler adds a separate age limit. Custom adapters have different provenance, scaling, and skew rules.
+- **Bridge trust:** verification uses a configured voting threshold and a trusted guardian recovery path. Attested fields still require downstream admission and price policy. The bridge does not independently enforce a two-thirds threshold or fetch current Layer dispute status.
 
-## Invariants and trust assumptions
+These are documented constraints and open risks, not findings newly fixed by the package or documentation changes.
 
-- Shepherd selects or refuses exactly two `IPriceSource` readers; roles cannot supply a numeric price override. Consumer reads use only the selected reader. Native output preserves its raw price and original millisecond timestamp. Zero prices and zero/future timestamps revert before age subtraction. One positive deployment-configurable immutable `MAX_DATA_AGE` in seconds applies to both sources. Construction rejects values whose multiplication by 1000 overflows. Reads require `nowMs - timestampMs <= MAX_DATA_AGE * 1000`, so equality is valid at full millisecond precision and 1ms over the limit reverts. Coincident source addresses use the same common limit. There is no production calibration default.
-- `latestRoundData()` shares the native pause/selected-read/validation path. After original-ms validation it rejects prices above `int256.max` with `SignedPriceOverflow`, retains the raw declared scale, and floors the original timestamp to seconds. Native uint256 reads remain unchanged. Round ID, round start and answered-in-round fields are zero unavailable sentinels; no history or round progression is supported. Downstream age checks can see up to 999ms extra age from flooring.
-- Immutable `isPausable()` determines whether explicit pausing is enabled. False rejects authorized `pause()` calls with `NotPausable`, while membership and duration settings remain manageable but inert. Non-pausable instances can still refuse prices because of source failure or validation. On pausable instances, pause blocks consumer reads. Switches preserve pause and its clock. Only admin can unpause after the minimum duration with no source-pair proposal pending.
-- Challenge request/execution require deviation; recovery request/execution require agreement. Both executions require their delay. Every transition/cancellation compares the same primary and backup reads, with primary as denominator, strict deviation and equality in-band. Delayed backup data delays detection; there is no latest-bank bypass. Both sources must be usable and within the common age limit even to execute a challenge, including while paused. Failures preserve timers; neither flow proves continuous conditions.
-- Source, admin, pause-duration and threshold proposals share one positive immutable `CONFIG_CHANGE_DELAY` in seconds, with independent timestamps. The existing constructor positional slot is retained; factory configuration is now `configChangeDelay`, without a legacy getter alias. All early executions use `ConfigChangeDelayNotElapsed`; zero deployment delay uses `InvalidConfigChangeDelay`.
-- Only the current/outgoing admin can propose, cancel and execute admin transfer. The recipient takes no action. Proposals require a nonzero different address and cannot be overwritten; cancel/repropose resets only that notice. Execution accepts equality, updates admin and clears its own pending state, leaving sources, mode, prices, transitions, pause and all their clocks untouched. Pending source proposals survive with their original timer and become governable only by the new admin. Admin transfer works paused/unpaused and does not block unpause. Explicit pauser memberships persist without implicit grants. Nonzero uncontrollable destinations are deliberately accepted; no liveness/code/acceptance checks or renounce shortcut exist.
-- `minPauseDuration()` reports mutable seconds; the initial constructor/factory argument is unchanged. All uint256 durations including zero are valid. Current-admin-only propose/cancel/execute operations use CONFIG_CHANGE_DELAY, explicit pending status, a pending value and independent timestamp. No-op/overwrite/no-pending/unauthorized/early actions revert; cancellation/reproposal restarts only its own notice. Execution applies immediately to any active pause while preserving pausedAt and without automatically unpausing. Unpause uses elapsed time since that original start against the current duration; zero removes only the time wait. Pending updates have no effect before execution and do not block unpause; pending source proposals still do.
-- Duration changes never consult source data and preserve source/observation/mode, other proposal clocks, pending challenge/recovery requests, pause state/clock and pauser memberships. Pending-zero updates survive admin handover with their original timestamp and become executable/cancellable only by the new current admin. The explicit minPauseDurationChangePending flag distinguishes zero from absence. The shared configuration delay remains positive/immutable; the threshold is now mutable in 1–9999 bps as described below.
-- `challengeThresholdBps()` reports mutable policy within 1–9999 basis points; the initial constructor/factory argument is unchanged. Current-admin-only propose/cancel/execute operations share CONFIG_CHANGE_DELAY but have their own pendingChallengeThresholdBps and challengeThresholdProposedAt. Zero is the absent-proposal sentinel, not valid policy. Invalid/no-op/overwrite/no-pending/unauthorized/early actions revert; equality permits execution; cancel/repropose restarts only that notice. Pending proposals preserve active policy, reads, permissionless transitions and unpause eligibility.
-- Threshold execution clears its proposal and invalidates both pending transition requests/timestamps via existing events, even if the same observations still qualify. New requests must wait the full unchanged challenge/recovery delays and pass endpoint checks. Strict primary-relative deviation, equality in-band and overflow-safe arithmetic are unchanged. No source reads, mode switch, pause/unpause, pausedAt change or observation renewal occurs. Other configuration values/clocks and pauser memberships survive. Threshold notices survive admin handover unchanged under the new admin's sole authority; source migration preserves them. Configuration/challenge/recovery delays, maximum age and feed metadata remain immutable.
-- Source-pair replacement is admin-only, delayed, atomic and requires pause only when `isPausable` is true; non-pausable instances replace sources while live; success clears pending challenge/recovery timers. Both addresses need code and matching immutable precision metadata at construction, proposal and execution. Price history is not probed. One companion can remain unchanged; no-op pairs are rejected. Cancellation works with broken proposed sources; execution does not consult old sources. Description/precision, core delays and the maximum data age cannot migrate. Migration never renews observation timestamps; a different limit requires a new Shepherd.
-- Challenge delay is independently positive: the former rounded-up TWAP-window lower bound is removed by explicit human decision. Deployers/admins must assess source timing/security suitability at deployment and each migration; metadata checks do not enforce it. A maximum age incompatible with source delays can make mature data unreadable. No timing-policy method was added to IPriceSource.
-- Tellor readers own relay delay/window/bank configuration. TWAP weights stored relays, not complete Layer history; its endpoint has zero weight and does not establish contributor freshness. Relayer omission, long gaps, excessive duration and one held price remain possible. Two Tellor readers using the same stream do not protect against compromise of that stream.
-- `StreamBackupOracle` is a standalone example, no longer used by Shepherd. It trusts authorized streamers to author prices and its admin to appoint them, dispute reports, and permit recovery. Timestamps record submission, not underlying observation freshness. Its recovery flags persist until explicitly changed. Reads inspect at most 32 mature reports after the maturity lookup and may refuse despite older usable data.
-- Existing sibling adaptors delegate freshness to Shepherd, which now enforces timestamp validity and one immutable maximum data age. Tests demonstrate full-millisecond boundary equality and stale-data refusal, including backup reads. The custom Morpho adaptor retains cross-feed-skew checks; both adaptors retain scaling. The upstream suite now executes the actual Euler Chainlink and stock Morpho V2 consumers. Stock V2 does not check timestamps, round IDs, query IDs or cross-feed skew; compatible wiring and independent Shepherd freshness remain assumptions. Individually fresh reports with 1200-second skew compose successfully.
-- Euler adds its own immutable maxStaleness after seconds flooring. A stricter limit can refuse a Shepherd-accepted report. For equal integer-second limits, `1000*t-m <= 1000*L` iff `t-floor(m/1000) <= L`; flooring alone creates no boundary disagreement. Original-ms checks still reject future timestamps. The zero round sentinels are accepted by both tested consumers; no full historical-round compatibility is claimed.
-- Factory registration proves deployment provenance, not safe settings, source trust, or the nominated admin's consent. Earlier increments changed constructor/factory/migration ABIs and require fresh deployments. This admin-transfer increment retains constructor positional types/order but renames the shared delay getter, error names and factory field; integrations using named configuration must update.
+## Release work
 
-Current approved behavior and the pending review checkpoint are recorded in [DESIGN.md](DESIGN.md).
+1. Review and commit the intended source/configuration changes. Current deployment interfaces require fresh instances, not storage-compatible upgrades.
+2. Choose deployment chains, confirm compiler/EVM compatibility, and calibrate source trust, quote units, precision, delays, freshness, skew, and administrator/guardian operations.
+3. Build artifacts from a clean tree using the reviewed settings. Remove obsolete outputs and check ABI/bytecode and debug/build-info consistency. The current workspace artifact folder is not a release bundle.
+4. Restore tracking of required current artifacts, including factory/readers/interfaces, and remove the temporary artifact ignore rule. Twenty older artifact/debug files are still tracked; new outputs are not all tracked.
+5. Inspect the npm tarball and install it in a clean consumer project. Verify package name, tooling requirements, helper imports, Solidity imports, and all required artifact paths. Recheck the generated bytecode and CREATE2 predictions.
+6. Run the selected-chain deployment and consumer checks before publication or live use. The local tests above do not cover funded market operations.
 
-## Deployment and release boundary
-
-Mutable-policy callers must now use `minPauseDuration()` and `challengeThresholdBps()`; former uppercase getters have no compatibility aliases. Alphabetical storage declaration ordering changes slots/packing. No proxy/fixed-slot dependency was found in the inspected core/tests/integrations; this remains a fresh-deployment design, not a storage-compatible upgrade. Existing factory fields and constructor positions remain intact, with a required final `isPausable` bool appended to both. The creation event includes it, and CREATE2 binds it along with every other constructor argument. Historical getter names in DESIGN.md describe earlier checkpoints only.
-
-Use the exact reader → per-feed Shepherd → protocol consumer argument examples in [README](../README.md#deployment-composition-illustrative-not-production-calibration). The configured common quote direction, token/feed precision, signed price range and consumer-specific scale bounds are deployment obligations. The illustrative durations are not production recommendations. New constructor/factory/migration ABIs require new instances; source migration cannot recalibrate immutable settings.
-
-Artifact release work is still required after human review: 20 old artifact/debug JSON files remain tracked despite the temporary ignore; factory/readers/IPriceSource and other current outputs need tracking. Regenerate from a clean artifact tree, remove orphan outputs, refresh required ABI/bytecode and debug/build-info relationships, remove the temporary artifacts ignore, inspect the npm tarball and verify package installation/imports in an isolated consumer. Existing ignored leftovers include debug files for removed `AggregatorPriceSource`, `StreamsBackupOracle` and `IBackupPriceSource`; blindly publishing the current folder is inappropriate. This increment restores its generated tracked changes and invalidates the Solidity cache to keep review focused. No release commit, npm publication, live deployment or market creation is authorized or performed.
+The root export fix does not update generated artifacts or claim a release-ready npm package. No Solidity source, compiler setting, adapter implementation, or release artifact changes are included in this documentation increment.
