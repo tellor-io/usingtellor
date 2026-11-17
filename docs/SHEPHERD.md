@@ -18,7 +18,7 @@ The factory's `Configuration` uses the same names, with separate `challengeDelay
 | --- | --- |
 | `description` | Display label set at deployment; may be empty. It does not verify asset identity. |
 | `decimals` | Fixed raw-price precision, 0–77. Both sources must report the same precision. |
-| Source addresses | Must contain code and expose matching decimals. Available prices are not required at deployment or replacement. |
+| Source addresses | Must contain code and expose matching decimals. Available prices are not required at deployment or replacement. Reads must fit within `SOURCE_READ_GAS`. |
 | `admin` | Nonzero address controlling administrative operations. |
 | `minPauseDuration` | Mutable seconds, including zero. |
 | `configChangeDelay` | Positive fixed notice in seconds for source, admin, pause-duration, and threshold updates. |
@@ -37,7 +37,9 @@ Deployers and admins must establish that both sources represent the intended quo
 
 `validateSource(address)` checks an arbitrary candidate's code, precision, and current native-read usability. Anyone can call it, even while paused. It returns the original unsigned price and millisecond timestamp without selecting or registering the candidate. It does not enforce the signed-price bound or prove future availability or price truth.
 
-Malformed successful ABI responses can revert outside the read's catch clause. See [known limitations](AUDIT-HANDOFF.md#known-limitations).
+Every source read, including transition assessments and `validateSource`, forwards exactly `SOURCE_READ_GAS` (500,000) gas. A source that needs more is unusable for every caller. If less than `SOURCE_READ_GAS + SOURCE_READ_GAS / 63 + 5000` (512,936) gas remains when a read begins, the call reverts with `InsufficientGasForSourceRead` instead of marking the source unusable, so a caller's gas limit cannot change eligibility. Callers, including nested consumer calls, must supply that gas.
+
+Malformed successful ABI responses can still revert outside the read's catch clause. See [known limitations](AUDIT-HANDOFF.md#known-limitations).
 
 ## Challenge and recovery
 

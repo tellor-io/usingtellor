@@ -12,13 +12,15 @@ import { ITellorShepherd } from "../interfaces/ITellorShepherd.sol";
  * Source compatibility does not establish trust or appropriate timing configuration.
  */
 contract TellorShepherd is ITellorShepherd {
-    // Immutables
+    // Immutables and constants
     uint256 public immutable CHALLENGE_DELAY_SECONDS;
     uint256 public immutable CONFIG_CHANGE_DELAY;
     uint8 public immutable override decimals;
     bool public immutable override isPausable;
     uint256 public immutable override MAX_DATA_AGE;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
+    uint256 public constant SOURCE_READ_GAS = 500_000;
+    uint256 internal constant SOURCE_READ_GAS_RESERVE = SOURCE_READ_GAS + SOURCE_READ_GAS / 63 + 5_000;
 
     // Storage
     address public admin;
@@ -595,8 +597,9 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @dev Both sources share the same maximum age; compare without rounding observation milliseconds.
-     * False marks unusable data; returned numbers must then be ignored. Source reverts are caught,
-     * but malformed successful return data and caller-induced gas starvation remain unresolved.
+     * False marks unusable data; returned numbers must then be ignored. Every read receives exactly
+     * SOURCE_READ_GAS, so caller-chosen gas cannot change the outcome; too little gas reverts instead.
+     * Source reverts, including exceeding the budget, are caught; malformed successful return data remains unresolved.
      * @param _source Reader to assess without consulting the other source or the pause state.
      * @return _value Raw source price; ignore when _isUsable is false.
      * @return _timestampMs Original source timestamp in Unix milliseconds; ignore when _isUsable is false.
@@ -605,7 +608,11 @@ contract TellorShepherd is ITellorShepherd {
     function _readSource(
         IPriceSource _source
     ) internal view returns (uint256 _value, uint256 _timestampMs, bool _isUsable) {
-        try _source.getCurrentValue() returns (uint256 _sourceValue, uint256 _sourceTimestampMs) {
+        if (gasleft() < SOURCE_READ_GAS_RESERVE) revert InsufficientGasForSourceRead();
+        try _source.getCurrentValue{ gas: SOURCE_READ_GAS }() returns (
+            uint256 _sourceValue,
+            uint256 _sourceTimestampMs
+        ) {
             if (_sourceValue == 0) return (_sourceValue, _sourceTimestampMs, false); // ZeroValue
             uint256 _nowMs = block.timestamp * 1000;
             // Short-circuit timestamp validity before subtracting to check age.
@@ -623,7 +630,7 @@ contract TellorShepherd is ITellorShepherd {
     }
 
     /**
-     * @dev Shared refusal for native consumer reads and manual source validation; ignores pause.
+     * @dev Shared refusal  for native consumer reads and manual source validation; ignores pause.
      * @param _source Reader whose current value must pass price, timestamp and age checks.
      * @return _value Source price at decimals() precision.
      * @return _timestampMs Original source observation timestamp in Unix milliseconds.

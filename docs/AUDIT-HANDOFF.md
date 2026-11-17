@@ -2,7 +2,7 @@
 
 This is the current review and release summary. The [Shepherd guide](SHEPHERD.md) describes behavior; [audit history](reference/AUDIT-HISTORY.md) preserves earlier decisions and validation records. Historical “pending” and “uncommitted” statements there apply only to their original checkpoints.
 
-The contract-formatting change is committed as `5dabd61`; the optimizer change is committed as `46f4ec5`. The subsequent package-entry and documentation changes are awaiting review and commit. No deployment or publication is part of this work.
+The contract-formatting change is committed as `5dabd61`, the optimizer change as `46f4ec5`, and the package-entry/documentation changes as `595cf12`. The source-read gas budget change is awaiting review and commit. No deployment or publication is part of this work.
 
 ## Scope
 
@@ -24,7 +24,7 @@ Tests, mocks, harnesses, and `StreamBackupOracle` support the review. The stream
 | Pinned stock Morpho V2 | Solidity 0.8.21; optimizer 999999 runs; Paris; via-IR. |
 | Pinned stock Euler | Solidity 0.8.21; optimizer 100000 runs; Paris; no via-IR. |
 
-Core settings are in [hardhat.config.js](../hardhat.config.js). Paris preserves the previous compiler default; production compiler/EVM selection still needs to be matched to the intended chains. The factory's measured runtime is **12,845 bytes**, and Shepherd's is **9,355 bytes**. The factory test enforces a **20,000-byte budget** under the 24,576-byte network limit. Bytecode changes require new CREATE2 predictions and matching verification settings.
+Core settings are in [hardhat.config.js](../hardhat.config.js). Paris preserves the previous compiler default; production compiler/EVM selection still needs to be matched to the intended chains. The factory's measured runtime is **12,957 bytes**, and Shepherd's is **9,467 bytes**. The factory test enforces a **20,000-byte budget** under the 24,576-byte network limit. Bytecode changes require new CREATE2 predictions and matching verification settings.
 
 Use Node.js 22 for the locally validated workflow; CI selects 24. Verify `node --version` in the actual execution directory. Run:
 
@@ -48,6 +48,7 @@ These settings describe the test builds, not bytecode equivalence with deployed 
 
 | Checkpoint | Evidence |
 | --- | --- |
+| Source-read gas budget (uncommitted) | 21 Solidity files compiled. Both new tests failed against the previous read path, where one source received 601 distinct gas amounts across 601 caller limits, and passed with the budget. 462 core and 103 upstream/custom integration tests passed using Node 22.23.2 in a disposable copy. |
 | Optimizer (`46f4ec5`) | 20 Solidity files compiled; all 21 compiled ABIs matched an unoptimized baseline. 458 core tests and 103 combined upstream/custom integration tests passed using Node 22.23.2. |
 | Factory budget | The new test failed against the old 24,568-byte build and passed against the optimized 12,845-byte build. Existing CREATE2, registration, and failed-construction cases passed. |
 | Package entry point | Two regression tests first failed on the missing `./contracts` import, then passed with the helper-only root export. A packed tarball worked in a separate Hardhat consumer for root helpers, network calls, and explicit Solidity/artifact paths. |
@@ -59,7 +60,7 @@ Existing custom-adapter runs reported Foundry nightly, dependency-revision, Eule
 
 ## Known limitations
 
-- **Source-call behavior:** malformed successful ABI output can revert transition assessment outside try/catch. Caught source out-of-gas is not distinguished from unavailable data; caller-controlled gas may influence eligibility. Those protections remain unresolved.
+- **Source-call behavior:** malformed successful ABI output can revert transition assessment outside try/catch; this remains unresolved. Each read receives exactly `SOURCE_READ_GAS` (500,000): a source needing more is unusable, and a call with too little gas reverts with `InsufficientGasForSourceRead` instead of changing eligibility. Callers and nested consumers must supply about 513,000 gas per read.
 - **Source trust:** compatible decimals, a fresh timestamp, a display label, and factory provenance do not authenticate price truth or asset meaning. Two sources may share the same compromised data stream.
 - **Timing:** transitions recheck eligibility at request and execution, not continuously. Reader delays, TWAP windows, maximum age, and administrative notice require deployment-specific calibration.
 - **TWAP sampling:** a fresh endpoint does not establish fresh contributors or complete history. Sparse relays, long-held values, and excess interval duration remain possible.
@@ -68,7 +69,7 @@ Existing custom-adapter runs reported Foundry nightly, dependency-revision, Eule
 - **Consumer compatibility:** `latestRoundData` has zero round sentinels and no retrievable history. Stock Morpho V2 does not check timestamps or skew; Euler adds a separate age limit. Custom adapters have different provenance, scaling, and skew rules.
 - **Bridge trust:** verification uses a configured voting threshold and a trusted guardian recovery path. Attested fields still require downstream admission and price policy. The bridge does not independently enforce a two-thirds threshold or fetch current Layer dispute status.
 
-These are documented constraints and open risks, not findings newly fixed by the package or documentation changes.
+These are documented constraints and open risks; only the source-call gas behavior changed in the current increment.
 
 ## Release work
 
@@ -79,4 +80,4 @@ These are documented constraints and open risks, not findings newly fixed by the
 5. Inspect the npm tarball and install it in a clean consumer project. Verify package name, tooling requirements, helper imports, Solidity imports, and all required artifact paths. Recheck the generated bytecode and CREATE2 predictions.
 6. Run the selected-chain deployment and consumer checks before publication or live use. The local tests above do not cover funded market operations.
 
-The root export fix does not update generated artifacts or claim a release-ready npm package. No Solidity source, compiler setting, adapter implementation, or release artifact changes are included in this documentation increment.
+The source-read gas budget changes Shepherd and factory bytecode, and therefore CREATE2 predictions. It does not change compiler settings, adapters, or generated artifacts, and does not make the npm package release-ready.
