@@ -52,6 +52,7 @@ interface ITellorShepherd {
     error ChallengeThresholdChangePending();
     error ChallengeThresholdUnchanged();
     error ConfigChangeDelayNotElapsed();
+    error InsufficientGasForSourceRead();
     error InvalidAdmin();
     error InvalidChallengeDelay();
     error InvalidChallengeThreshold();
