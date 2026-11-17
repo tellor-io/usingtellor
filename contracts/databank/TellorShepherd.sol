@@ -137,6 +137,7 @@ contract TellorShepherd is ITellorShepherd {
         if (msg.sender != admin) revert NotAdmin();
         address _proposedAdmin = pendingAdmin;
         if (_proposedAdmin == address(0)) revert NoPendingAdminChange();
+
         pendingAdmin = address(0);
         adminProposedAt = 0;
         emit AdminChangeCancelled(_proposedAdmin);
@@ -163,6 +164,7 @@ contract TellorShepherd is ITellorShepherd {
         if (msg.sender != admin) revert NotAdmin();
         uint256 _proposedThreshold = pendingChallengeThresholdBps;
         if (_proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+
         pendingChallengeThresholdBps = 0;
         challengeThresholdProposedAt = 0;
         emit ChallengeThresholdChangeCancelled(_proposedThreshold);
@@ -174,6 +176,7 @@ contract TellorShepherd is ITellorShepherd {
     function cancelMinPauseDurationChange() external {
         if (msg.sender != admin) revert NotAdmin();
         if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
+
         uint256 _proposedDuration = pendingMinPauseDuration;
         pendingMinPauseDuration = 0;
         minPauseDurationProposedAt = 0;
@@ -204,6 +207,7 @@ contract TellorShepherd is ITellorShepherd {
         address _proposedPrimary = pendingPrimarySource;
         address _proposedBackup = pendingBackupSource;
         if (_proposedPrimary == address(0)) revert NoPendingSourcesChange();
+
         pendingPrimarySource = address(0);
         pendingBackupSource = address(0);
         sourcesProposedAt = 0;
@@ -220,6 +224,7 @@ contract TellorShepherd is ITellorShepherd {
         address _proposedAdmin = pendingAdmin;
         if (_proposedAdmin == address(0)) revert NoPendingAdminChange();
         if (block.timestamp - adminProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+
         address _previousAdmin = admin;
         admin = _proposedAdmin;
         pendingAdmin = address(0);
@@ -255,6 +260,7 @@ contract TellorShepherd is ITellorShepherd {
         uint256 _proposedThreshold = pendingChallengeThresholdBps;
         if (_proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
         if (block.timestamp - challengeThresholdProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+
         uint256 _previousThreshold = challengeThresholdBps;
         challengeThresholdBps = _proposedThreshold;
         pendingChallengeThresholdBps = 0;
@@ -274,6 +280,7 @@ contract TellorShepherd is ITellorShepherd {
         if (msg.sender != admin) revert NotAdmin();
         if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
         if (block.timestamp - minPauseDurationProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
+
         uint256 _previousDuration = minPauseDuration;
         uint256 _proposedDuration = pendingMinPauseDuration;
         minPauseDuration = _proposedDuration;
@@ -316,6 +323,7 @@ contract TellorShepherd is ITellorShepherd {
         if (block.timestamp - sourcesProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
         _checkSourceCompatibility(_proposedPrimary, decimals);
         _checkSourceCompatibility(_proposedBackup, decimals);
+
         address _previousPrimary = address(primarySource);
         address _previousBackup = address(backupSource);
         primarySource = IPriceSource(_proposedPrimary);
@@ -435,7 +443,6 @@ contract TellorShepherd is ITellorShepherd {
     function requestChallenge() external {
         if (mode != Mode.PRIMARY) revert NotPrimaryMode();
         if (challengePending) revert ChallengeAlreadyPending();
-
         if (!_challengeAllowed()) revert ChallengeNotAllowed();
 
         challengePending = true;
