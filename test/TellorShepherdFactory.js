@@ -48,6 +48,13 @@ describe("TellorShepherdFactory", function () {
     return ethers.getContractAt("TellorShepherd", address);
   }
 
+  it("keeps factory runtime within the 20,000-byte deployment budget", async function () {
+    const f = await loadFixture(deployFixture);
+    const runtime = await ethers.provider.getCode(f.factory.target);
+    // Leave growth room below the 24,576-byte EIP-170 limit, including embedded Shepherd creation code.
+    expect(ethers.getBytes(runtime).length).to.be.at.most(20_000);
+  });
+
   it("forwards every setting and emits the complete initial configuration", async function () {
     const f = await loadFixture(deployFixture);
     const c = f.configuration;
