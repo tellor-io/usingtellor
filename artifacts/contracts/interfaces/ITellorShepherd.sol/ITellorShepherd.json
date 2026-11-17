@@ -60,6 +60,11 @@
     },
     {
       "inputs": [],
+      "name": "InsufficientGasForSourceRead",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "InvalidAdmin",
       "type": "error"
     },
@@ -96,11 +101,6 @@
     {
       "inputs": [],
       "name": "InvalidRecoveryDelay",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "InvalidTimestamp",
       "type": "error"
     },
     {
@@ -240,17 +240,7 @@
     },
     {
       "inputs": [],
-      "name": "StalePrice",
-      "type": "error"
-    },
-    {
-      "inputs": [],
       "name": "UnexpectedState",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ZeroValue",
       "type": "error"
     },
     {

@@ -61,7 +61,6 @@ interface ITellorShepherd {
     error InvalidMaxAge();
     error InvalidPauser();
     error InvalidRecoveryDelay();
-    error InvalidTimestamp();
     error MinPauseDurationChangePending();
     error MinPauseDurationUnchanged();
     error NoPendingAdminChange();
@@ -89,9 +88,7 @@ interface ITellorShepherd {
     error SourceNotUsable();
     error SourcesChangePending();
     error SourcesUnchanged();
-    error StalePrice();
     error UnexpectedState();
-    error ZeroValue();
 
     // Getter functions
 
