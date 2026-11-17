@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {IPriceSource} from "../interfaces/IPriceSource.sol";
-import {ITellorDataBank} from "../interfaces/ITellorDataBank.sol";
+import { IPriceSource } from "../interfaces/IPriceSource.sol";
+import { ITellorDataBank } from "../interfaces/ITellorDataBank.sol";
 
 /**
+ * @author Tellor Inc.
  * @title TellorTwapSource
  * @notice Per-feed reader of a delayed DataBank TWAP, preserving its actual interval.
  * @dev Returns the bank's raw average without rescaling or recomputing its arithmetic.
@@ -21,13 +22,13 @@ contract TellorTwapSource is IPriceSource {
 
     // Errors
     error DataBankHasNoCode();
-    error InvalidQueryId();
     error InvalidDecimals();
+    error InvalidQueryId();
     error InvalidRelayReadDelay();
+    error InvalidTimestamp();
+    error InvalidTwapReference();
     error InvalidTwapWindow();
     error NoTwapData();
-    error InvalidTwapReference();
-    error InvalidTimestamp();
 
     /**
      * @notice Binds the source configuration without requiring populated history.
@@ -60,30 +61,38 @@ contract TellorTwapSource is IPriceSource {
      * Two records with one contributing price suffice. No maximum age, duration, gap,
      * or sampling-quality policy is applied; endpoint recency does not bound contributor age.
      * Missing/inconsistent data reverts without substituting spot; dependency errors propagate.
-     * @return value Raw quote units per whole base unit, scaled by decimals().
-     * @return timestampMs Original TWAP interval end, never relay time or read time.
+     * @return _value Raw quote units per whole base unit, scaled by decimals().
+     * @return _timestampMs Original TWAP interval end, never relay time or read time.
      */
-    function getCurrentValue() external view override returns (uint256 value, uint256 timestampMs) {
+    function getCurrentValue() external view override returns (uint256 _value, uint256 _timestampMs) {
         if (block.timestamp <= RELAY_READ_DELAY) revert NoTwapData();
-        uint256 cutoff = block.timestamp - RELAY_READ_DELAY;
-        (bool available, ITellorDataBank.TwapData memory twap) =
-            dataBank.getTwapBefore(queryId, cutoff, TWAP_WINDOW_MS);
-        if (!available) revert NoTwapData();
-        if (twap.endTimestamp == 0 || twap.endTimestamp > block.timestamp * 1000) revert InvalidTimestamp();
-        if (twap.value == 0 || twap.startIndex >= twap.endIndex
-            || twap.startTimestamp >= twap.endTimestamp) revert InvalidTwapReference();
-        if (twap.observationCount != twap.endIndex - twap.startIndex
-            || twap.endTimestamp - twap.startTimestamp < TWAP_WINDOW_MS) revert InvalidTwapReference();
+        uint256 _cutoff = block.timestamp - RELAY_READ_DELAY;
+        (bool _available, ITellorDataBank.TwapData memory _twap) = dataBank.getTwapBefore(
+            queryId,
+            _cutoff,
+            TWAP_WINDOW_MS
+        );
+        if (!_available) revert NoTwapData();
+        if (_twap.endTimestamp == 0 || _twap.endTimestamp > block.timestamp * 1000) revert InvalidTimestamp();
+        if (_twap.value == 0 || _twap.startIndex >= _twap.endIndex || _twap.startTimestamp >= _twap.endTimestamp)
+            revert InvalidTwapReference();
+        if (
+            _twap.observationCount != _twap.endIndex - _twap.startIndex ||
+            _twap.endTimestamp - _twap.startTimestamp < TWAP_WINDOW_MS
+        ) revert InvalidTwapReference();
 
-        ITellorDataBank.AggregateData memory start = dataBank.getAggregateByIndex(queryId, twap.startIndex);
-        ITellorDataBank.AggregateData memory end = dataBank.getAggregateByIndex(queryId, twap.endIndex);
-        (bool found, ITellorDataBank.AggregateData memory selectedEnd) = dataBank.getRelayBefore(queryId, cutoff);
-        if (!found || start.aggregateTimestamp != twap.startTimestamp
-            || end.aggregateTimestamp != twap.endTimestamp
-            || selectedEnd.aggregateTimestamp != twap.endTimestamp
-            || selectedEnd.relayTimestamp != end.relayTimestamp
-            || end.relayTimestamp >= cutoff) revert InvalidTwapReference();
+        ITellorDataBank.AggregateData memory _start = dataBank.getAggregateByIndex(queryId, _twap.startIndex);
+        ITellorDataBank.AggregateData memory _end = dataBank.getAggregateByIndex(queryId, _twap.endIndex);
+        (bool _found, ITellorDataBank.AggregateData memory _selectedEnd) = dataBank.getRelayBefore(queryId, _cutoff);
+        if (
+            !_found ||
+            _start.aggregateTimestamp != _twap.startTimestamp ||
+            _end.aggregateTimestamp != _twap.endTimestamp ||
+            _selectedEnd.aggregateTimestamp != _twap.endTimestamp ||
+            _selectedEnd.relayTimestamp != _end.relayTimestamp ||
+            _end.relayTimestamp >= _cutoff
+        ) revert InvalidTwapReference();
 
-        return (twap.value, twap.endTimestamp);
+        return (_twap.value, _twap.endTimestamp);
     }
 }

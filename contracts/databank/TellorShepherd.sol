@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {IPriceSource} from "../interfaces/IPriceSource.sol";
-import {ITellorShepherd} from "../interfaces/ITellorShepherd.sol";
+import { IPriceSource } from "../interfaces/IPriceSource.sol";
+import { ITellorShepherd } from "../interfaces/ITellorShepherd.sol";
 
 /**
+ * @author Tellor Inc.
  * @title TellorShepherd
  * @notice Per-feed selector of interchangeable primary and backup price sources.
  * @dev Price, timestamp validity and the immutable maximum data age are checked here.
@@ -43,9 +44,7 @@ contract TellorShepherd is ITellorShepherd {
     bool public recoveryPending;
     uint256 public recoveryRequestedAt;
     uint256 public sourcesProposedAt;
-
     mapping(address => bool) public isPauser;
-
 
     // Enums
     enum Mode {
@@ -134,11 +133,11 @@ contract TellorShepherd is ITellorShepherd {
      */
     function cancelAdminChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        address proposedAdmin = pendingAdmin;
-        if (proposedAdmin == address(0)) revert NoPendingAdminChange();
+        address _proposedAdmin = pendingAdmin;
+        if (_proposedAdmin == address(0)) revert NoPendingAdminChange();
         pendingAdmin = address(0);
         adminProposedAt = 0;
-        emit AdminChangeCancelled(proposedAdmin);
+        emit AdminChangeCancelled(_proposedAdmin);
     }
 
     /**
@@ -160,11 +159,11 @@ contract TellorShepherd is ITellorShepherd {
      */
     function cancelChallengeThresholdChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        uint256 proposedThreshold = pendingChallengeThresholdBps;
-        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+        uint256 _proposedThreshold = pendingChallengeThresholdBps;
+        if (_proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
         pendingChallengeThresholdBps = 0;
         challengeThresholdProposedAt = 0;
-        emit ChallengeThresholdChangeCancelled(proposedThreshold);
+        emit ChallengeThresholdChangeCancelled(_proposedThreshold);
     }
 
     /**
@@ -173,11 +172,11 @@ contract TellorShepherd is ITellorShepherd {
     function cancelMinPauseDurationChange() external {
         if (msg.sender != admin) revert NotAdmin();
         if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
-        uint256 proposedDuration = pendingMinPauseDuration;
+        uint256 _proposedDuration = pendingMinPauseDuration;
         pendingMinPauseDuration = 0;
         minPauseDurationProposedAt = 0;
         minPauseDurationChangePending = false;
-        emit MinPauseDurationChangeCancelled(proposedDuration);
+        emit MinPauseDurationChangeCancelled(_proposedDuration);
     }
 
     /**
@@ -200,13 +199,13 @@ contract TellorShepherd is ITellorShepherd {
      */
     function cancelSourcesChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        address proposedPrimary = pendingPrimarySource;
-        address proposedBackup = pendingBackupSource;
-        if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
+        address _proposedPrimary = pendingPrimarySource;
+        address _proposedBackup = pendingBackupSource;
+        if (_proposedPrimary == address(0)) revert NoPendingSourcesChange();
         pendingPrimarySource = address(0);
         pendingBackupSource = address(0);
         sourcesProposedAt = 0;
-        emit SourcesChangeCancelled(proposedPrimary, proposedBackup);
+        emit SourcesChangeCancelled(_proposedPrimary, _proposedBackup);
     }
 
     /**
@@ -216,14 +215,14 @@ contract TellorShepherd is ITellorShepherd {
      */
     function executeAdminChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        address proposedAdmin = pendingAdmin;
-        if (proposedAdmin == address(0)) revert NoPendingAdminChange();
+        address _proposedAdmin = pendingAdmin;
+        if (_proposedAdmin == address(0)) revert NoPendingAdminChange();
         if (block.timestamp - adminProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
-        address previousAdmin = admin;
-        admin = proposedAdmin;
+        address _previousAdmin = admin;
+        admin = _proposedAdmin;
         pendingAdmin = address(0);
         adminProposedAt = 0;
-        emit AdminChanged(previousAdmin, proposedAdmin);
+        emit AdminChanged(_previousAdmin, _proposedAdmin);
     }
 
     /**
@@ -251,15 +250,15 @@ contract TellorShepherd is ITellorShepherd {
      */
     function executeChallengeThresholdChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        uint256 proposedThreshold = pendingChallengeThresholdBps;
-        if (proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
+        uint256 _proposedThreshold = pendingChallengeThresholdBps;
+        if (_proposedThreshold == 0) revert NoPendingChallengeThresholdChange();
         if (block.timestamp - challengeThresholdProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
-        uint256 previousThreshold = challengeThresholdBps;
-        challengeThresholdBps = proposedThreshold;
+        uint256 _previousThreshold = challengeThresholdBps;
+        challengeThresholdBps = _proposedThreshold;
         pendingChallengeThresholdBps = 0;
         challengeThresholdProposedAt = 0;
         _invalidatePendingTransitions();
-        emit ChallengeThresholdChanged(previousThreshold, proposedThreshold);
+        emit ChallengeThresholdChanged(_previousThreshold, _proposedThreshold);
     }
 
     /**
@@ -273,13 +272,13 @@ contract TellorShepherd is ITellorShepherd {
         if (msg.sender != admin) revert NotAdmin();
         if (!minPauseDurationChangePending) revert NoPendingMinPauseDurationChange();
         if (block.timestamp - minPauseDurationProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
-        uint256 previousDuration = minPauseDuration;
-        uint256 proposedDuration = pendingMinPauseDuration;
-        minPauseDuration = proposedDuration;
+        uint256 _previousDuration = minPauseDuration;
+        uint256 _proposedDuration = pendingMinPauseDuration;
+        minPauseDuration = _proposedDuration;
         pendingMinPauseDuration = 0;
         minPauseDurationProposedAt = 0;
         minPauseDurationChangePending = false;
-        emit MinPauseDurationChanged(previousDuration, proposedDuration);
+        emit MinPauseDurationChanged(_previousDuration, _proposedDuration);
     }
 
     /**
@@ -308,22 +307,22 @@ contract TellorShepherd is ITellorShepherd {
      */
     function executeSourcesChange() external {
         if (msg.sender != admin) revert NotAdmin();
-        address proposedPrimary = pendingPrimarySource;
-        address proposedBackup = pendingBackupSource;
-        if (proposedPrimary == address(0)) revert NoPendingSourcesChange();
+        address _proposedPrimary = pendingPrimarySource;
+        address _proposedBackup = pendingBackupSource;
+        if (_proposedPrimary == address(0)) revert NoPendingSourcesChange();
         if (isPausable && !paused) revert NotPaused();
         if (block.timestamp - sourcesProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
-        _checkSourceCompatibility(proposedPrimary, decimals);
-        _checkSourceCompatibility(proposedBackup, decimals);
-        address previousPrimary = address(primarySource);
-        address previousBackup = address(backupSource);
-        primarySource = IPriceSource(proposedPrimary);
-        backupSource = IPriceSource(proposedBackup);
+        _checkSourceCompatibility(_proposedPrimary, decimals);
+        _checkSourceCompatibility(_proposedBackup, decimals);
+        address _previousPrimary = address(primarySource);
+        address _previousBackup = address(backupSource);
+        primarySource = IPriceSource(_proposedPrimary);
+        backupSource = IPriceSource(_proposedBackup);
         _invalidatePendingTransitions();
         pendingPrimarySource = address(0);
         pendingBackupSource = address(0);
         sourcesProposedAt = 0;
-        emit SourcesChanged(previousPrimary, previousBackup, proposedPrimary, proposedBackup);
+        emit SourcesChanged(_previousPrimary, _previousBackup, _proposedPrimary, _proposedBackup);
     }
 
     /**
@@ -346,6 +345,7 @@ contract TellorShepherd is ITellorShepherd {
      * @notice Announces a nonzero replacement admin; current admin only, in either pause state.
      * @dev No recipient acceptance or liveness check: a throwaway address is permitted.
      * Cancel an existing proposal before reproposing and starting a new notice period.
+     * @param _newAdmin Nonzero replacement administrator, different from the current admin.
      */
     function proposeAdminChange(address _newAdmin) external {
         if (msg.sender != admin) revert NotAdmin();
@@ -361,6 +361,7 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @notice Proposes a new deviation threshold in basis points; current admin only.
      * @dev The active threshold governs transitions until execution. Zero means no proposal.
+     * @param _newThresholdBps Replacement threshold from 1 to 9999 basis points, different from the current threshold.
      */
     function proposeChallengeThresholdChange(uint256 _newThresholdBps) external {
         if (msg.sender != admin) revert NotAdmin();
@@ -376,6 +377,7 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @notice Proposes a new minimum pause duration in seconds; current admin only.
      * @dev Zero is valid. Until execution, the current duration still governs every pause.
+     * @param _newDuration Replacement minimum pause duration in seconds, different from the current duration; zero is allowed.
      */
     function proposeMinPauseDurationChange(uint256 _newDuration) external {
         if (msg.sender != admin) revert NotAdmin();
@@ -393,6 +395,8 @@ contract TellorShepherd is ITellorShepherd {
      * @dev May retain one current source. Cancel any existing proposal before replacing it.
      * Empty history is allowed. Metadata does not prove trust, readiness, or timing suitability.
      * Admins must reassess source timing against this Shepherd's immutable transition delays.
+     * @param _newPrimary Proposed primary reader with code and matching price precision.
+     * @param _newBackup Proposed backup reader with code and matching price precision.
      */
     function proposeSourcesChange(address _newPrimary, address _newBackup) external {
         if (msg.sender != admin) revert NotAdmin();
@@ -468,7 +472,11 @@ contract TellorShepherd is ITellorShepherd {
         if (pendingPrimarySource != address(0)) revert SourcesChangePending();
         if (block.timestamp - pausedAt < minPauseDuration) revert PauseDurationNotElapsed();
 
-        if (mode != _expectedMode || address(primarySource) != _expectedPrimary || address(backupSource) != _expectedBackup) {
+        if (
+            mode != _expectedMode ||
+            address(primarySource) != _expectedPrimary ||
+            address(backupSource) != _expectedBackup
+        ) {
             revert UnexpectedState();
         }
 
@@ -483,17 +491,22 @@ contract TellorShepherd is ITellorShepherd {
      * @notice Returns only the selected source's price and original millisecond timestamp.
      * @dev Paused or unusable reads revert without switching or consulting the other source.
      * Age equality is accepted; a TWAP endpoint does not bound contributor age.
+     * @return _value Selected source price in quote units per whole base unit, scaled by decimals().
+     * @return _aggregateTimestamp Original source observation timestamp in Unix milliseconds.
      */
-    function getCurrentValue() external view override returns (uint256 value, uint256 aggregateTimestamp) {
+    function getCurrentValue() external view override returns (uint256 _value, uint256 _aggregateTimestamp) {
         return _readSelectedSource();
     }
 
     /**
      * @inheritdoc ITellorShepherd
      */
-    function latestRoundData() external view override returns (
-        uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound
-    ) {
+    function latestRoundData()
+        external
+        view
+        override
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+    {
         (uint256 value, uint256 timestampMs) = _readSelectedSource();
         if (value > uint256(type(int256).max)) revert SignedPriceOverflow();
         return (0, int256(value), 0, timestampMs / 1000, 0);
@@ -502,7 +515,7 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @inheritdoc ITellorShepherd
      */
-    function validateSource(address _source) external view override returns (uint256 value, uint256 timestampMs) {
+    function validateSource(address _source) external view override returns (uint256 _value, uint256 _timestampMs) {
         _checkSourceCompatibility(_source, decimals);
         return _readUsableSource(IPriceSource(_source));
     }
@@ -511,14 +524,17 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @dev One challenge predicate shared by request, execution and cancellation.
+     * @return True when backup is usable and primary is unusable or the two prices deviate beyond the threshold.
      */
     function _challengeAllowed() internal view returns (bool) {
-        (bool deviating, bool primaryUsable, bool backupUsable) = _readDeviation();
-        return backupUsable && (!primaryUsable || deviating);
+        (bool _deviating, bool _primaryUsable, bool _backupUsable) = _readDeviation();
+        return _backupUsable && (!_primaryUsable || _deviating);
     }
 
     /**
      * @dev Compatibility is not authenticity. Price availability is deliberately not probed.
+     * @param _source Candidate reader, which must contain code.
+     * @param _decimals Required raw-price decimal precision.
      */
     function _checkSourceCompatibility(address _source, uint8 _decimals) internal view {
         if (_source.code.length == 0) revert SourceHasNoCode();
@@ -545,6 +561,9 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @dev Reads both sources independent of pause. Deviation is meaningful only when both are usable.
      * An unusable source returns false for deviation; callers must also inspect the usability flags.
+     * @return _isDeviating Whether two usable prices exceed the strict primary-relative threshold; false if either is unusable.
+     * @return _primaryUsable Whether the primary read succeeds and passes price, timestamp and age checks.
+     * @return _backupUsable Whether the backup read succeeds and passes price, timestamp and age checks.
      */
     function _readDeviation() internal view returns (bool _isDeviating, bool _primaryUsable, bool _backupUsable) {
         uint256 _primaryValue;
@@ -552,16 +571,22 @@ contract TellorShepherd is ITellorShepherd {
         (_primaryValue, , _primaryUsable) = _readSource(primarySource);
         (_backupValue, , _backupUsable) = _readSource(backupSource);
         if (!_primaryUsable || !_backupUsable) return (false, _primaryUsable, _backupUsable);
-        uint256 difference = _backupValue > _primaryValue ? _backupValue - _primaryValue : _primaryValue - _backupValue;
+        uint256 _difference = _backupValue > _primaryValue
+            ? _backupValue - _primaryValue
+            : _primaryValue - _backupValue;
         // Exactly floor(reference * threshold / 10000), without an overflowing product.
         // Integer difference > this floor is equivalent to the strict rational comparison.
-        uint256 allowedDifference = (_primaryValue / 10000) * challengeThresholdBps
-            + ((_primaryValue % 10000) * challengeThresholdBps) / 10000;
-        return (difference > allowedDifference, _primaryUsable, _backupUsable);
+        uint256 _allowedDifference = (_primaryValue / 10000) *
+            challengeThresholdBps +
+            ((_primaryValue % 10000) * challengeThresholdBps) /
+            10000;
+        return (_difference > _allowedDifference, _primaryUsable, _backupUsable);
     }
 
     /**
      * @dev Shared consumer policy; validates original milliseconds before any output conversion.
+     * @return _value Selected source price at decimals() precision.
+     * @return _timestampMs Original source observation timestamp in Unix milliseconds.
      */
     function _readSelectedSource() internal view returns (uint256 _value, uint256 _timestampMs) {
         if (paused) revert ShepherdPaused();
@@ -572,16 +597,26 @@ contract TellorShepherd is ITellorShepherd {
      * @dev Both sources share the same maximum age; compare without rounding observation milliseconds.
      * False marks unusable data; returned numbers must then be ignored. Source reverts are caught,
      * but malformed successful return data and caller-induced gas starvation remain unresolved.
+     * @param _source Reader to assess without consulting the other source or the pause state.
+     * @return _value Raw source price; ignore when _isUsable is false.
+     * @return _timestampMs Original source timestamp in Unix milliseconds; ignore when _isUsable is false.
+     * @return _isUsable Whether the read succeeds with a nonzero price and a valid timestamp within MAX_DATA_AGE.
      */
-    function _readSource(IPriceSource _source) internal view returns (uint256 _value, uint256 _timestampMs, bool _isUsable) {
-        try _source.getCurrentValue() returns (uint256 value_, uint256 timestampMs_) {
-            if (value_ == 0) return (value_, timestampMs_, false); // ZeroValue
+    function _readSource(
+        IPriceSource _source
+    ) internal view returns (uint256 _value, uint256 _timestampMs, bool _isUsable) {
+        try _source.getCurrentValue() returns (uint256 _sourceValue, uint256 _sourceTimestampMs) {
+            if (_sourceValue == 0) return (_sourceValue, _sourceTimestampMs, false); // ZeroValue
             uint256 _nowMs = block.timestamp * 1000;
             // Short-circuit timestamp validity before subtracting to check age.
-            if (timestampMs_ == 0 || timestampMs_ > _nowMs || _nowMs - timestampMs_ > MAX_DATA_AGE * 1000) {
-                return (value_, timestampMs_, false);
+            if (
+                _sourceTimestampMs == 0 ||
+                _sourceTimestampMs > _nowMs ||
+                _nowMs - _sourceTimestampMs > MAX_DATA_AGE * 1000
+            ) {
+                return (_sourceValue, _sourceTimestampMs, false);
             }
-            return (value_, timestampMs_, true); // Success
+            return (_sourceValue, _sourceTimestampMs, true); // Success
         } catch {
             return (0, 0, false); // SourceError
         }
@@ -589,6 +624,9 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @dev Shared refusal for native consumer reads and manual source validation; ignores pause.
+     * @param _source Reader whose current value must pass price, timestamp and age checks.
+     * @return _value Source price at decimals() precision.
+     * @return _timestampMs Original source observation timestamp in Unix milliseconds.
      */
     function _readUsableSource(IPriceSource _source) internal view returns (uint256 _value, uint256 _timestampMs) {
         bool _isUsable;
@@ -599,9 +637,10 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @dev One recovery predicate shared by request, execution and cancellation.
+     * @return True when primary is usable and backup is unusable or the two prices are within the threshold.
      */
     function _recoveryAllowed() internal view returns (bool) {
-        (bool deviating, bool primaryUsable, bool backupUsable) = _readDeviation();
-        return primaryUsable && (!backupUsable || !deviating);
+        (bool _deviating, bool _primaryUsable, bool _backupUsable) = _readDeviation();
+        return _primaryUsable && (!_backupUsable || !_deviating);
     }
 }

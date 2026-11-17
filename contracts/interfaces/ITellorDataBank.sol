@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 /**
+ * @author Tellor Inc.
  * @title ITellorDataBank
  * @notice Interface for TellorDataBank contract
  */
@@ -33,38 +34,41 @@ interface ITellorDataBank {
     // Getter functions
 
     /**
-     * @dev returns the aggregate data for a given query ID and index
-     * @param _queryId the query ID to get the aggregate data for
-     * @param _index the index of the aggregate data to get
-     * @return _aggregateData the aggregate data
+     * @notice Returns the stored aggregate for a query ID and index.
+     * @param _queryId Feed whose stored aggregate is requested.
+     * @param _index Zero-based aggregate index; out-of-range access reverts.
+     * @return _aggregateData Stored report with aggregate/attestation times in milliseconds and relay time in seconds.
      */
-    function getAggregateByIndex(bytes32 _queryId, uint256 _index) external view returns (AggregateData memory _aggregateData);
+    function getAggregateByIndex(
+        bytes32 _queryId,
+        uint256 _index
+    ) external view returns (AggregateData memory _aggregateData);
 
     /**
-     * @dev returns the total number of aggregate values
-     * @param _queryId the query ID to get the aggregate value count for
-     * @return number of aggregate values stored
+     * @notice Returns the number of stored aggregates for a query ID.
+     * @param _queryId Feed whose stored aggregates are counted.
+     * @return Number of aggregates stored for the feed.
      */
     function getAggregateValueCount(bytes32 _queryId) external view returns (uint256);
 
     /**
-     * @dev returns the current aggregate data for a given query ID
-     * @param _queryId the query ID to get the current aggregate data for
-     * @return _aggregateData the current aggregate data
+     * @notice Returns the newest stored aggregate for a query ID, or an empty struct if none exists.
+     * @param _queryId Feed whose newest stored aggregate is requested.
+     * @return _aggregateData Newest stored aggregate, or an empty struct if none exists.
      */
     function getCurrentAggregateData(bytes32 _queryId) external view returns (AggregateData memory _aggregateData);
 
     /**
-     * @dev returns the newest stored relay whose EVM relay time is strictly before `_timestamp`
-     * @param _queryId the query ID to search
+     * @notice Returns the newest stored relay whose EVM relay time is strictly before _timestamp.
+     * @param _queryId Feed whose relay history is searched.
      * @param _timestamp EVM timestamp cutoff in seconds; eligible relays satisfy relayTimestamp < _timestamp
-     * @return _found whether a matching relay exists
-     * @return _aggregateData the matching relay, or an empty struct if not found
+     * @return _found Whether a matching relay exists.
+     * @return _aggregateData Matching relay, or an empty struct if not found.
      */
-    function getRelayBefore(bytes32 _queryId, uint256 _timestamp)
-        external
-        view
-        returns (bool _found, AggregateData memory _aggregateData);
+    function getRelayBefore(
+        bytes32 _queryId,
+        uint256 _timestamp
+    ) external view returns (bool _found, AggregateData memory _aggregateData);
 
     /**
      * @notice Returns a wider-interval TWAP ending at the newest relay strictly before a cutoff.
@@ -86,8 +90,9 @@ interface ITellorDataBank {
      * @return _available Whether the requested reference can be computed.
      * @return _twap Average and coverage metadata; endTimestamp is the interval end, not contributor age.
      */
-    function getTwapBefore(bytes32 _queryId, uint256 _relayCutoffSeconds, uint256 _minWindowMs)
-        external
-        view
-        returns (bool _available, TwapData memory _twap);
+    function getTwapBefore(
+        bytes32 _queryId,
+        uint256 _relayCutoffSeconds,
+        uint256 _minWindowMs
+    ) external view returns (bool _available, TwapData memory _twap);
 }

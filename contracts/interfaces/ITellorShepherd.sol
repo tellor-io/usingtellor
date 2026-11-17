@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {IPriceSource} from "./IPriceSource.sol";
+import { IPriceSource } from "./IPriceSource.sol";
 
 /**
+ * @author Tellor Inc.
  * @title ITellorShepherd
  * @notice Consumer reads, source diagnostics, events, and errors for a per-feed Tellor safety layer.
  */
@@ -30,7 +31,12 @@ interface ITellorShepherd {
     event RecoveryInvalidated();
     event RecoveryRequested(address indexed caller, uint256 requestedAt);
     event SourcesChangeCancelled(address indexed proposedPrimary, address indexed proposedBackup);
-    event SourcesChanged(address previousPrimary, address previousBackup, address indexed newPrimary, address indexed newBackup);
+    event SourcesChanged(
+        address previousPrimary,
+        address previousBackup,
+        address indexed newPrimary,
+        address indexed newBackup
+    );
     event SourcesChangeProposed(address indexed proposedPrimary, address indexed proposedBackup, uint256 proposedAt);
     event Unpaused(address indexed caller);
 
@@ -90,17 +96,20 @@ interface ITellorShepherd {
 
     /**
      * @notice Returns the current backup source.
+     * @return Current backup reader implementing IPriceSource.
      */
     function backupSource() external view returns (IPriceSource);
 
     /**
      * @notice Returns the immutable source price precision.
+     * @return Decimal places used to scale raw source prices, from 0 to 77.
      */
     function decimals() external view returns (uint8);
 
     /**
      * @notice Returns the display label set at deployment, with no setter.
      * @dev May be empty. This label does not validate source identity, units, or trust.
+     * @return Display-only feed label, which may be empty.
      */
     function description() external view returns (string memory);
 
@@ -109,12 +118,15 @@ interface ITellorShepherd {
      * @dev Paused, failed, zero/future or over-age timestamp reads revert. No automatic fallback.
      * Age equality is valid at full millisecond precision; one immutable maximum data age applies to both sources.
      * A TWAP endpoint does not establish contributor freshness. No adaptor-specific rescaling occurs.
+     * @return _value Selected source price in quote units per whole base unit, scaled by decimals().
+     * @return _aggregateTimestamp Original source observation timestamp in Unix milliseconds.
      */
-    function getCurrentValue() external view returns (uint256 value, uint256 aggregateTimestamp);
+    function getCurrentValue() external view returns (uint256 _value, uint256 _aggregateTimestamp);
 
     /**
      * @notice Whether explicit pausing is enabled, fixed at deployment.
      * @dev False does not guarantee price availability or prevent delayed source replacement.
+     * @return True if admin and authorized pausers may explicitly pause this instance.
      */
     function isPausable() external view returns (bool);
 
@@ -129,17 +141,20 @@ interface ITellorShepherd {
      * Flooring can make an observation appear less than one second older to downstream consumers.
      * @return answeredInRound Always zero: unavailable sentinel; no round progression is synthesized.
      */
-    function latestRoundData() external view returns (
-        uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound
-    );
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 
     /**
      * @notice Immutable maximum observation age in seconds, shared by both sources.
+     * @return Inclusive maximum observation age in seconds.
      */
     function MAX_DATA_AGE() external view returns (uint256);
 
     /**
      * @notice Returns the current primary source.
+     * @return Current primary reader implementing IPriceSource.
      */
     function primarySource() external view returns (IPriceSource);
 
@@ -153,9 +168,8 @@ interface ITellorShepherd {
      * Success does not establish asset identity, trustworthy prices or future availability.
      * Construction and source migration remain metadata-only; this check does not change their policy.
      * @param _source Candidate IPriceSource, whether or not currently configured.
-     * @return value Original raw uint256 price, without the signed latestRoundData bound.
-     * @return timestampMs Original source observation timestamp in Unix milliseconds.
+     * @return _value Original raw uint256 price, without the signed latestRoundData bound.
+     * @return _timestampMs Original source observation timestamp in Unix milliseconds.
      */
-    function validateSource(address _source) external view returns (uint256 value, uint256 timestampMs);
-
+    function validateSource(address _source) external view returns (uint256 _value, uint256 _timestampMs);
 }

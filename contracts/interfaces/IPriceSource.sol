@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 /**
+ * @author Tellor Inc.
  * @title IPriceSource
  * @notice Protocol-neutral reader for one fixed base/quote feed.
  * @dev Feed identity, base/quote direction, and precision must remain immutable.
@@ -21,11 +22,14 @@ interface IPriceSource {
      * spot observation time). It must never be renewed merely by reading or switching
      * sources. A TWAP endpoint does not establish freshness of every contributor.
      * No maximum age is specified here; callers must apply their required age policy.
-     * @return value Quote units per whole base unit, scaled by the declared decimals.
-     * @return timestampMs Source timestamp in milliseconds, with the documented meaning.
+     * @return _value Quote units per whole base unit, scaled by the declared decimals.
+     * @return _timestampMs Source timestamp in milliseconds, with the documented meaning.
      */
-    function getCurrentValue() external view returns (uint256 value, uint256 timestampMs);
+    function getCurrentValue() external view returns (uint256 _value, uint256 _timestampMs);
 
-    /// @notice Returns the immutable number of decimal places used to scale prices.
+    /**
+     * @notice Returns the immutable number of decimal places used to scale prices.
+     * @return Decimal places used to scale raw source prices.
+     */
     function decimals() external view returns (uint8);
 }
