@@ -98,7 +98,7 @@ describe("TellorShepherd - Expected unpause selection", function () {
     await primary.configureRead(0, 0, 1);
     await time.increase(120);
     await s.unpause(...selection);
-    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
+    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(primary, "ReadUnavailable");
   });
 
   it("has no argument-free unpause bypass", async function () {

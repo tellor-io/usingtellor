@@ -23,10 +23,8 @@ contract TellorSpotSource is IPriceSource {
     error DataBankHasNoCode();
     error InvalidDecimals();
     error InvalidQueryId();
-    error InvalidTimestamp();
     error InvalidValueLength();
     error NoData();
-    error ZeroValue();
 
     /**
      * @notice Binds the source configuration without requiring populated history.
@@ -51,8 +49,9 @@ contract TellorSpotSource is IPriceSource {
      * @notice Returns the selected spot price and original aggregate timestamp in milliseconds.
      * @dev Requires relayTimestamp < block.timestamp - RELAY_READ_DELAY, including at zero delay.
      * Zero delay selects the newest relay strictly before the current block's timestamp.
-     * Missing/invalid data reverts without searching for an older valid price; dependency
-     * failures propagate. Trailing payload bytes are accepted. No maximum age is enforced.
+     * Missing data, short payloads and dependency failures revert without searching for an older price.
+     * Trailing payload bytes are accepted. Zero prices and zero/future timestamps pass through;
+     * consumers such as Shepherd enforce price usability and maximum age.
      * @return _value Raw quote units per whole base unit, scaled by decimals().
      * @return _timestampMs Original spot aggregate time, never relay time or read time.
      */
@@ -64,8 +63,6 @@ contract TellorSpotSource is IPriceSource {
         if (!_found) revert NoData();
         if (_record.value.length < 32) revert InvalidValueLength();
         _value = abi.decode(_record.value, (uint256));
-        if (_value == 0) revert ZeroValue();
         _timestampMs = _record.aggregateTimestamp;
-        if (_timestampMs == 0 || _timestampMs > block.timestamp * 1000) revert InvalidTimestamp();
     }
 }

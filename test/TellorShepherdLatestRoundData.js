@@ -93,7 +93,8 @@ describe("TellorShepherd - Chainlink latest-read subset", function () {
           fault === "zero timestamp" ? 0 : fault === "future" ? ethers.MaxUint256 :
             fault === "stale" ? f.timestamp - 3600000n : f.timestamp,
           fault === "revert" ? 1 : fault === "malformed" ? 2 : 0);
-        await refusal(f.s, fault === "malformed" ? undefined : "SourceNotUsable");
+        await refusal(f.s, fault === "malformed" ? undefined : fault === "revert" ? "ReadUnavailable" : "SourceNotUsable",
+          fault === "revert" ? f.sources[mode] : f.s);
       });
     }
     it(`mode ${mode}: pause precedes source and signed-range failures`, async function () {

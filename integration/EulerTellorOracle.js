@@ -154,13 +154,13 @@ describe("Euler adaptor - Real Shepherd integration", function () {
 
   it("requires mature TWAP coverage and excludes the endpoint price", async function () {
     const f = await loadFixture(fixture);
-    await expectRefusal(f, f.shepherd, "SourceNotUsable");
+    await expectRefusal(f, f.primary, "NoTwapData");
     const first = await relay(f, primaryPrice, f.startMs);
     await time.increaseTo(first + 61n);
-    await expectRefusal(f, f.shepherd, "SourceNotUsable");
+    await expectRefusal(f, f.primary, "NoTwapData");
     const end = await relay(f, primaryPrice * 2n, f.startMs + 30000);
     await time.increaseTo(end + 60n);
-    await expectRefusal(f, f.shepherd, "SourceNotUsable");
+    await expectRefusal(f, f.primary, "NoTwapData");
     await time.increase(1);
     await expectQuotes(f, primaryPrice);
     await relay(f, primaryPrice * 3n, f.startMs + 40000);
@@ -320,7 +320,7 @@ describe("Euler adaptor - Real Shepherd integration", function () {
     await mock.configureRead(0, f.report.pair[1], 0);
     await expectRefusal(f, f.shepherd, "SourceNotUsable");
     await mock.configureRead(backupPrice, f.report.pair[1], 1);
-    await expectRefusal(f, f.shepherd, "SourceNotUsable");
+    await expectRefusal(f, mock, "ReadUnavailable");
     for (const code of ["0x60006000fd", "0x60016000f3"]) {
       await setCode(mock.target, code);
       await expectRefusal(f);

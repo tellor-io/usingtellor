@@ -1,6 +1,6 @@
 # Tellor Shepherd
 
-Tellor Shepherd selects between a primary and backup price source. It serves the selected source's data or refuses the read. Switching sources requires explicit transactions and a delay; there is no automatic fallback, and Shepherd never authors a price.
+Tellor Shepherd selects between a primary and backup price source. It serves the selected source's data or refuses the read. Switching sources requires explicit transactions and a delay; there is no automatic fallback, and Shepherd never authors a price. Admin source replacement works while paused or live. Source-call failures propagate; permissionless switching away from invalid returned data requires both source calls to succeed.
 
 This repository also contains the Tellor DataBridge, DataBank, spot/TWAP readers, and Hardhat test helpers. The npm package name in this checkout is **`usingtellor`**. The repository name and older examples may use UsingTellorLayer; published packages are not evidence of this branch's contents.
 

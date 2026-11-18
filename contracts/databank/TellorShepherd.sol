@@ -19,8 +19,6 @@ contract TellorShepherd is ITellorShepherd {
     bool public immutable override isPausable;
     uint256 public immutable override MAX_DATA_AGE;
     uint256 public immutable RECOVERY_DELAY_SECONDS;
-    uint256 public constant SOURCE_READ_GAS = 500_000;
-    uint256 internal constant SOURCE_READ_GAS_RESERVE = SOURCE_READ_GAS + SOURCE_READ_GAS / 63 + 5_000;
 
     // Storage
     address public admin;
@@ -310,7 +308,7 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @notice Replaces both sources atomically after notice; admin only.
-     * @dev Pausable instances must be paused; non-pausable instances migrate while live.
+     * @dev Works while paused or live, regardless of pausability.
      * Rechecks metadata without reading prices. Invalidates transition requests,
      * preserves mode/pause clock and immutable delays/maximum age, and never consults the old sources.
      */
@@ -319,7 +317,6 @@ contract TellorShepherd is ITellorShepherd {
         address _proposedPrimary = pendingPrimarySource;
         address _proposedBackup = pendingBackupSource;
         if (_proposedPrimary == address(0)) revert NoPendingSourcesChange();
-        if (isPausable && !paused) revert NotPaused();
         if (block.timestamp - sourcesProposedAt < CONFIG_CHANGE_DELAY) revert ConfigChangeDelayNotElapsed();
         _checkSourceCompatibility(_proposedPrimary, decimals);
         _checkSourceCompatibility(_proposedBackup, decimals);
@@ -570,6 +567,7 @@ contract TellorShepherd is ITellorShepherd {
     /**
      * @dev Reads both sources independent of pause. Deviation is meaningful only when both are usable.
      * An unusable source returns false for deviation; callers must also inspect the usability flags.
+     * Failure of either source call reverts the assessment rather than marking that source unusable.
      * @return _isDeviating Whether two usable prices exceed the strict lower-price-relative threshold; false if either is unusable.
      * @return _primaryUsable Whether the primary read succeeds and passes price, timestamp and age checks.
      * @return _backupUsable Whether the backup read succeeds and passes price, timestamp and age checks.
@@ -606,9 +604,9 @@ contract TellorShepherd is ITellorShepherd {
 
     /**
      * @dev Both sources share the same maximum age; compare without rounding observation milliseconds.
-     * False marks unusable data; returned numbers must then be ignored. Every read receives exactly
-     * SOURCE_READ_GAS, so caller-chosen gas cannot change the outcome; too little gas reverts instead.
-     * Source reverts, including exceeding the budget, are caught; malformed successful return data remains unresolved.
+     * False marks unusable returned data; returned numbers must then be ignored.
+     * Source calls use available gas without a fixed budget. Reverts, out-of-gas failures and
+     * malformed ABI responses revert the caller instead of marking the source unusable.
      * @param _source Reader to assess without consulting the other source or the pause state.
      * @return _value Raw source price; ignore when _isUsable is false.
      * @return _timestampMs Original source timestamp in Unix milliseconds; ignore when _isUsable is false.
@@ -617,25 +615,14 @@ contract TellorShepherd is ITellorShepherd {
     function _readSource(
         IPriceSource _source
     ) internal view returns (uint256 _value, uint256 _timestampMs, bool _isUsable) {
-        if (gasleft() < SOURCE_READ_GAS_RESERVE) revert InsufficientGasForSourceRead();
-        try _source.getCurrentValue{ gas: SOURCE_READ_GAS }() returns (
-            uint256 _sourceValue,
-            uint256 _sourceTimestampMs
-        ) {
-            if (_sourceValue == 0) return (_sourceValue, _sourceTimestampMs, false); // ZeroValue
-            uint256 _nowMs = block.timestamp * 1000;
-            // Short-circuit timestamp validity before subtracting to check age.
-            if (
-                _sourceTimestampMs == 0 ||
-                _sourceTimestampMs > _nowMs ||
-                _nowMs - _sourceTimestampMs > MAX_DATA_AGE * 1000
-            ) {
-                return (_sourceValue, _sourceTimestampMs, false);
-            }
-            return (_sourceValue, _sourceTimestampMs, true); // Success
-        } catch {
-            return (0, 0, false); // SourceError
+        (uint256 _sourceValue, uint256 _sourceTimestampMs) = _source.getCurrentValue();
+        if (_sourceValue == 0) return (_sourceValue, _sourceTimestampMs, false); // ZeroValue
+        uint256 _nowMs = block.timestamp * 1000;
+        // Short-circuit timestamp validity before subtracting to check age.
+        if (_sourceTimestampMs == 0 || _sourceTimestampMs > _nowMs || _nowMs - _sourceTimestampMs > MAX_DATA_AGE * 1000) {
+            return (_sourceValue, _sourceTimestampMs, false);
         }
+        return (_sourceValue, _sourceTimestampMs, true); // Success
     }
 
     /**

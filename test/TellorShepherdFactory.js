@@ -76,7 +76,7 @@ describe("TellorShepherdFactory", function () {
     expect(await shepherd.recoveryPending()).to.equal(false);
     expect(await shepherd.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     // Empty sources are allowed by the existing constructor policy.
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "NoTwapData");
   });
 
   it("forwards empty and long descriptions and binds them into CREATE2 deployments", async function () {

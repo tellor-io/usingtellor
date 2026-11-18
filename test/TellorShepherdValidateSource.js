@@ -46,7 +46,7 @@ describe("TellorShepherd - Manual source validation", function () {
         await candidate.configureRead(0, timestamp, 0);
         await expect(s.connect(outsider).validateSource(candidate.target)).to.be.revertedWithCustomError(s, "SourceNotUsable");
         expect(await state(s)).to.deep.equal(before);
-        await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, paused ? "ShepherdPaused" : "SourceNotUsable");
+        await expect(s.getCurrentValue()).to.be.revertedWithCustomError(paused ? s : primary, paused ? "ShepherdPaused" : "ReadUnavailable");
       });
     }
   }
@@ -95,6 +95,7 @@ describe("TellorShepherd - Manual source validation", function () {
         fault === "zero timestamp" ? 0 : fault === "future timestamp" ? future : timestamp,
         fault === "revert" ? 1 : fault === "malformed" ? 2 : 0);
       if (fault === "malformed") await expect(s.validateSource(candidate.target)).to.be.reverted;
+      else if (fault === "revert") await expect(s.validateSource(candidate.target)).to.be.revertedWithCustomError(candidate, "ReadUnavailable");
       else await expect(s.validateSource(candidate.target)).to.be.revertedWithCustomError(s, "SourceNotUsable");
     });
   }

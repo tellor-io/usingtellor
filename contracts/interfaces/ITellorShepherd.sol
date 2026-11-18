@@ -52,7 +52,6 @@ interface ITellorShepherd {
     error ChallengeThresholdChangePending();
     error ChallengeThresholdUnchanged();
     error ConfigChangeDelayNotElapsed();
-    error InsufficientGasForSourceRead();
     error InvalidAdmin();
     error InvalidChallengeDelay();
     error InvalidChallengeThreshold();
@@ -161,7 +160,7 @@ interface ITellorShepherd {
      * @dev Callable by anyone, including while paused, without selecting or registering the source.
      * Requires code, matching decimals, a nonzero price, and a nonzero/nonfuture timestamp
      * no older than MAX_DATA_AGE at full millisecond precision; age equality is accepted.
-     * Metadata failures revert; caught price-read failures and invalid values revert with SourceNotUsable.
+     * Metadata and price-read failures propagate; invalid returned values revert with SourceNotUsable.
      * Malformed successful ABI output can revert during decoding. No guarantee of a specific error for it.
      * Success does not establish asset identity, trustworthy prices or future availability.
      * Construction and source migration remain metadata-only; this check does not change their policy.

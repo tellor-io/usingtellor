@@ -181,11 +181,12 @@ describe("TellorSpotSource", function () {
       });
     }
 
-    it("rejects a zero first word even with trailing bytes", async function () {
+    it("returns a zero first word even with trailing bytes", async function () {
       const f = await loadFixture(faultFixture);
-      await configure(f, encode(0) + "abcd", (await time.latest()) * 1000);
+      const timestampMs = BigInt(await time.latest()) * 1000n;
+      await configure(f, encode(0) + "abcd", timestampMs);
       for (const source of [f.latest, f.delayed]) {
-        await expect(source.getCurrentValue()).to.be.revertedWithCustomError(source, "ZeroValue");
+        expect(await source.getCurrentValue()).to.deep.equal([0n, timestampMs]);
       }
     });
 
@@ -199,14 +200,14 @@ describe("TellorSpotSource", function () {
     });
 
     for (const offsetMs of [null, 1, 1000]) {
-      it(`rejects ${offsetMs === null ? "zero" : `${offsetMs}ms future`} timestamps on both paths`, async function () {
+      it(`returns ${offsetMs === null ? "zero" : `${offsetMs}ms future`} timestamps on both paths`, async function () {
         const f = await loadFixture(faultFixture);
         const readTime = (await time.latest()) + 10;
         const timestampMs = offsetMs === null ? 0 : readTime * 1000 + offsetMs;
         await configure(f, encode(100), timestampMs);
         await time.increaseTo(readTime);
         for (const source of [f.latest, f.delayed]) {
-          await expect(source.getCurrentValue()).to.be.revertedWithCustomError(source, "InvalidTimestamp");
+          expect(await source.getCurrentValue()).to.deep.equal([100n, BigInt(timestampMs)]);
         }
       });
     }
