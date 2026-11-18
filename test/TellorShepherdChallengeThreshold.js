@@ -143,8 +143,8 @@ describe("TellorShepherd - Mutable deviation threshold", function () {
       await executeUpdate(s, 9999);
       expect(await otherState(f)).to.deep.equal(before); expect(await transitions(s)).to.deep.equal([false, 0n, false, 0n]);
       if (paused) await s.unpause(...await unpauseSelection(s));
-      await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
-      // Malformed successful return data still reverts outside the source try/catch.
+      await expect(s.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "ReadUnavailable");
+      // A failed primary read blocks transition assessment before reading the malformed backup.
       await expect(s.requestChallenge()).to.be.reverted;
     });
   }

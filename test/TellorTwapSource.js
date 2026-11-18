@@ -146,6 +146,12 @@ describe("TellorTwapSource", function () {
       expect(await f.source.getCurrentValue()).to.deep.equal(expected);
       await time.increase(7 * 86400);
       expect(await f.source.getCurrentValue()).to.deep.equal(expected);
+      const resumedMs = (await time.latest() - 2) * 1000 + 123;
+      const resumedRelay = await append(f, resumedMs - f.startTime, 777);
+      // The previous mature endpoint remains available while the new relay matures.
+      expect(await f.source.getCurrentValue()).to.deep.equal(expected);
+      await time.increaseTo(resumedRelay + 61n);
+      expect(await f.source.getCurrentValue()).to.deep.equal([900n, BigInt(resumedMs)]);
     });
   });
 
@@ -175,7 +181,6 @@ describe("TellorTwapSource", function () {
     });
 
     for (const [label, mutate] of [
-      ["zero price", (t) => { t[0] = 0n; }],
       ["equal indices", (t) => { t[1] = t[2]; }],
       ["reversed indices", (t) => { t[1] = t[2] + 1n; }],
       ["equal timestamps", (t) => { t[3] = t[4]; }],
@@ -220,8 +225,14 @@ describe("TellorTwapSource", function () {
       });
     }
 
+    it("returns a zero TWAP price without weakening interval consistency checks", async function () {
+      const f = await loadFixture(faultFixture);
+      await f.bank.configureTwap(true, [0n, ...f.twap.slice(1)], 0);
+      expect(await f.source.getCurrentValue()).to.deep.equal([0n, f.end[2]]);
+    });
+
     for (const offsetMs of [null, 0, 1, 1000]) {
-      it(`${offsetMs === 0 ? "accepts current" : "refuses " + (offsetMs === null ? "zero" : `${offsetMs}ms future`)} endpoint time`, async function () {
+      it(`${offsetMs === null ? "rejects a zero-length interval at zero" : "returns " + (offsetMs === 0 ? "current" : `${offsetMs}ms future`)} endpoint time`, async function () {
         const f = await loadFixture(faultFixture);
         const readTime = (await time.latest()) + 10;
         const endMs = offsetMs === null ? 0n : BigInt(readTime * 1000 + offsetMs);
@@ -235,10 +246,10 @@ describe("TellorTwapSource", function () {
         await f.bank.configureEnd(true, end);
         await f.bank.configureTwap(true, [100n, 0n, 1n, startMs, endMs, 1n], 0);
         await time.increaseTo(readTime);
-        if (offsetMs === 0) {
+        if (offsetMs !== null) {
           expect(await f.source.getCurrentValue()).to.deep.equal([100n, endMs]);
         } else {
-          await expect(f.source.getCurrentValue()).to.be.revertedWithCustomError(f.source, "InvalidTimestamp");
+          await expect(f.source.getCurrentValue()).to.be.revertedWithCustomError(f.source, "InvalidTwapReference");
         }
       });
     }

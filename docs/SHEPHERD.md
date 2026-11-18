@@ -18,7 +18,7 @@ The factory's `Configuration` uses the same names, with separate `challengeDelay
 | --- | --- |
 | `description` | Display label set at deployment; may be empty. It does not verify asset identity. |
 | `decimals` | Fixed raw-price precision, 0–77. Both sources must report the same precision. |
-| Source addresses | Must contain code and expose matching decimals. Available prices are not required at deployment or replacement. Reads must fit within `SOURCE_READ_GAS`. |
+| Source addresses | Must contain code and expose matching decimals. Available prices are not required at deployment or replacement. |
 | `admin` | Nonzero address controlling administrative operations. |
 | `minPauseDuration` | Mutable seconds, including zero. |
 | `configChangeDelay` | Positive fixed notice in seconds for source, admin, pause-duration, and threshold updates. |
@@ -31,19 +31,17 @@ Deployers and admins must establish that both sources represent the intended quo
 
 ## Consumer reads
 
-`getCurrentValue()` returns the raw unsigned price and original Unix timestamp in **milliseconds**. It reads only the selected source. Pause, a caught source failure, zero price, zero/future timestamp, or excessive age prevents a successful read. Age exactly equal to `MAX_DATA_AGE` is accepted; one millisecond beyond it is rejected. No read automatically switches sources or renews a timestamp.
+`getCurrentValue()` returns the raw unsigned price and original Unix timestamp in **milliseconds**. It reads only the selected source. Pause, a source-call failure, zero price, zero/future timestamp, or excessive age prevents a successful read. Invalid returned data reverts with `SourceNotUsable`; source failures propagate. Age exactly equal to `MAX_DATA_AGE` is accepted; one millisecond beyond it is rejected. No read automatically switches sources or renews a timestamp.
 
 `latestRoundData()` uses the same read checks, then returns a signed price and `updatedAt = timestampMs / 1000`. Prices above `int256.max` revert with `SignedPriceOverflow` on this surface; native unsigned reads still support them. `roundId`, `startedAt`, and `answeredInRound` are zero sentinels. There is no historical `getRoundData()` support.
 
 `validateSource(address)` checks an arbitrary candidate's code, precision, and current native-read usability. Anyone can call it, even while paused. It returns the original unsigned price and millisecond timestamp without selecting or registering the candidate. It does not enforce the signed-price bound or prove future availability or price truth.
 
-Every source read, including transition assessments and `validateSource`, forwards exactly `SOURCE_READ_GAS` (500,000) gas. A source that needs more is unusable for every caller. If less than `SOURCE_READ_GAS + SOURCE_READ_GAS / 63 + 5000` (512,936) gas remains when a read begins, the call reverts with `InsufficientGasForSourceRead` instead of marking the source unusable, so a caller's gas limit cannot change eligibility. Callers, including nested consumer calls, must supply that gas.
-
-Malformed successful ABI responses can still revert outside the read's catch clause. See [known limitations](AUDIT-HANDOFF.md#known-limitations).
+Every source read, including transition assessments and `validateSource`, uses a direct call without a fixed gas budget. Source reverts, out-of-gas failures, and malformed ABI responses revert the calling operation rather than becoming an “unusable source” result. A caller cannot turn a failed source call into a successful transition by starving it of gas. This does not guarantee gas-independent output from arbitrary sources: a source may itself return different data depending on available gas, including by catching a nested failure.
 
 ## Challenge and recovery
 
-All request, execute, and cancel functions are permissionless and work while paused. Challenge moves PRIMARY to BACKUP; recovery moves BACKUP to PRIMARY.
+All request, execute, and cancel functions are permissionless and work while paused. Challenge moves PRIMARY to BACKUP; recovery moves BACKUP to PRIMARY. Every eligibility assessment reads both sources: both calls must return successfully. “Unusable” below means returned data failing Shepherd's nonzero-price, timestamp, or age checks, not a reverted call.
 
 | Direction | Required at request and execution |
 | --- | --- |
@@ -54,7 +52,7 @@ When both sources are usable, deviation means `abs(backup - primary) * 10000 > m
 
 Execution requires the full direction-specific delay; equality passes. These are checks at request and execution, not proof that the condition held continuously. A change in the reason for eligibility does not restart the timer. A request cannot overwrite an existing request; cancel and request again to start a fresh wait. Cancellation requires that direction's eligibility to be false.
 
-Both sources unusable prevents either switch and permits cancellation. Switching preserves pause state and its clock. Pending transitions do not stop otherwise valid consumer reads.
+Both sources returning unusable data prevents either switch and permits cancellation. If either source call fails, request, execution, and cancellation cannot complete their assessment; mode, pending requests, and timers remain unchanged. Delayed admin source replacement remains available without reading old prices. Switching preserves pause state and its clock. Pending transitions do not stop otherwise valid consumer reads.
 
 ## Pause and unpause
 
@@ -83,7 +81,7 @@ Only the **current admin** may propose, cancel, or execute these operations. All
 | Pause duration | `proposeMinPauseDurationChange`, `cancelMinPauseDurationChange`, `executeMinPauseDurationChange` | Apply the new duration immediately, including to an ongoing pause, without resetting `pausedAt`. |
 | Threshold | `proposeChallengeThresholdChange`, `cancelChallengeThresholdChange`, `executeChallengeThresholdChange` | Apply the new threshold and clear transition requests/timers, even if current prices still qualify. |
 
-Source replacement requires pause only on pausable instances. It rechecks code and precision at proposal and execution; one source may remain unchanged. Neither cancellation nor execution needs the old sources to work. Failed execution preserves the old pair and proposal. Replacement never renews observations or changes fixed delays, precision, description, or maximum age.
+Source replacement can be proposed and executed while paused or live on any instance. It rechecks code and precision at proposal and execution; one source may remain unchanged. Neither cancellation nor execution needs the old sources to work. Failed execution preserves the old pair and proposal. Replacement never renews observations or changes fixed delays, precision, description, or maximum age.
 
 Pause duration accepts any uint256, including zero. Decreasing it may allow immediate unpause; increasing it may extend an active pause. Execution never unpauses automatically. `minPauseDurationChangePending` distinguishes a pending zero from no proposal. Threshold uses `pendingChallengeThresholdBps == 0` for no proposal because zero is invalid policy.
 
@@ -94,6 +92,10 @@ Pending admin, duration, and threshold changes do not block unpause; pending sou
 `TellorSpotSource` and `TellorTwapSource` bind a bank, query ID, precision, and relay-read delay. The TWAP also fixes its window in milliseconds. Spot permits zero delay; TWAP requires positive delay and window.
 
 Both select relays strictly before `block.timestamp - RELAY_READ_DELAY`. Even a zero-delay spot read excludes the current timestamp's relays. No eligible report means no data. Successful reads retain original aggregate timestamps.
+
+Readers return raw data for the consumer to assess. Spot passes through zero prices and zero/future timestamps. TWAP passes through zero prices and future endpoint timestamps, but keeps interval and history-consistency checks: a zero endpoint cannot satisfy a positive-length interval. Neither reader enforces maximum age. Direct reader consumers must apply their own usability checks; Shepherd refuses invalid returned data and can switch away from it to a usable source after the applicable delay.
+
+Missing history (`NoData` / `NoTwapData`), short spot payloads, inconsistent TWAP references, and dependency failures still revert. They therefore block permissionless transition assessment rather than permit fallback. With the current append-only DataBank and a fixed TWAP reader, once an eligible interval covers the window, elapsed time and appended reports do not remove that coverage. History is not pruned, and the window is measured back from the selected observation rather than the current time. Without new reports, the same result remains computable but becomes stale; sufficient history does not guarantee a fresh price. This persistence does not apply to arbitrary bank implementations or a replacement reader with different settings.
 
 TWAP holds each stored price until the next aggregate timestamp and averages over the actual interval, at least the requested window. The endpoint price has zero weight. Sparse relays, long-held prices, and intervals longer than the window are accepted; a fresh endpoint does not prove fresh contributors or complete sampling.
 

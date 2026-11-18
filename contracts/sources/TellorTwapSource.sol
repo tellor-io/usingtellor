@@ -25,7 +25,6 @@ contract TellorTwapSource is IPriceSource {
     error InvalidDecimals();
     error InvalidQueryId();
     error InvalidRelayReadDelay();
-    error InvalidTimestamp();
     error InvalidTwapReference();
     error InvalidTwapWindow();
     error NoTwapData();
@@ -61,6 +60,8 @@ contract TellorTwapSource is IPriceSource {
      * Two records with one contributing price suffice. No maximum age, duration, gap,
      * or sampling-quality policy is applied; endpoint recency does not bound contributor age.
      * Missing/inconsistent data reverts without substituting spot; dependency errors propagate.
+     * Zero prices and future endpoint timestamps pass through for consumers such as Shepherd to assess.
+     * A zero endpoint still cannot satisfy the positive interval and history-consistency checks.
      * @return _value Raw quote units per whole base unit, scaled by decimals().
      * @return _timestampMs Original TWAP interval end, never relay time or read time.
      */
@@ -73,8 +74,7 @@ contract TellorTwapSource is IPriceSource {
             TWAP_WINDOW_MS
         );
         if (!_available) revert NoTwapData();
-        if (_twap.endTimestamp == 0 || _twap.endTimestamp > block.timestamp * 1000) revert InvalidTimestamp();
-        if (_twap.value == 0 || _twap.startIndex >= _twap.endIndex || _twap.startTimestamp >= _twap.endTimestamp)
+        if (_twap.startIndex >= _twap.endIndex || _twap.startTimestamp >= _twap.endTimestamp)
             revert InvalidTwapReference();
         if (
             _twap.observationCount != _twap.endIndex - _twap.startIndex ||

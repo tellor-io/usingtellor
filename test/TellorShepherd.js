@@ -49,7 +49,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
     const s = (await f.Shepherd.deploy(...args)).connect(f.admin);
     expect(await s.getCurrentValue()).to.deep.equal([123n, f.timestamp]);
     await s.setModeForTest(1);
-    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
+    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(empty, "ReadUnavailable");
     await s.proposeSourcesChange(empty.target, ready.target);
     await s.pause(); await time.increase(300); await s.executeSourcesChange(); await s.unpause(...await unpauseSelection(s));
     expect(await s.getCurrentValue()).to.deep.equal([123n, f.timestamp]);
@@ -69,7 +69,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
       pendingBackupSource: ethers.ZeroAddress, sourcesProposedAt: 0 })) {
       expect(await s[getter](), getter).to.equal(expected);
     }
-    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
+    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(f.primary, "ReadUnavailable");
   });
 
   for (const [index, value, error] of [
@@ -127,7 +127,7 @@ describe("TellorShepherd - Generic configuration and reads", function () {
       expect(await f.shepherd.getCurrentValue()).to.deep.equal(pair);
       await other.configureRead(999, f.timestamp, 0);
       await selected.configureRead(0, 0, 1);
-      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(f.shepherd, "SourceNotUsable");
+      await expect(f.shepherd.getCurrentValue()).to.be.revertedWithCustomError(selected, "ReadUnavailable");
       expect(await f.shepherd.mode()).to.equal(mode);
       await selected.configureRead(1, f.timestamp, 2);
       await expect(f.shepherd.getCurrentValue()).to.be.reverted;
@@ -440,14 +440,14 @@ describe("TellorShepherd - Two-source transitions", function () {
     }
 
     for (const side of ["primary", "backup"]) {
-      for (const fault of ["revert", "zero price", "zero timestamp", "future timestamp"]) {
+      for (const fault of ["zero price", "zero timestamp", "future timestamp"]) {
         it(`${kind}: ${side} ${fault} permits leaving an unusable source but never selecting it`, async function () {
           const f = await loadFixture(ready), s = f.shepherd.connect(f.admin);
           const pair = await f[side].getCurrentValue();
           async function breakSource() {
             await f[side].configureRead(fault === "zero price" ? 0 : pair[0],
               fault === "zero timestamp" ? 0 : fault === "future timestamp" ? ethers.MaxUint256 : pair[1],
-              fault === "revert" ? 1 : 0);
+              0);
           }
           const activeFails = side === (mode ? "backup" : "primary");
           await breakSource();
@@ -480,27 +480,33 @@ describe("TellorShepherd - Two-source transitions", function () {
         });
       }
 
-      it(`${kind}: ${side} malformed ABI remains an uncaught assessment failure`, async function () {
-        const f = await loadFixture(ready), s = f.shepherd;
-        const pair = await f[side].getCurrentValue();
-        await f[side].configureRead(...pair, 2);
-        await expect(s[request]()).to.be.reverted;
-        expect(await s[pending]()).to.equal(false);
-        await f[side].configureRead(...pair, 0); await s[request]();
-        const start = await s[clock]();
-        await f[side].configureRead(...pair, 2); await time.increase(delay);
-        await expect(s[execute]()).to.be.reverted;
-        await expect(s[cancel]()).to.be.reverted;
-        expect(await s[pending]()).to.equal(true); expect(await s[clock]()).to.equal(start);
-        expect(await s.mode()).to.equal(mode);
-      });
+      for (const behavior of [1, 2]) {
+        it(`${kind}: ${side} ${behavior === 1 ? "revert" : "malformed ABI"} blocks assessment and preserves pending state`, async function () {
+          const f = await loadFixture(ready), s = f.shepherd;
+          const pair = await f[side].getCurrentValue();
+          async function refuses(call) {
+            if (behavior === 1) await expect(call).to.be.revertedWithCustomError(f[side], "ReadUnavailable");
+            else await expect(call).to.be.reverted;
+          }
+          await f[side].configureRead(...pair, behavior);
+          await refuses(s[request]());
+          expect(await s[pending]()).to.equal(false); expect(await s[clock]()).to.equal(0);
+          await f[side].configureRead(...pair, 0); await s[request]();
+          const start = await s[clock]();
+          await f[side].configureRead(...pair, behavior); await time.increase(delay);
+          await refuses(s[execute]());
+          await refuses(s[cancel]());
+          expect(await s[pending]()).to.equal(true); expect(await s[clock]()).to.equal(start);
+          expect(await s.mode()).to.equal(mode);
+        });
+      }
     }
 
-    it(`${kind}: both unavailable blocks switching but allows cancellation`, async function () {
+    it(`${kind}: both returning invalid data blocks switching but allows cancellation`, async function () {
       const f = await loadFixture(ready), s = f.shepherd;
       await s[request]();
       const start = await s[clock]();
-      await f.primary.configureRead(0, 0, 1); await f.backup.configureRead(0, 0, 1);
+      await f.primary.configureRead(0, 0, 0); await f.backup.configureRead(0, 0, 0);
       expect(await s.readDeviation()).to.deep.equal([false, false, false]);
       await time.increase(delay);
       await expect(s[execute]()).to.be.revertedWithCustomError(s, conditionError);
@@ -516,9 +522,9 @@ describe("TellorShepherd - Two-source transitions", function () {
         const f = await loadFixture(ready), s = f.shepherd;
         const active = mode ? f.backup : f.primary;
         const pair = await active.getCurrentValue();
-        if (startsUnavailable) await active.configureRead(0, 0, 1);
+        if (startsUnavailable) await active.configureRead(0, 0, 0);
         await s[request](); const start = await s[clock]();
-        await active.configureRead(...pair, startsUnavailable ? 0 : 1);
+        await active.configureRead(startsUnavailable ? pair[0] : 0, pair[1], 0);
         await expect(s[cancel]()).to.be.revertedWithCustomError(s, cancelError);
         await time.setNextBlockTimestamp(start + delay - 1n);
         await expect(s[execute]()).to.be.revertedWithCustomError(s, `${kind}DelayNotElapsed`);
@@ -533,7 +539,7 @@ describe("TellorShepherd - Two-source transitions", function () {
       const f = await loadFixture(ready), s = f.shepherd;
       const active = mode ? f.backup : f.primary;
       const pair = await active.getCurrentValue();
-      await active.configureRead(0, 0, 1); await s[request]();
+      await active.configureRead(0, 0, 0); await s[request]();
       await active.configureRead(...pair, 0); await set(f, ineligible);
       await time.increase(delay);
       await expect(s[execute]()).to.be.revertedWithCustomError(s, conditionError);
@@ -631,14 +637,46 @@ describe("TellorShepherd - Source pair migration", function () {
     await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "PauseDurationNotElapsed");
     await time.setNextBlockTimestamp(Number(pausedAt) + 120);
     await shepherd.connect(admin).unpause(...await unpauseSelection(shepherd));
-    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(shepherd, "SourceNotUsable");
+    await expect(shepherd.getCurrentValue()).to.be.revertedWithCustomError(replacement, "ReadUnavailable");
   });
 
-  it("requires pause for execution and blocks unpause until cancellation or execution", async function () {
+  for (const mode of [0, 1]) {
+    for (const [pauseAtProposal, pauseAtExecution] of [[false, false], [false, true], [true, true]]) {
+      it(`pausable migration preserves mode ${mode} and pause ${pauseAtProposal}->${pauseAtExecution}`, async function () {
+        const f = await loadFixture(deployMigrationFixture), s = f.shepherd.connect(f.admin);
+        await s.setModeForTest(mode);
+        if (mode) await f.backup.configureRead(100, f.timestamp, 0);
+        const kind = mode ? "Recovery" : "Challenge";
+        await s[`request${kind}`]();
+        if (pauseAtProposal) await s.pause();
+        await s.proposeSourcesChange(f.replacement.target, f.backup.target);
+        const notice = await s.sourcesProposedAt();
+        if (pauseAtExecution && !pauseAtProposal) await s.pause();
+        const pauseClock = await s.pausedAt();
+        // Neither failed old reads nor unavailable replacements prevent metadata-only migration.
+        await f.primary.configureRead(0, 0, 1); await f.backup.configureRead(0, 0, 1);
+        await time.setNextBlockTimestamp(notice + 299n);
+        await expect(s.executeSourcesChange()).to.be.revertedWithCustomError(s, "ConfigChangeDelayNotElapsed");
+        await time.setNextBlockTimestamp(notice + 300n);
+        await expect(s.executeSourcesChange()).to.emit(s, "SourcesChanged")
+          .withArgs(f.primary.target, f.backup.target, f.replacement.target, f.backup.target)
+          .and.to.emit(s, `${kind}Invalidated`);
+        expect(await s.mode()).to.equal(mode);
+        expect(await s.paused()).to.equal(pauseAtExecution);
+        expect(await s.pausedAt()).to.equal(pauseClock);
+        expect(await s.challengePending()).to.equal(false); expect(await s.challengeRequestedAt()).to.equal(0);
+        expect(await s.recoveryPending()).to.equal(false); expect(await s.recoveryRequestedAt()).to.equal(0);
+        expect(await s.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
+        expect(await s.pendingBackupSource()).to.equal(ethers.ZeroAddress);
+        expect(await s.sourcesProposedAt()).to.equal(0);
+      });
+    }
+  }
+
+  it("blocks unpause while a source proposal is pending until cancellation", async function () {
     const { backup, admin, bank, replacement, shepherd } = await loadFixture(deployMigrationFixture);
     await shepherd.connect(admin).proposeSourcesChange(replacement.target, backup.target);
     await time.increase(changeDelay);
-    await expect(shepherd.connect(admin).executeSourcesChange()).to.be.revertedWithCustomError(shepherd, "NotPaused");
     await shepherd.connect(admin).pause();
     await time.increase(120);
     await expect(shepherd.connect(admin).unpause(...await unpauseSelection(shepherd))).to.be.revertedWithCustomError(shepherd, "SourcesChangePending");
@@ -741,6 +779,6 @@ describe("TellorShepherd - Atomic source metadata checks", function () {
     expect(await s.pendingPrimarySource()).to.equal(ethers.ZeroAddress);
     expect(await s.pendingBackupSource()).to.equal(ethers.ZeroAddress);
     await s.unpause(...await unpauseSelection(s));
-    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(s, "SourceNotUsable");
+    await expect(s.getCurrentValue()).to.be.revertedWithCustomError(nextPrimary, "ReadUnavailable");
   });
 });

@@ -5,43 +5,69 @@ const { ethers } = require("hardhat");
 async function fixture() {
   const [admin] = await ethers.getSigners();
   const Source = await ethers.getContractFactory("GasConsumingSourceMock");
-  const primary = await Source.deploy();
-  const backup = await Source.deploy();
+  const primary = await Source.deploy(), backup = await Source.deploy();
   const s = await (await ethers.getContractFactory("TellorShepherd")).deploy(
     "ETH/USD", 18, primary.target, backup.target, admin.address, 0, 300, 2000, [30, 90], 3600, true
   );
   const timestamp = BigInt(await time.latest()) * 1000n;
-  return { s, primary, timestamp, budget: await s.SOURCE_READ_GAS() };
+  await primary.configure(100, timestamp, 0);
+  await backup.configure(150, timestamp, 0);
+  return { s, primary, backup, timestamp };
 }
 
-describe("TellorShepherd - Source read gas budget", function () {
-  it("forwards exactly SOURCE_READ_GAS or reverts, whatever gas the caller supplies", async function () {
-    const { s, primary, timestamp, budget } = await loadFixture(fixture);
-    await primary.configure(0, timestamp, 0); // report the gas received at entry
-    const received = new Set();
-    const failures = new Set();
-    for (let gasLimit = Number(budget); gasLimit <= Number(budget) + 60_000; gasLimit += 100) {
-      try {
-        received.add((await s.validateSource(primary.target, { gasLimit }))[0]);
-      } catch (error) {
-        failures.add(error.data && error.data !== "0x" ? s.interface.parseError(error.data).name : "out of gas");
-      }
+describe("TellorShepherd - Source call gas failures", function () {
+  it("allows reads above the former 500,000 gas cap and propagates insufficient-gas failures", async function () {
+    const { s, primary, timestamp } = await loadFixture(fixture);
+    await primary.configure(100, timestamp, 600_000);
+    for (const method of ["getCurrentValue", "latestRoundData", "validateSource"]) {
+      const args = method === "validateSource" ? [primary.target] : [];
+      await expect(s[method](...args, { gasLimit: 300_000 })).to.be.reverted;
+      const result = await s[method](...args, { gasLimit: 1_000_000 });
+      expect(result).to.deep.equal(method === "latestRoundData"
+        ? [0n, 100n, 0n, timestamp / 1000n, 0n] : [100n, timestamp]);
     }
-    // Starving the source would yield varying entry gas or SourceNotUsable; neither may occur.
-    expect(received.size).to.equal(1);
-    const [entryGas] = received;
-    expect(entryGas).to.be.within(budget - 1_000n, budget);
-    expect(failures).to.include("InsufficientGasForSourceRead");
-    expect(failures).to.not.include("SourceNotUsable");
   });
 
-  it("treats a source needing more than SOURCE_READ_GAS as unusable for every caller", async function () {
-    const { s, primary, timestamp, budget } = await loadFixture(fixture);
-    await primary.configure(100, timestamp, budget - 20_000n);
-    expect(await s.getCurrentValue()).to.deep.equal([100n, timestamp]);
-    await primary.configure(100, timestamp, budget + 1n);
-    for (const gasLimit of [1_000_000, 10_000_000]) {
-      await expect(s.getCurrentValue({ gasLimit })).to.be.revertedWithCustomError(s, "SourceNotUsable");
-    }
+  it("does not promise gas-independent output from a gas-sensitive source", async function () {
+    const { s, primary, timestamp } = await loadFixture(fixture);
+    await primary.configure(0, timestamp, 0); // This mock returns entry gas as its price.
+    const low = await s.validateSource(primary.target, { gasLimit: 200_000 });
+    const high = await s.validateSource(primary.target, { gasLimit: 1_000_000 });
+    expect(high[0]).to.be.greaterThan(low[0]);
   });
+
+  for (const kind of ["Challenge", "Recovery"]) {
+    for (const side of ["primary", "backup"]) {
+      for (const action of ["execute", "cancel"]) {
+        it(`${kind}: starving ${side} reverts request and ${action} without changing state`, async function () {
+          const f = await loadFixture(fixture), s = f.s;
+          const mode = kind === "Recovery" ? 1 : 0;
+          const prefix = kind.toLowerCase();
+          if (mode) {
+            await s.requestChallenge(); await time.increase(30); await s.executeChallenge();
+          }
+          async function configure(eligible) {
+            await f.primary.configure(100, f.timestamp, side === "primary" ? 200_000 : 0);
+            await f.backup.configure((eligible === !mode) ? 150 : 100, f.timestamp, side === "backup" ? 200_000 : 0);
+          }
+          await configure(true);
+          await expect(s[`request${kind}`]({ gasLimit: 150_000 })).to.be.reverted;
+          expect(await s[`${prefix}Pending`]()).to.equal(false);
+          expect(await s[`${prefix}RequestedAt`]()).to.equal(0);
+          await s[`request${kind}`]({ gasLimit: 1_000_000 });
+          const started = await s[`${prefix}RequestedAt`]();
+          if (action === "cancel") await configure(false);
+          await time.increase(mode ? 90 : 30);
+          await expect(s[`${action}${kind}`]({ gasLimit: 150_000 })).to.be.reverted;
+          expect(await s[`${prefix}Pending`]()).to.equal(true);
+          expect(await s[`${prefix}RequestedAt`]()).to.equal(started);
+          expect(await s.mode()).to.equal(mode);
+          await s[`${action}${kind}`]({ gasLimit: 1_000_000 });
+          expect(await s[`${prefix}Pending`]()).to.equal(false);
+          expect(await s[`${prefix}RequestedAt`]()).to.equal(0);
+          expect(await s.mode()).to.equal(action === "execute" ? 1 - mode : mode);
+        });
+      }
+    }
+  }
 });

@@ -185,7 +185,7 @@ describe("TellorShepherd - Immutable pausability", function () {
     expect(await s.isPausable()).to.equal(false);
     expect(await s.paused()).to.equal(false);
     for (const method of ["getCurrentValue", "latestRoundData"]) {
-      await expect(s[method]()).to.be.revertedWithCustomError(s, "SourceNotUsable");
+      await expect(s[method]()).to.be.revertedWithCustomError(f.nextPrimary, "ReadUnavailable");
     }
   });
 });

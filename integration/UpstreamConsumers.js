@@ -174,8 +174,8 @@ describe("Upstream Morpho V2 and Euler Chainlink consumers", function () {
               fault === "stale" ? f.stamp - 3600000n : f.stamp,
             fault === "unavailable" ? 1 : fault === "malformed" ? 2 : 0);
           const error = fault === "malformed" ? undefined :
-            fault === "signed overflow" ? "SignedPriceOverflow" : "SourceNotUsable";
-          const origin = s;
+            fault === "signed overflow" ? "SignedPriceOverflow" : fault === "unavailable" ? "ReadUnavailable" : "SourceNotUsable";
+          const origin = fault === "unavailable" ? source : s;
           if (error) await expect(f.morpho.price()).to.be.revertedWithCustomError(origin, error);
           else await expect(f.morpho.price()).to.be.reverted;
           if (leg === 0) await eulerRefusal(f, origin, error);
